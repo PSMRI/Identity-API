@@ -26,6 +26,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Assertions;
@@ -37,6 +38,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
+import com.iemr.common.identity.domain.Address;
+import com.iemr.common.identity.dto.BenFamilyDTO;
+import com.iemr.common.identity.dto.BenIdentityDTO;
+import com.iemr.common.identity.dto.BenServiceDTO;
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.dto.IdentityEditDTO;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
@@ -64,6 +69,7 @@ class IdentityControllerTest {
 		IdentitySearchDTO searchParams = new IdentitySearchDTO();
 		
 		BeneficiariesDTO a1 = new BeneficiariesDTO();
+		makeBeneficiariesDTO(a1);
 		List<BeneficiariesDTO> bdList = Lists.newArrayList();
 		a1.setBenId(new BigInteger("1"));
 		bdList.add(a1);
@@ -72,6 +78,85 @@ class IdentityControllerTest {
 		//when(svc.getBeneficiaries(searchParams)).thenReturn(any()).thenReturn(bdList);
 		String resp = identityController.getBeneficiaries(req);
 		Assertions.assertNotNull(resp);
+
+	}
+
+	private void makeBeneficiariesDTO(BeneficiariesDTO dto) {
+		dto.setAbhaDetails(null);
+		dto.setAccountNo(null);
+		dto.setAgeAtMarriage(null);
+		dto.setBankName(null);
+		dto.setBenAccountID(null);
+		dto.setBeneficiaryAge(null);
+		dto.setBeneficiaryDetails(null);
+		List<BenFamilyDTO> tags = new ArrayList<>();
+		BenFamilyDTO benFamilyDTO = new BenFamilyDTO();
+		benFamilyDTO.setAssociatedBenRegId(null);
+		benFamilyDTO.setBenFamilyMapId(null);
+		benFamilyDTO.setCreatedBy(null);
+		benFamilyDTO.setCreatedDate(null);
+		benFamilyDTO.setDeleted(null);
+		benFamilyDTO.setIsEmergencyContact(true);
+		benFamilyDTO.setLastModDate(null);
+		benFamilyDTO.setModifiedBy(null);
+		benFamilyDTO.setParkingPlaceID(null);
+		benFamilyDTO.setRelationshipID(null);
+		benFamilyDTO.setRelationshipToSelf(null);
+		benFamilyDTO.setVanID(null);
+		
+		tags.add(benFamilyDTO);
+		dto.setBeneficiaryFamilyTags(tags);
+		List<BenIdentityDTO> identity = new ArrayList<>();
+		BenIdentityDTO benIdentityDTO= new BenIdentityDTO();
+		benIdentityDTO.toString();
+		identity.add(benIdentityDTO);
+		dto.setBeneficiaryIdentites(identity);
+		
+		List<BenServiceDTO> service = new ArrayList<>();
+		BenServiceDTO benServiceDTO= new BenServiceDTO();
+		benServiceDTO.toString();
+		service.add(benServiceDTO);
+		dto.setBeneficiaryServiceMap(service);
+		dto.setBenId(null);
+		dto.setBenMapId(null);
+		dto.setBenRegId(null);
+		dto.setBranchName(null);
+		dto.setContacts(null);
+		dto.setCreatedBy(null);
+		dto.setCreatedDate(null);
+		Address address = new Address();
+		address.toString();
+		address.equals(address);
+		dto.setCurrentAddress(null);
+		dto.setDeleted(null);
+		dto.setEmail(null);
+		dto.setEmergencyAddress(address);
+		dto.setEmergencyContactNum(null);
+		dto.setEmergencyContactTyp(null);
+		dto.setIfscCode(null);
+		dto.setIncomeStatus(null);
+		dto.setIsHIVPos(null);
+		dto.setLastModDate(null);
+		dto.setLiteracyStatus(null);
+		dto.setMarriageDate(null);
+		dto.setModifiedBy(null);
+		dto.setMonthlyFamilyIncome(null);
+		dto.setMotherName(null);
+		dto.setOccupation(null);
+		dto.setOccupationId(null);
+		dto.setPermanentAddress(address);
+		dto.setPreferredEmailId(null);
+		dto.setPreferredPhoneNum(null);
+		dto.setPreferredPhoneTyp(null);
+		dto.setPreferredSMSPhoneNum(null);
+		dto.setPreferredSMSPhoneTyp(null);
+		dto.setReligion(null);
+		dto.setReligionId(null);
+		dto.setSourceOfInformation(null);
+		dto.toString();
+		BeneficiariesDTO beneficiariesDTO = new BeneficiariesDTO();
+		dto.equals(beneficiariesDTO);
+
 	}
 
 	@Test
@@ -159,7 +244,6 @@ class IdentityControllerTest {
 		String resp = identityController.searchBeneficiaryByVillageIdAndLastModDate(req);
 
 		Assertions.assertNotNull(resp);
-		//Assertions.assertThrows(Exception.class, () -> 
 	}
 
 	
