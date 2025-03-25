@@ -82,4 +82,8 @@ public interface BenServiceMappingRepo extends CrudRepository<MBeneficiaryservic
 	@Modifying
 	@Query(" UPDATE MBeneficiaryservicemapping set vanSerialNo = :benServiceMapID WHERE benServiceMapID = :benServiceMapID ")
 	int updateVanSerialNo(@Param("benServiceMapID") BigInteger benServiceMapID);
+	
+	@Query("SELECT a FROM MBeneficiaryservicemapping a WHERE a.benMapId =:benMapId AND a.vanID =:vanID ")
+	List<MBeneficiaryservicemapping> getWithVanSerialNoVanID(@Param("benMapId") BigInteger benMapId,
+			@Param("vanID") Integer vanID);
 }

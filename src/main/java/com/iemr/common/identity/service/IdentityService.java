@@ -573,12 +573,34 @@ public class IdentityService {
 	}
 	
 	private MBeneficiarymapping getBeneficiariesDTONew(Object[] benMapArr) {
-		MBeneficiarymapping benMapOBJ = new MBeneficiarymapping();
+		MBeneficiarymapping mapping = new MBeneficiarymapping();
 		if (benMapArr != null && benMapArr.length == 12 && benMapArr[8] != null && benMapArr[9] != null) {
-			benMapOBJ.setBenMapId(getBigIntegerValueFromObject(benMapArr[0]));
-			benMapOBJ.setCreatedBy(String.valueOf(benMapArr[10]));
-			benMapOBJ.setCreatedDate((Timestamp) benMapArr[11]);
-			benMapOBJ = mappingRepo.getMapping(getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
+			mapping.setBenMapId(getBigIntegerValueFromObject(benMapArr[0]));
+			mapping.setCreatedBy(String.valueOf(benMapArr[10]));
+			mapping.setCreatedDate((Timestamp) benMapArr[11]);
+			mapping = mappingRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
+			MBeneficiaryaddress address = addressRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[1]), (Integer) benMapArr[8]);
+			MBeneficiaryconsent consent = consentRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[2]), (Integer) benMapArr[8]);		
+			MBeneficiarycontact contact = contactRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[3]), (Integer) benMapArr[8]);
+			MBeneficiarydetail details = detailRepo.getWith_vanSerialNo_vanID(getBigIntegerValueFromObject(benMapArr[4]), (Integer) benMapArr[8]);
+			MBeneficiaryregidmapping regidmapping = regIdRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[5]), (Integer) benMapArr[8]);
+			MBeneficiaryAccount account = accountRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[7]), (Integer) benMapArr[8]);
+			MBeneficiaryImage image = imageRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[6]), (Integer) benMapArr[8]);
+			List<MBeneficiaryservicemapping> servicemap = serviceMapRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
+			List<MBeneficiaryidentity> identity = identityRepo.findByBenMapIdAndVanID(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
+			List<MBeneficiaryfamilymapping> familymapping = familyMapRepo.findByBenMapIdAndVanIDOrderByBenFamilyMapIdAsc(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
+			
+			mapping.setMBeneficiaryaddress(address);
+			mapping.setMBeneficiaryconsent(consent);
+			mapping.setMBeneficiarycontact(contact);
+			mapping.setMBeneficiarydetail(details);
+			mapping.setMBeneficiaryfamilymappings(familymapping);
+			mapping.setMBeneficiaryidentities(identity);
+			mapping.setMBeneficiaryImage(image);
+			mapping.setMBeneficiaryregidmapping(regidmapping);
+			mapping.setMBeneficiaryservicemappings(servicemap);
+			mapping.setMBeneficiaryAccount(account);
+			//benMapOBJ = mappingRepo.getMapping(getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
 		
 			
 
@@ -588,15 +610,15 @@ public class IdentityService {
 			
 			if (obj != null) {
 				if (obj.getHouseoldId() != null)
-					benMapOBJ.setHouseHoldID(obj.getHouseoldId());
+					mapping.setHouseHoldID(obj.getHouseoldId());
 				if (obj.getGuidelineId() != null)
-					benMapOBJ.setGuideLineID(obj.getGuidelineId());
+					mapping.setGuideLineID(obj.getGuidelineId());
 				if (obj.getRchid() != null)
-					benMapOBJ.setRchID(obj.getRchid());
+					mapping.setRchID(obj.getRchid());
 			}
  
 		}
-		return benMapOBJ;
+		return mapping;
 	}
 	private MBeneficiarymapping getBeneficiariesDTONewPartial(Object[] benMapArr) {
 		MBeneficiarymapping benMapOBJ = new MBeneficiarymapping();

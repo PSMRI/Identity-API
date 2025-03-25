@@ -33,6 +33,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.iemr.common.identity.domain.MBeneficiarymapping;
+import com.iemr.common.identity.domain.MBeneficiaryservicemapping;
 import com.iemr.common.identity.domain.VBenAdvanceSearch;
 import com.iemr.common.identity.dto.IdentityDTO;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
@@ -137,4 +138,8 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
 			+"LEFT JOIN MBeneficiaryservicemapping bsm on bsm.vanSerialNo=bm.benMapId and bm.vanID=bsm.vanID "
 			+"where bm.vanSerialNo=:vanSerialNo and bm.vanID=:vanID")
 	MBeneficiarymapping getMapping(@Param("vanSerialNo") BigInteger vanSerialNo,@Param("vanID") Integer vanID);
+	
+	@Query("SELECT a FROM MBeneficiarymapping a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
+	MBeneficiarymapping getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
+			@Param("vanID") Integer vanID);
 }

@@ -50,5 +50,6 @@ public interface BenFamilyMappingRepo extends CrudRepository<MBeneficiaryfamilym
 	@Modifying
 	@Query(" UPDATE MBeneficiaryfamilymapping set vanSerialNo = :benFamilyMapId WHERE benFamilyMapId = :benFamilyMapId")
 	int updateVanSerialNo(@Param("benFamilyMapId") BigInteger benFamilyMapId);
+	
 
 }
