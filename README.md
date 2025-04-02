@@ -12,6 +12,28 @@ Identity API is a microservice which is used for the creation and management of 
 ## Environment and setup
 For setting up the development environment, please refer to the [Developer Guide](https://piramal-swasthya.gitbook.io/amrit/developer-guide/development-environment-setup) .
 
+# Running Instructions
+
+This service consists of two profiles that work together: the main application profile and the 1097_identity profile. Each profile operates on a different port for independent functionality.
+
+## Building and Running
+
+### 1. Main Application (Port: 8094)
+```bash
+# Build and Run
+mvn clean install -DENV_VAR=local
+mvn spring-boot:run -DENV_VAR=local
+```
+
+### 2. 1097_identity Profile (Port: 8095)
+```bash
+# Build and Run (in a new terminal)
+mvn clean install -P1097_identity -DENV_VAR=local
+mvn spring-boot:run -P1097_identity -DENV_VAR=local
+```
+
+**Note:** Start the main application before running the 1097_identity profile. Each profile requires the `-DENV_VAR=local` parameter for local development.
+
 ## API Guide
 Detailed information on API endpoints can be found in the [API Guide](https://piramal-swasthya.gitbook.io/amrit/architecture/api-guide).
 
