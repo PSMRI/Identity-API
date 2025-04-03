@@ -35,6 +35,7 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1607,13 +1608,15 @@ public class IdentityService {
 	private BeneficiariesDTO getBeneficiariesDTO(MBeneficiarymapping benMap) {
 		BeneficiariesDTO bdto = mapper.mBeneficiarymappingToBeneficiariesDTO(benMap);
 		if (null != benMap && null != benMap.getMBeneficiarydetail()
-				&& null != benMap.getMBeneficiarydetail().getFaceEmbedding()) {
+				&& !StringUtils.isEmpty(benMap.getMBeneficiarydetail().getFaceEmbedding())) {
 			String faceEmbedding = benMap.getMBeneficiarydetail().getFaceEmbedding();
 			String trimmedInput = faceEmbedding.replaceAll("[\\[\\]]", "");
-			String[] stringNumbers = trimmedInput.split(",\\s*");
 			List<Float> floatList = new ArrayList<>();
-			for (String str : stringNumbers) {
-				floatList.add(Float.parseFloat(str));
+			if(!StringUtils.isEmpty(trimmedInput)) {
+				String[] stringNumbers = trimmedInput.split(",\\s*");
+				for (String str : stringNumbers) {
+					floatList.add(Float.parseFloat(str));
+				}
 			}
 			bdto.setFaceEmbedding(floatList);
 		}
