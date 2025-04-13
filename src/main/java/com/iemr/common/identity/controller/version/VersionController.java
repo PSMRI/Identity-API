@@ -39,11 +39,11 @@ import io.swagger.v3.oas.annotations.Operation;
 @RestController
 public class VersionController {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass().getSimpleName());
+	private static final Logger logger = LoggerFactory.getLogger(VersionController.class);
 	
 	@CrossOrigin()
 	@Operation(summary = "Get version information")
-	@GetMapping(value = "/version",consumes = "application/json", produces = "application/json")
+	@GetMapping(value = "/version", produces = "application/json")
 	public String versionInformation() {
 		OutputResponse output = new OutputResponse();
 		try {
@@ -59,7 +59,10 @@ public class VersionController {
 	private String readGitProperties() throws Exception {
 	    ClassLoader classLoader = getClass().getClassLoader();
 	    InputStream inputStream = classLoader.getResourceAsStream("git.properties");
-	    
+	    if (inputStream == null) {
+    	throw new FileNotFoundException("git.properties file not found in classpath");
+}
+
 	        return readFromInputStream(inputStream);
 	}
 	private String readFromInputStream(InputStream inputStream)
