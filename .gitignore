@@ -34,3 +34,5 @@ command_output.log
 # Properties
 src/main/environment/1097_local.properties
 src/main/environment/common_local.properties
+
+node_modules/
