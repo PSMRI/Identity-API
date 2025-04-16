@@ -23,6 +23,9 @@ jobs:
         run: npm ci
 
       - name: Lint commit messages
-        run: |
-          git fetch --no-tags origin main
-          npx commitlint --from=origin/main --to=HEAD --verbose
+        uses: wagoid/commitlint-github-action@v4
+        with:
+          from: origin/develop
+          to: HEAD
+          verbose: true
+
