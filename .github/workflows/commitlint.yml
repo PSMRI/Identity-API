@@ -7,9 +7,12 @@ on:
 jobs:
   lint-commits:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -17,12 +20,15 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint commit messages
         run: |
-          git fetch origin main
-          COMMITS=$(git log origin/main..HEAD --pretty=format:"%H")
-          echo "$COMMITS" | while read commit; do
-            npx commitlint --from=$commit --to=$commit --verbose
+          BASE_BRANCH=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
+          git fetch origin $BASE_BRANCH
+
+          COMMITS=$(git log origin/$BASE_BRANCH..HEAD --pretty=format:"%H")
+          echo "$COMMITS" | while read COMMIT; do
+            echo "Linting commit: $COMMIT"
+            npx commitlint --from=$COMMIT --to=$COMMIT --verbose
           done
