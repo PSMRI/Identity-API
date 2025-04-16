@@ -24,11 +24,5 @@ jobs:
 
       - name: Lint commit messages
         run: |
-          BASE_BRANCH=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
-          git fetch origin $BASE_BRANCH
-
-          COMMITS=$(git log origin/$BASE_BRANCH..HEAD --pretty=format:"%H")
-          echo "$COMMITS" | while read COMMIT; do
-            echo "Linting commit: $COMMIT"
-            npx commitlint --from=$COMMIT --to=$COMMIT --verbose
-          done
+          git fetch --no-tags origin main
+          npx commitlint --from=origin/main --to=HEAD --verbose
