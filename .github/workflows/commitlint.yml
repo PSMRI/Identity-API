@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure full commit history is fetched
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -23,5 +25,5 @@ jobs:
       - name: Lint commit messages
         uses: wagoid/commitlint-github-action@v4
         with:
-          configFile: ./commitlint.config.js  # Specify the config file
-          failOnWarnings: true  # Fail on warnings
+          configFile: ./commitlint.config.js
+          failOnWarnings: true
