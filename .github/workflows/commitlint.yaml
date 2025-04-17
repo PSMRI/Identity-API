@@ -2,7 +2,6 @@ name: Lint Commit Messages
 
 on:
   pull_request:
-    branches: ["test"]
     types: [opened, synchronize, edited]
 
 jobs:
@@ -15,7 +14,7 @@ jobs:
         with:
           node-version: 18
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
       - name: Lint commit messages
         run: |
           git fetch origin test --depth=1
