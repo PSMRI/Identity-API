@@ -1,14 +1,30 @@
-name: Lint Commit Messages
+name: Commit Message Lint
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize, ready_for_review]
-    branches: [main, test]
+    types: [opened, synchronize, edited]
 
 jobs:
-  commitlint:
+  lint-commits:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Lint Commit Messages
-        uses: wagoid/commitlint-github-action@v6
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint commit messages
+        uses: wagoid/commitlint-github-action@v4
+        with:
+          from: ${{ github.base_ref }}
+          to: ${{ github.head_ref }}
+          verbose: true
