@@ -18,8 +18,8 @@ jobs:
         run: npm install
       - name: Lint commit messages
         run: |
-          git fetch origin main --depth=1
-          commits=$(git log origin/main..HEAD --pretty=format:"%H")
+          git fetch origin test --depth=1
+          commits=$(git log origin/test..HEAD --pretty=format:"%H")
           for commit in $commits; do
             echo "Linting commit $commit"
             npx commitlint --from=$commit~1 --to=$commit

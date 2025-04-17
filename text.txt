@@ -1,2 +1,1 @@
 Some bad commits to test 1
-new bad commit
