@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '16'  # Use Node.js 16 or later
 
       - name: Install dependencies
         run: npm ci
@@ -25,5 +25,5 @@ jobs:
       - name: Lint commit messages
         uses: wagoid/commitlint-github-action@v4
         with:
-          configFile: ./commitlint.config.js
+          configFile: ./commitlint.config.cjs  # Ensure you're using CommonJS config file
           failOnWarnings: true
