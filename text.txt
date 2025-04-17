@@ -1,1 +1,2 @@
-Some bad commits to test
+Some bad commits to test 1
+new bad commit
