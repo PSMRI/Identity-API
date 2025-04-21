@@ -1,19 +1,18 @@
 {
   "name": "identity-api",
   "version": "1.0.0",
-  "description": "[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  ![branch parameter](https://github.com/PSMRI/Identity-API/actions/workflows/sast-and-package.yml/badge.svg)",
+  "description": "Identity API for user authentication and authorization.",
   "main": "index.js",
-
   "config": {
-  "commitizen": {
-    "path": "cz-conventional-changelog"
-  }
-},
-"scripts": {
-  "test": "echo \"No tests specified\"",
-  "prepare": "husky install",
-  "commit": "cz"
-},
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "scripts": {
+    "test": "echo \"No tests specified\"",
+    "prepare": "husky install",
+    "commit": "cz"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PSMRI/Identity-API.git"
@@ -33,5 +32,3 @@
     "husky": "^9.1.7"
   }
 }
- 
-  
