@@ -34,3 +34,7 @@ command_output.log
 # Properties
 src/main/environment/1097_local.properties
 src/main/environment/common_local.properties
+
+### Node.js ###
+node_modules/
+npm-debug.log

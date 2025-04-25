@@ -34,6 +34,22 @@ mvn spring-boot:run -P1097_identity -DENV_VAR=local
 
 **Note:** Start the main application before running the 1097_identity profile. Each profile requires the `-DENV_VAR=local` parameter for local development.
 
+## Commit Message Hooks
+
+This repository uses commit message linting to ensure consistent commit messages. To use it:
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Create commits using the interactive prompt:
+   ```bash
+   npm run commit
+   ```
+
+The commit hook will automatically validate your commit messages against the conventional commit format.
+
 ## API Guide
 Detailed information on API endpoints can be found in the [API Guide](https://piramal-swasthya.gitbook.io/amrit/architecture/api-guide).
 
@@ -49,6 +65,6 @@ If you encounter any issues, bugs, or have feature requests, please file them in
 
 ## Join Our Community
 
-We’d love to have you join our community discussions and get real-time support!  
+We'd love to have you join our community discussions and get real-time support!  
 Join our [Discord server](https://discord.gg/FVQWsf5ENS) to connect with contributors, ask questions, and stay updated.  
 
