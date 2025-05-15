@@ -29,6 +29,7 @@ nbdist/
 mvnw
 mvnw.cmd
 .mvn
+command_output.log
 
 # Properties
 src/main/environment/1097_local.properties

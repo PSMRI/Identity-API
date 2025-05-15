@@ -88,4 +88,5 @@ public interface BenIdentityRepo extends CrudRepository<MBeneficiaryidentity, Bi
 
 	@Query(value = "select i from MBeneficiaryidentity i where i.identityNo = :identityNo")
 	List<MBeneficiaryidentity> searchByIdentityNo(@Param("identityNo") String identityNo);
+
 }

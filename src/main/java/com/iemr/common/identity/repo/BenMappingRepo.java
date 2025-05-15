@@ -33,6 +33,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.iemr.common.identity.domain.MBeneficiarymapping;
+import com.iemr.common.identity.domain.MBeneficiaryservicemapping;
 import com.iemr.common.identity.domain.VBenAdvanceSearch;
 import com.iemr.common.identity.dto.IdentityDTO;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
@@ -122,6 +123,23 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
 			@Param("lastModDate") Timestamp lastModifiedDate);
 
 	
-	@Query("SELECT t FROM MBeneficiarymapping t WHERE t.vanSerialNo =:vanSerialNo AND t.vanID=:vanID")
+	//@Query("SELECT t FROM MBeneficiarymapping t WHERE t.vanSerialNo =:vanSerialNo AND t.vanID=:vanID")
+	@Query(value = "select bm FROM  MBeneficiarymapping bm "
+			+"LEFT JOIN MBeneficiaryregidmapping brm ON brm.benRegId=bm.benRegId and brm.vanID=bm.vanID "
+			+"LEFT JOIN MBeneficiarycontact bc ON bc.vanSerialNo = bm.benContactsId and bm.vanID=bc.vanID "
+			+"LEFT JOIN MBeneficiarydetail bd on bm.benDetailsId = bd.vanSerialNo and bm.vanID=bd.vanID "
+			+"LEFT JOIN MBeneficiaryaddress ba ON ba.vanSerialNo = bm.benAddressId and bm.vanID=ba.vanID "
+			+"LEFT JOIN MBeneficiaryconsent bt on bt.vanSerialNo=bm.benConsentId and bm.vanID=bt.vanID "
+			//+"LEFT JOIN MBensecurestack bs on bs.benSecureStackId=bm.benSecureStackId and bm.vanID=bs.vanID "
+			+"LEFT JOIN MBeneficiaryImage bi on bi.vanSerialNo=bm.benImageId and bm.vanID=bi.vanID "
+			+"LEFT JOIN MBeneficiaryAccount bac on bac.vanSerialNo=bm.benAccountID and bm.vanID=bac.vanID "
+			+"LEFT JOIN MBeneficiaryidentity bid on bid.vanSerialNo=bm.benMapId and bm.vanID=bid.vanID "
+			+"LEFT JOIN MBeneficiaryfamilymapping bfm on bfm.vanSerialNo=bm.benMapId and bm.vanID=bfm.vanID "
+			+"LEFT JOIN MBeneficiaryservicemapping bsm on bsm.vanSerialNo=bm.benMapId and bm.vanID=bsm.vanID "
+			+"where bm.vanSerialNo=:vanSerialNo and bm.vanID=:vanID")
 	MBeneficiarymapping getMapping(@Param("vanSerialNo") BigInteger vanSerialNo,@Param("vanID") Integer vanID);
+	
+	@Query("SELECT a FROM MBeneficiarymapping a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
+	MBeneficiarymapping getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
+			@Param("vanID") Integer vanID);
 }
