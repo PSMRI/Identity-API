@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.iemr.common.identity</groupId>
 	<artifactId>identity</artifactId>
-	<version>0.0.1</version>
+	<version>3.1.0</version>
 
 	<packaging>war</packaging>
 
@@ -235,7 +235,7 @@
 	</profiles>
 
 	<build>
-		<finalName>identity-v3.0.0</finalName>
+		<finalName>${artifactId}-${version}</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.owasp</groupId>
