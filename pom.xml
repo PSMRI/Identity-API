@@ -30,6 +30,8 @@
 		<environment>${ENV_VAR}</environment>
 		<target-properties>target/classes/application.properties</target-properties>
 		<source-properties>target/classes/common_${environment}.properties</source-properties>
+		<ci-file>common_${environment}.properties</ci-file>
+		<context.root>identity-api</context.root>
 		<maven.test.skip>false</maven.test.skip>
 		<sonar.java.binaries>target</sonar.java.binaries>
 		<jacoco.version>0.8.11</jacoco.version>
@@ -224,12 +226,14 @@
 		<profile>
 			<id>1097_identity</id>
 			<properties>
-				<final-name>1097identityapi-v1.0</final-name>
+				<final-name>1097identity-api-${version}</final-name>
 				<target-properties>target/classes/application.properties</target-properties>
 				<source-properties>target/classes/1097_${environment}.properties</source-properties>
+				<ci-file>1097_${environment}.properties</ci-file>
+				<context.root>1097identity-api</context.root>
 			</properties>
 			<build>
-				<finalName>1097identityapi-v1.0</finalName>
+				<finalName>1097identityapi-${version}</finalName>
 			</build>
 		</profile>
 	</profiles>
@@ -329,7 +333,8 @@
 									<filtering>true</filtering>
 									<includes>
 										<include>
-											common_${environment}.properties</include>
+											${ci-file}
+										</include>
 									</includes>
 								</resource>
 							</resources>
@@ -361,6 +366,20 @@
 									<fileset file="${source-properties}">
 									</fileset>
 								</concat>
+							</target>
+						</configuration>
+					</execution>
+					<execution>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<id>clean-property-files</id>
+						<configuration>
+							<target>
+								<delete>
+									<file file="${source-properties}" />
+								</delete>
 							</target>
 						</configuration>
 					</execution>
@@ -402,6 +421,10 @@
 							<filtering>true</filtering>
 							<directory>src/packaging/</directory>
 						</resource>
+						<resource>
+                        	<directory>src/main/webapp</directory>
+                        	<filtering>true</filtering>
+                    	</resource>
 					</webResources>
 				</configuration>
 			</plugin>
