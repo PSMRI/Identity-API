@@ -9,7 +9,7 @@
 
 	<packaging>war</packaging>
 
-	<name>identity-api</name>
+	<name>Identity-API</name>
 	<description>iEMR Identity Service</description>
 
 	<parent>
