@@ -672,7 +672,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		try {
 			HashMap<String, Object> header = new HashMap<String, Object>();
 			header.put("Authorization", authorization);
-			String responseStr = utils.post(ConfigProperties.getPropertyByName("fhir-url") + "/"
+			String responseStr = utils.post(ConfigProperties.getPropertyByName("fhir-url")
 					+ ConfigProperties.getPropertyByName("getHealthID"), new Gson().toJson(requestMap), header);
 			JsonElement jsnElmnt = jsnParser.parse(responseStr);
 			JsonObject jsnOBJ = new JsonObject();
@@ -765,7 +765,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 				HashMap<String, Object> header = new HashMap<String, Object>();
 				header.put("Authorization", authorization);
 				String responseStr = utils.post(
-						ConfigProperties.getPropertyByName("tm-url") + "/"
+						ConfigProperties.getPropertyByName("tm-url")
 								+ ConfigProperties.getPropertyByName("get-HRP-Status"),
 						new Gson().toJson(requestMap), header);
 				JsonElement jsnElmnt = jsnParser.parse(responseStr);
