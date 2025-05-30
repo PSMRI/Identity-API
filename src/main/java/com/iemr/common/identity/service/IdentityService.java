@@ -1044,7 +1044,7 @@ public class IdentityService {
 
 	ArrayDeque<MBeneficiaryregidmapping> queue = new ArrayDeque<>();
 
-		public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
+	public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
 		logger.info("IdentityService.createIdentity - start");
 
 			List<MBeneficiaryregidmapping> list = null;
