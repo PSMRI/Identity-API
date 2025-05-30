@@ -1044,34 +1044,34 @@ public class IdentityService {
 
 	ArrayDeque<MBeneficiaryregidmapping> queue = new ArrayDeque<>();
 
-	public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
+		public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
 		logger.info("IdentityService.createIdentity - start");
 
-		List<MBeneficiaryregidmapping> list = null;
-		MBeneficiaryregidmapping regMap = null;
-		synchronized (queue) {
-			if (queue.isEmpty()) {
-				logger.info("fetching 10000 rows");
-				list = regIdRepo.findTop10000ByProvisionedAndReserved(false, false);
-				logger.info("Adding SynchronousQueue start-- ");
-				for (MBeneficiaryregidmapping map : list) {
-					queue.add(map);
+			List<MBeneficiaryregidmapping> list = null;
+			MBeneficiaryregidmapping regMap = null;
+			synchronized (queue) {
+				if (queue.isEmpty()) {
+					logger.info("fetching 10000 rows");
+					list = regIdRepo.findTop10000ByProvisionedAndReserved(false, false);
+					logger.info("Adding SynchronousQueue start-- ");
+					for (MBeneficiaryregidmapping map : list) {
+						queue.add(map);
+					}
+					logger.info("Adding SynchronousQueue end-- ");
 				}
-				logger.info("Adding SynchronousQueue end-- ");
+				regMap = queue.removeFirst();
 			}
-			regMap = queue.removeFirst();
-		}
-		regMap.setReserved(true);
-		if (regMap.getCreatedDate() == null) {
-			SimpleDateFormat sdf = new SimpleDateFormat(CREATED_DATE_FORMAT);
-			String dateToStoreInDataBase = sdf.format(new Date());
-			Timestamp ts = Timestamp.valueOf(dateToStoreInDataBase);
-			regMap.setCreatedDate(ts);
-		}
+			regMap.setReserved(true);
+			if (regMap.getCreatedDate() == null) {
+				SimpleDateFormat sdf = new SimpleDateFormat(CREATED_DATE_FORMAT);
+				String dateToStoreInDataBase = sdf.format(new Date());
+				Timestamp ts = Timestamp.valueOf(dateToStoreInDataBase);
+				regMap.setCreatedDate(ts);
+			}
 
-		regIdRepo.save(regMap);
+			regIdRepo.save(regMap);
 
-		regMap.setProvisioned(true);
+			regMap.setProvisioned(true);
 
 		logger.info("IdentityService.createIdentity - saving Address");
 		ObjectMapper objectMapper = new ObjectMapper();
@@ -1332,6 +1332,7 @@ public class IdentityService {
 		beneficiarydetail.setOccupationId(dto.getOccupationId());
 		beneficiarydetail.setPhcId(dto.getPhcId());
 		beneficiarydetail.setPlaceOfWork(dto.getPlaceOfWork());
+		beneficiarydetail.setPreferredLanguageId(dto.getPreferredLanguageId());
 		beneficiarydetail.setPreferredLanguage(dto.getPreferredLanguage());
 		beneficiarydetail.setReligion(dto.getReligion());
 		if (dto.getFaceEmbedding() != null)
