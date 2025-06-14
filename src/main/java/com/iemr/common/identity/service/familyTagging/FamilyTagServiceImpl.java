@@ -157,7 +157,7 @@ public class FamilyTagServiceImpl implements FamilyTagService {
 			if (benFamilyRS != null) {
 				if (benFamilyObj.getIsHeadOfTheFamily() != null
 						&& benFamilyObj.getMemberName() != null) {
-					if(benFamilyRS.getFamilyHeadName().trim().equals(benFamilyObj.getMemberName().trim()) && Boolean.TRUE.equals(!benFamilyObj.getIsHeadOfTheFamily()))
+					if(null != benFamilyRS.getFamilyHeadName() && benFamilyRS.getFamilyHeadName().trim().equals(benFamilyObj.getMemberName().trim()) && Boolean.TRUE.equals(!benFamilyObj.getIsHeadOfTheFamily()))
 						benFamilyRS.setFamilyHeadName("");
 					else 
 						benFamilyRS.setFamilyHeadName(benFamilyObj.getMemberName());		
