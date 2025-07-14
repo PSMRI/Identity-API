@@ -284,6 +284,7 @@ public interface IdentityMapper {
 	@Mapping(target = "beneficiaryDetails.placeOfWork", source = "map.MBeneficiarydetail.placeOfWork")
 	@Mapping(target = "beneficiaryDetails.healthCareWorkerId", source = "map.MBeneficiarydetail.healthCareWorkerId")
 	@Mapping(target = "beneficiaryDetails.healthCareWorker", source = "map.MBeneficiarydetail.healthCareWorker")
+	@Mapping(target = "beneficiaryDetails.preferredLanguageId", source = "map.MBeneficiarydetail.preferredLanguageId")
 	@Mapping(target = "beneficiaryDetails.preferredLanguage", source = "map.MBeneficiarydetail.preferredLanguage")
 
 	@Mapping(target = "beneficiaryDetails.religion", source = "map.MBeneficiarydetail.religion")
@@ -396,6 +397,7 @@ public interface IdentityMapper {
 	@Mapping(source = "occupation", target = "occupation")
 	@Mapping(source = "phcId", target = "phcId")
 	@Mapping(source = "placeOfWork", target = "placeOfWork")
+	@Mapping(source = "preferredLanguageId", target = "preferredLanguageId")
 	@Mapping(source = "preferredLanguage", target = "preferredLanguage")
 	// @Mapping(source = "religionId", target = "religionId"),
 	@Mapping(source = "religion", target = "religion")
