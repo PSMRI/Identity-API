@@ -35,26 +35,13 @@ public class JwtUserIdValidationFilter implements Filter {
 		HttpServletRequest request = (HttpServletRequest) servletRequest;
 		HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-		String origin = request.getHeader("Origin");
-
-		logger.debug("Incoming Origin: {}", origin);
-		logger.debug("Allowed Origins Configured: {}", allowedOrigins);
-
-		if (origin != null && isOriginAllowed(origin)) {
-			response.setHeader("Access-Control-Allow-Origin", origin);
-			response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-			response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Jwttoken");
-			response.setHeader("Access-Control-Allow-Credentials", "true");
-		} else {
-			logger.warn("Origin [{}] is NOT allowed. CORS headers NOT added.", origin);
-		}
-
+		handleCorsHeaders(request, response);
+		
 		if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
 			logger.info("OPTIONS request - skipping JWT validation");
 			response.setStatus(HttpServletResponse.SC_OK);
 			return;
 		}
-
 		String path = request.getRequestURI();
 		logger.info("JwtUserIdValidationFilter invoked for path: " + path);
 
@@ -108,6 +95,23 @@ public class JwtUserIdValidationFilter implements Filter {
 			logger.error("Authorization error: ", e);
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authorization error: " + e.getMessage());
 		}
+	}
+
+	private void handleCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+		String origin = request.getHeader("Origin");
+
+		logger.debug("Incoming Origin: {}", origin);
+		logger.debug("Allowed Origins Configured: {}", allowedOrigins);
+
+		if (origin != null && isOriginAllowed(origin)) {
+			response.setHeader("Access-Control-Allow-Origin", origin);
+			response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+			response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Jwttoken");
+			response.setHeader("Access-Control-Allow-Credentials", "true");
+		} else {
+			logger.warn("Origin [{}] is NOT allowed. CORS headers NOT added.", origin);
+		}
+		
 	}
 
 	private boolean isOriginAllowed(String origin) {
