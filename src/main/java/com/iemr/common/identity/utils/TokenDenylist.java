@@ -55,10 +55,18 @@ public class TokenDenylist {
 	    }
 
 	    // Remove a token's jti from the denylist (Redis)
-	    public void removeTokenFromDenylist(String jti) {
-	        if (jti != null && !jti.trim().isEmpty()) {
-	        	String key = getKey(jti);
-	            redisTemplate.delete(key);
-	        }
-	    }
+		public void removeTokenFromDenylist(String jti) {
+			if (jti != null && !jti.trim().isEmpty()) {
+				try {
+					String key = getKey(jti);
+					redisTemplate.delete(key);
+					logger.debug("Removed jti from denylist: {}", jti);
+				} catch (Exception e) {
+					logger.error("Failed to remove token from denylist with jti: {}", jti, e);
+					throw new TokenDenylistException("Failed to remove token from denylist", e);
+				}
+			} else {
+				logger.warn("Attempted to remove null or empty jti from denylist");
+			}
+		}
 }

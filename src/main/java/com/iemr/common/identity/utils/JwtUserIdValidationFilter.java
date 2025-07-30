@@ -19,12 +19,14 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class JwtUserIdValidationFilter implements Filter {
 	private final JwtAuthenticationUtil jwtAuthenticationUtil;
+	private final CookieUtil cookieUtil;
 	private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 	private final String allowedOrigins;
 
-	public JwtUserIdValidationFilter(JwtAuthenticationUtil jwtAuthenticationUtil, String allowedOrigins) {
+	public JwtUserIdValidationFilter(JwtAuthenticationUtil jwtAuthenticationUtil, String allowedOrigins, CookieUtil cookieUtil) {
 		this.jwtAuthenticationUtil = jwtAuthenticationUtil;
 		this.allowedOrigins = allowedOrigins;
+		this.cookieUtil = cookieUtil;
 	}
 
 	@Override
@@ -131,15 +133,7 @@ public class JwtUserIdValidationFilter implements Filter {
 	}
 
 	private String getJwtTokenFromCookies(HttpServletRequest request) {
-		Cookie[] cookies = request.getCookies();
-		if (cookies != null) {
-			for (Cookie cookie : cookies) {
-				if (cookie.getName().equalsIgnoreCase("Jwttoken")) {
-					return cookie.getValue();
-				}
-			}
-		}
-		return null;
+		return cookieUtil.getJwtTokenFromCookie(request);
 	}
 
 	private void clearUserIdCookie(HttpServletResponse response) {
