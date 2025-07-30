@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import ch.qos.logback.classic.Logger;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -70,17 +69,17 @@ public class JwtUtil {
      * @param expiration    the expiration time of the token in milliseconds
      * @return the generated JWT token
      */
-    private String buildToken(String username, String userId, String tokenType, long expiration) {
-        return Jwts.builder()
-                .subject(username)
-                .claim("userId", userId)
-                .claim("token_type", tokenType)
-                .id(UUID.randomUUID().toString())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey())
-                .compact();
-    }
+	private String buildToken(String username, String userId, String tokenType, long expiration) {
+		if (username == null || username.trim().isEmpty()) {
+			throw new IllegalArgumentException("Username cannot be null or empty");
+		}
+		if (userId == null || userId.trim().isEmpty()) {
+			throw new IllegalArgumentException("User ID cannot be null or empty");
+		}
+		return Jwts.builder().subject(username).claim("userId", userId).claim("token_type", tokenType)
+				.id(UUID.randomUUID().toString()).issuedAt(new Date())
+				.expiration(new Date(System.currentTimeMillis() + expiration)).signWith(getSigningKey()).compact();
+	}
 
     /**
      * Validate the JWT token, checking if it is expired and if it's blacklisted
@@ -110,14 +109,14 @@ public class JwtUtil {
      * @param token the JWT token
      * @return all claims from the token
      */
-    public Claims getAllClaimsFromToken(String token) {
-        return Jwts.parser()
-				.verifyWith(getSigningKey())
-				.build()
-				.parseSignedClaims(token)
-				.getPayload();
+	public Claims getAllClaimsFromToken(String token) {
+		Claims claims = validateToken(token);
+		if (claims == null) {
+			throw new IllegalArgumentException("Invalid or denylisted token");
+		}
+		return claims;
 
-    }
+	}
 
     /**
      * Extract a specific claim from the token using a function

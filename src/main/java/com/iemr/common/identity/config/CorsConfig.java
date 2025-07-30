@@ -14,9 +14,9 @@ public class CorsConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
-		registry.addMapping("/**")
-				.allowedOriginPatterns(
-						Arrays.stream(allowedOrigins.split(",")).map(String::trim).toArray(String[]::new))
+		registry.addMapping("/**").allowedOriginPatterns(
+				allowedOrigins != null && !allowedOrigins.trim().isEmpty() ? Arrays.stream(allowedOrigins.split(","))
+						.map(String::trim).filter(s -> !s.isEmpty()).toArray(String[]::new) : new String[0])
 				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS").allowedHeaders("*")
 				.exposedHeaders("Authorization", "Jwttoken").allowCredentials(true).maxAge(3600);
 	}

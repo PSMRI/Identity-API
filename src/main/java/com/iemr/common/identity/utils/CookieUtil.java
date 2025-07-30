@@ -12,9 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Service
 public class CookieUtil {
-	@Value("${isProduction}")
-	private Boolean isProduction;
-
+	
 	public Optional<String> getCookieValue(HttpServletRequest request, String cookieName) {
 		Cookie[] cookies = request.getCookies();
 		if (cookies != null) {
@@ -38,11 +36,7 @@ public class CookieUtil {
 		response.addCookie(cookie);
 	}
 
-	public static String getJwtTokenFromCookie(HttpServletRequest request) {
-		if (request.getCookies() == null) {
-			return null;
-		}
-		return Arrays.stream(request.getCookies()).filter(cookie -> "Jwttoken".equalsIgnoreCase(cookie.getName()))
-				.map(Cookie::getValue).findFirst().orElse(null);
+	public String getJwtTokenFromCookie(HttpServletRequest request) {
+		return getCookieValue(request, "Jwttoken").orElse(null);
 	}
 }

@@ -8,6 +8,8 @@ import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.session.data.redis.config.ConfigureRedisAction;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iemr.common.identity.domain.User;
 
 @Configuration
@@ -27,7 +29,13 @@ public class RedisConfig {
 
 		// Use Jackson2JsonRedisSerializer for values (Users objects)
 		Jackson2JsonRedisSerializer<User> serializer = new Jackson2JsonRedisSerializer<>(User.class);
+		ObjectMapper objectMapper = new ObjectMapper();
+		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		objectMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+		serializer.setObjectMapper(objectMapper);
 		template.setValueSerializer(serializer);
+		template.setHashKeySerializer(new StringRedisSerializer());
+		template.setHashValueSerializer(serializer);
 
 		return template;
 	}

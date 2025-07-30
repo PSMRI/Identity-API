@@ -1,5 +1,6 @@
 package com.iemr.common.identity.utils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import com.iemr.common.identity.domain.User;
 import com.iemr.common.identity.exception.IEMRException;
-import com.iemr.common.identity.repo.BenIdentityRepo;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,8 +28,6 @@ public class JwtAuthenticationUtil {
 	private JwtUtil jwtUtil;
 	@Autowired
 	private RedisTemplate<String, Object> redisTemplate;
-	@Autowired
-	private BenIdentityRepo benIdentityRepo;
 	
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -105,21 +103,17 @@ public class JwtAuthenticationUtil {
 
 	private User fetchUserFromDB(String userId) {
 		String redisKey = "user_" + userId; // Redis key format
-		User user = jdbcTemplate.queryForObject(
-		        "SELECT * FROM db_iemr.m_user WHERE UserID = ?",
-		        new BeanPropertyRowMapper<>(User.class),
-		        userId
-		    );
-		if (user != null) {
-			User userHash = new User();
-			userHash.setUserID(user.getUserID());
-			userHash.setUserName(user.getUserName());
-			redisTemplate.opsForValue().set(redisKey, userHash, 30, TimeUnit.MINUTES);
-			logger.info("User stored in Redis with key: " + redisKey);
-			return user;
-		} else {
+		List<User> users = jdbcTemplate.query("SELECT * FROM db_iemr.m_user WHERE UserID = ? AND Deleted = false",
+				new BeanPropertyRowMapper<>(User.class), userId);
+
+		if (users.isEmpty()) {
 			logger.warn("User not found for userId: " + userId);
+			return null;
 		}
-		return null;
+
+		User user = users.get(0);
+		redisTemplate.opsForValue().set(redisKey, user, 30, TimeUnit.MINUTES);
+		logger.info("User stored in Redis with key: " + redisKey);
+		return user;
 	}
 }

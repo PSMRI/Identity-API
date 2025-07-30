@@ -148,6 +148,7 @@ public class JwtUserIdValidationFilter implements Filter {
 		cookie.setHttpOnly(true);
 		cookie.setSecure(true);
 		cookie.setMaxAge(0); // Invalidate the cookie
+		cookie.setAttribute("SameSite", "Strict");
 		response.addCookie(cookie);
 	}
 }

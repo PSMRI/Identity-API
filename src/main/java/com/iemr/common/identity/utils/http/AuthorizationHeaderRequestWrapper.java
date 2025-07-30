@@ -12,7 +12,7 @@ public class AuthorizationHeaderRequestWrapper extends HttpServletRequestWrapper
 
 	public AuthorizationHeaderRequestWrapper(HttpServletRequest request, String authHeaderValue) {
 		super(request);
-		this.Authorization = authHeaderValue;
+		this.Authorization = authHeaderValue != null ? authHeaderValue : "";
 	}
 
 	@Override
@@ -26,7 +26,8 @@ public class AuthorizationHeaderRequestWrapper extends HttpServletRequestWrapper
 	@Override
 	public Enumeration<String> getHeaders(String name) {
 		if ("Authorization".equalsIgnoreCase(name)) {
-			return Collections.enumeration(Collections.singletonList(Authorization));
+			return Authorization != null ? Collections.enumeration(Collections.singletonList(Authorization))
+					: Collections.emptyEnumeration();
 		}
 		return super.getHeaders(name);
 	}
@@ -34,7 +35,8 @@ public class AuthorizationHeaderRequestWrapper extends HttpServletRequestWrapper
 	@Override
 	public Enumeration<String> getHeaderNames() {
 		List<String> names = Collections.list(super.getHeaderNames());
-		if (!names.contains("Authorization")) {
+		boolean hasAuth = names.stream().anyMatch(name -> "Authorization".equalsIgnoreCase(name));
+		if (!hasAuth) {
 			names.add("Authorization");
 		}
 		return Collections.enumeration(names);
