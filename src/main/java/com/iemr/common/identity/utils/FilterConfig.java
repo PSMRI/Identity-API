@@ -13,10 +13,10 @@ public class FilterConfig {
 
 	@Bean
 	public FilterRegistrationBean<JwtUserIdValidationFilter> jwtUserIdValidationFilter(
-			JwtAuthenticationUtil jwtAuthenticationUtil) {
+			JwtAuthenticationUtil jwtAuthenticationUtil, CookieUtil cookieUtil) {
 		FilterRegistrationBean<JwtUserIdValidationFilter> registrationBean = new FilterRegistrationBean<>();
 
-		JwtUserIdValidationFilter filter = new JwtUserIdValidationFilter(jwtAuthenticationUtil, allowedOrigins);
+		JwtUserIdValidationFilter filter = new JwtUserIdValidationFilter(jwtAuthenticationUtil, allowedOrigins, cookieUtil);
 		registrationBean.setFilter(filter);
 		registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
 		registrationBean.addUrlPatterns("/*"); // Apply filter to all API endpoints
