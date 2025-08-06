@@ -22,14 +22,10 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class JwtAuthenticationUtil {
-	@Autowired
 	private CookieUtil cookieUtil;
-	@Autowired
 	private JwtUtil jwtUtil;
-	@Autowired
 	private RedisTemplate<String, Object> redisTemplate;
 	
-	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	
 	private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());

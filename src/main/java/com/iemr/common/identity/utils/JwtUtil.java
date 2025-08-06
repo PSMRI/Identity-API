@@ -1,5 +1,6 @@
 package com.iemr.common.identity.utils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 import java.util.function.Function;
@@ -35,7 +36,7 @@ public class JwtUtil {
         if (SECRET_KEY == null || SECRET_KEY.isEmpty()) {
             throw new IllegalStateException("JWT secret key is not set in application.properties");
         }
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
     /**

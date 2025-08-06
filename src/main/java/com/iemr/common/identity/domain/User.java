@@ -3,6 +3,7 @@ package com.iemr.common.identity.domain;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.gson.annotations.Expose;
 
 import jakarta.persistence.Column;
@@ -44,10 +45,8 @@ public class User {
     @Column(name="DesignationID")
     private Integer designationID;
 
-    @Expose
     @Column(name="AadhaarNo")
     private String aadhaarNo;
-    @Expose
     @Column(name="PAN")
     private String pAN;
     @Expose
@@ -65,7 +64,7 @@ public class User {
     @Expose
     @Column(name="UserName")
     private String userName;
-    @Expose
+    @JsonIgnore
     @Column(name="Password")
     private String password;
     @Expose
