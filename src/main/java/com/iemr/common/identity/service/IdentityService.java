@@ -1737,16 +1737,19 @@ public class IdentityService {
 	}
 
 	public int importBenIdToLocalServer(List<BenIdImportDTO> benIdImportDTOList) {
+		logger.info("IdentityService.importBenIdToLocalServer - start");
+		logger.info("IdentityService.importBenIdToLocalServer - benIdImportDTOList size : "
+				+ (benIdImportDTOList == null ? "size:0" : benIdImportDTOList.size()));
 		if (!benIdImportDTOList.isEmpty()) {
 			ArrayList<MBeneficiaryregidmapping> mBeneficiaryregidmappingList = benIdImportMapper
 					.benIdImportDTOToMBeneficiaryregidmappings(benIdImportDTOList);
-
+logger.info("Inside if block of importBenIdToLocalServer");
 			jdbcTemplate = getJdbcTemplate();
 			List<Object[]> dataList = new ArrayList<>();
 			Object[] objArr;
 			String query = " INSERT INTO db_identity.m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
 					+ " Provisioned, CreatedDate, CreatedBy, Reserved) VALUES (?,?,?,?,?,?) ";
-
+logger.info("query : " + query);
 			for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
 				objArr = new Object[6];
 

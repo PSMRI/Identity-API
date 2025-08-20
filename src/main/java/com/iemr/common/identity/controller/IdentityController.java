@@ -972,13 +972,14 @@ public class IdentityController {
 		return response.toString();
 	}
 
-	@CrossOrigin(origins = { "*commonapi*" })
+	// @CrossOrigin(origins = { "*commonapi*" })
 	@Operation(summary = "Save server generated beneficiary ID & beneficiary registration ID to local server")
 	@PostMapping(path = "/saveGeneratedBenIDToLocalServer", headers = "Authorization", consumes = "application/json", produces = "application/json")
 	public String saveGeneratedBenIDToLocalServer(
 			@Param(value = "{\r\n" + "        \"vanID\": \"Integer\",\r\n"
 					+ "        \"benIDRequired\": \"Integer\"\r\n" + "       }") @RequestBody String regIDList) {
 		com.iemr.common.identity.utils.response.OutputResponse response = new com.iemr.common.identity.utils.response.OutputResponse();
+		logger.info("Test: inside saveGeneratedBenIDToLocalServer method with regIDList: " + regIDList);
 		try {
 			BenIdImportDTO[] benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(regIDList,
 					BenIdImportDTO[].class);
@@ -986,6 +987,7 @@ public class IdentityController {
 			List<BenIdImportDTO> benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
 
 			int i = svc.importBenIdToLocalServer(benIdImportDTOList);
+			logger.info("Number of unique benid imported to local server: " + i);
 			if (i > 0)
 				response.setResponse(i + " Unique benid imported to local server");
 			else {
