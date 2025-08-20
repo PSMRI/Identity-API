@@ -1744,7 +1744,7 @@ public class IdentityService {
 			jdbcTemplate = getJdbcTemplate();
 			List<Object[]> dataList = new ArrayList<>();
 			Object[] objArr;
-			String query = " INSERT INTO apl_db_identity.m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
+			String query = " INSERT INTO db_identity.m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
 					+ " Provisioned, CreatedDate, CreatedBy, Reserved) VALUES (?,?,?,?,?,?) ";
 
 			for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
