@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.gson.annotations.Expose;
 
 import jakarta.persistence.Column;
@@ -14,7 +15,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 @Entity
-@Table(name = "m_User",schema = "db_iemr")
+@Table(name = "m_User")
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 public class User {
 	@Id
