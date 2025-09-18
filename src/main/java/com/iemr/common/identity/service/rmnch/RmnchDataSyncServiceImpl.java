@@ -114,6 +114,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ) throws Exception {
+		logger.info("Indentity requestOBJ"+requestOBJ);
 
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
