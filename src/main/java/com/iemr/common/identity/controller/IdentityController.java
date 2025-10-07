@@ -24,6 +24,7 @@ package com.iemr.common.identity.controller;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -44,11 +45,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSyntaxException;
 import com.iemr.common.identity.dto.BenIdImportDTO;
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.dto.BeneficiariesPartialDTO;
@@ -951,32 +954,123 @@ public class IdentityController {
 		return response.toString();
 	}
 
+	// @Operation(summary = "Save server generated beneficiary ID & beneficiary registration ID to local server")
+	// @PostMapping(path = "/saveGeneratedBenIDToLocalServer", headers = "Authorization", consumes = "application/json", produces = "application/json")
+	// public String saveGeneratedBenIDToLocalServer(
+	// 		@Param(value = "{\r\n" + "        \"vanID\": \"Integer\",\r\n"
+	// 				+ "        \"benIDRequired\": \"Integer\"\r\n" + "       }") @RequestBody String regIDList) {
+	// 	com.iemr.common.identity.utils.response.OutputResponse response = new com.iemr.common.identity.utils.response.OutputResponse();
+	// 	logger.info("Test: inside saveGeneratedBenIDToLocalServer method with regIDList: " + regIDList);
+	// 	try {
+	// 	// 	    JsonObject jsonObject = JsonParser.parseString(regIDList).getAsJsonObject();
+
+    //     // BigInteger vanID = jsonObject.get("vanID").getAsBigInteger();
+	// 	// logger.info("Extracted vanID: " + vanID);
+	// 	// 	BenIdImportDTO[] benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(regIDList,
+	// 	// 			BenIdImportDTO[].class);
+
+	// 	// 	List<BenIdImportDTO> benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
+
+	// 	// 	int i = svc.importBenIdToLocalServer(benIdImportDTOList);
+	// 	// 	logger.info("Number of unique benid imported to local server: " + i);
+	// 	// 	if (i > 0)
+	// 	// 		response.setResponse(i + " Unique benid imported to local server");
+	// 	// 	else {
+	// 	// 		response.setResponse("Empty or invalid data");
+	// 	// 		logger.error("Empty or invalid data. Data Size is : " + benIdImportDTOList.size());
+	// 	// 	}
+	// 	JsonObject jsonObject = JsonParser.parseString(regIDList).getAsJsonObject();
+    //     BigInteger vanID = jsonObject.get("vanID").getAsBigInteger();
+    //     logger.info("Extracted vanID: " + vanID);
+        
+    //     // Parse the array inside the JSON
+    //     JsonArray benIDArray = null;
+    //     if (jsonObject.has("benIDList")) {
+    //         benIDArray = jsonObject.getAsJsonArray("benIDList");
+    //     } else if (jsonObject.has("data")) {
+    //         benIDArray = jsonObject.getAsJsonArray("data");
+    //     }
+        
+    //     BenIdImportDTO[] benIdImportDTOArr = null;
+    //     List<BenIdImportDTO> benIdImportDTOList = new ArrayList<>();
+        
+    //     if (benIDArray != null) {
+    //         benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(benIDArray, BenIdImportDTO[].class);
+    //         benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
+    //     }
+        
+    //     // Set vanID for each DTO
+    //     for (BenIdImportDTO dto : benIdImportDTOList) {
+    //         dto.setVanID(vanID);
+    //     }
+        
+    //     int i = svc.importBenIdToLocalServer(benIdImportDTOList);
+    //     logger.info("Number of unique benid imported to local server: " + i);
+        
+    //     if (i > 0)
+    //         response.setResponse(i + " Unique benid imported to local server");
+    //     else {
+    //         response.setResponse("Empty or invalid data");
+    //         logger.error("Empty or invalid data. Data Size is : " + benIdImportDTOList.size());
+    //     }
+	// 	} catch (Exception e) {
+	// 		logger.error("Exception in importing benID to local server : " + e);
+	// 		response.setError(5000, "error while importing benid to local server : " + e);
+	// 	}
+	// 	return response.toString();
+	// }
+
 	@Operation(summary = "Save server generated beneficiary ID & beneficiary registration ID to local server")
-	@PostMapping(path = "/saveGeneratedBenIDToLocalServer", headers = "Authorization", consumes = "application/json", produces = "application/json")
-	public String saveGeneratedBenIDToLocalServer(
-			@Param(value = "{\r\n" + "        \"vanID\": \"Integer\",\r\n"
-					+ "        \"benIDRequired\": \"Integer\"\r\n" + "       }") @RequestBody String regIDList) {
-		com.iemr.common.identity.utils.response.OutputResponse response = new com.iemr.common.identity.utils.response.OutputResponse();
-		logger.info("Test: inside saveGeneratedBenIDToLocalServer method with regIDList: " + regIDList);
-		try {
-			BenIdImportDTO[] benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(regIDList,
-					BenIdImportDTO[].class);
-
-			List<BenIdImportDTO> benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
-
-			int i = svc.importBenIdToLocalServer(benIdImportDTOList);
-			logger.info("Number of unique benid imported to local server: " + i);
-			if (i > 0)
-				response.setResponse(i + " Unique benid imported to local server");
-			else {
-				response.setResponse("Empty or invalid data");
-				logger.error("Empty or invalid data. Data Size is : " + benIdImportDTOList.size());
-			}
-		} catch (Exception e) {
-			logger.error("Exception in importing benID to local server : " + e);
-			response.setError(5000, "error while importing benid to local server : " + e);
-		}
-		return response.toString();
-	}
+@PostMapping(path = "/saveGeneratedBenIDToLocalServer", headers = "Authorization", consumes = "application/json", produces = "application/json")
+public String saveGeneratedBenIDToLocalServer(@RequestBody String regIDList) {
+    com.iemr.common.identity.utils.response.OutputResponse response = new com.iemr.common.identity.utils.response.OutputResponse();
+    logger.info("Test: inside saveGeneratedBenIDToLocalServer method with regIDList: " + regIDList);
+    try {
+        JsonObject jsonObject = JsonParser.parseString(regIDList).getAsJsonObject();
+        
+        // Extract vanID from request body
+        if (!jsonObject.has("vanID")) {
+            logger.error("vanID is missing in the request body");
+            response.setError(5000, "vanID is required in the request");
+            return response.toString();
+        }
+        BigInteger vanID = jsonObject.get("vanID").getAsBigInteger();
+        logger.info("Extracted vanID: " + vanID);
+        
+        // Extract benIDList array from request body
+        if (!jsonObject.has("benIDList")) {
+            logger.error("benIDList is missing in the request body");
+            response.setError(5000, "benIDList is required in the request");
+            return response.toString();
+        }
+        JsonArray benIDArray = jsonObject.getAsJsonArray("benIDList");
+        BenIdImportDTO[] benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(benIDArray, BenIdImportDTO[].class);
+        List<BenIdImportDTO> benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
+        
+        logger.info("Parsed {} BenIdImportDTO records", benIdImportDTOList.size());
+        
+        // Set vanID for each DTO
+        for (BenIdImportDTO dto : benIdImportDTOList) {
+            dto.setVanID(vanID);
+        }
+        
+        int i = svc.importBenIdToLocalServer(benIdImportDTOList);
+        logger.info("Number of unique benid imported to local server: " + i);
+        
+        if (i > 0)
+            response.setResponse(i + " Unique benid imported to local server");
+        else {
+            response.setResponse("Empty or invalid data");
+            logger.error("Empty or invalid data. Data Size is : " + benIdImportDTOList.size());
+        }
+    } catch (JsonSyntaxException e) {
+        logger.error("Invalid JSON format in request: " + e.getMessage(), e);
+        response.setError(5000, "Invalid JSON format: " + e.getMessage());
+    } catch (Exception e) {
+        logger.error("Exception in importing benID to local server : " + e.getMessage(), e);
+        response.setError(5000, "error while importing benid to local server : " + e.getMessage());
+    }
+    return response.toString();
+}
 
 }
