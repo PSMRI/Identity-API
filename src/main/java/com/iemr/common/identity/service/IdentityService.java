@@ -1130,6 +1130,37 @@ public class IdentityService {
 
 		logger.info("IdentityService.createIdentity - saving Contacts");
 		MBeneficiarycontact mContc = identityDTOToMBeneficiarycontact(identity);
+
+		 if (mContc.getEmergencyContactNum() != null) {
+        mContc.setEmergencyContactNum(cleanPhoneNumber(mContc.getEmergencyContactNum()));
+    }
+    
+    if (mContc.getPhoneNum1() != null) {
+        mContc.setPhoneNum1(cleanPhoneNumber(mContc.getPhoneNum1()));
+    }
+    
+    if (mContc.getPhoneNum2() != null) {
+        mContc.setPhoneNum2(cleanPhoneNumber(mContc.getPhoneNum2()));
+    }
+      if (mContc.getPhoneNum3() != null) {
+        mContc.setPhoneNum3(cleanPhoneNumber(mContc.getPhoneNum3()));
+    }
+    
+    if (mContc.getPhoneNum4() != null) {
+        mContc.setPhoneNum4(cleanPhoneNumber(mContc.getPhoneNum4()));
+    }
+      if (mContc.getPhoneNum5() != null) {
+        mContc.setPhoneNum5(cleanPhoneNumber(mContc.getPhoneNum5()));
+    }
+        if (mContc.getPreferredSMSPhoneNum() != null) {
+        mContc.setPreferredSMSPhoneNum(cleanPhoneNumber(mContc.getPreferredSMSPhoneNum()));
+    }    if (mContc.getPreferredPhoneNum() != null) {
+        mContc.setPreferredPhoneNum(cleanPhoneNumber(mContc.getPreferredPhoneNum()));
+    }
+  
+
+
+		
 		// MBeneficiarycontact mContc =
 		// mapper.identityDTOToMBeneficiarycontact(identity);
 		if (mContc.getCreatedDate() == null) {
@@ -1302,7 +1333,22 @@ public class IdentityService {
 		logger.info("IdentityService.createIdentity - end. id = " + benMapping.getBenMapId());
 		return partialMapper.mBeneficiarymappingToBeneficiaryCreateResp(benMapping);
 	}
-
+private String cleanPhoneNumber(String phoneNumber) {
+    if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+        return phoneNumber;
+    }
+    
+    // Remove +91 prefix
+    String cleaned = phoneNumber.trim();
+    if (cleaned.startsWith("+91")) {
+        cleaned = cleaned.substring(3);
+    } else if (cleaned.startsWith("91") && cleaned.length() == 12) {
+        // Handle case where + is already removed but 91 remains
+        cleaned = cleaned.substring(2);
+    }
+    
+    return cleaned.trim();
+}
 	private MBeneficiarydetail convertIdentityDTOToMBeneficiarydetail(IdentityDTO dto) {
 		MBeneficiarydetail beneficiarydetail = new MBeneficiarydetail();
 		beneficiarydetail.setAreaId(dto.getAreaId());
