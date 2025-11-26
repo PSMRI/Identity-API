@@ -540,8 +540,12 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	private Boolean doYouHavechildren;
 
+
 	@Expose
 	private Integer noofAlivechildren;
+
+	@Expose
+	private Integer noOfchildren;
 
 
 }
