@@ -1751,7 +1751,10 @@ logger.info("Inside if block of importBenIdToLocalServer");
 					+ " Provisioned, CreatedDate, CreatedBy, Reserved) VALUES (?,?,?,?,?,?) ";
 logger.info("query : " + query);
 			for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
-				objArr = new Object[6];
+				logger.info("inside for check->",obj);
+
+				logger.info("In for loop of importBenIdToLocalServer"+obj.getVanID());
+				objArr = new Object[7];
 
 				objArr[0] = obj.getBenRegId();
 				objArr[1] = obj.getBeneficiaryID();
@@ -1759,6 +1762,7 @@ logger.info("query : " + query);
 				objArr[3] = obj.getCreatedDate();
 				objArr[4] = obj.getCreatedBy();
 				objArr[5] = false;
+				objArr[6] = obj.getVanID();
 
 				dataList.add(objArr);
 				logger.info("regid :" + obj.getBenRegId() + " - benid :" + obj.getBeneficiaryID());
