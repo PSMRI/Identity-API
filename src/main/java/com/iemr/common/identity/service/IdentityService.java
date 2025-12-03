@@ -1783,18 +1783,24 @@ private String cleanPhoneNumber(String phoneNumber) {
 	}
 
 	public int importBenIdToLocalServer(List<BenIdImportDTO> benIdImportDTOList) {
+		logger.info("IdentityService.importBenIdToLocalServer - start");
+		logger.info("IdentityService.importBenIdToLocalServer - benIdImportDTOList size : "
+				+ (benIdImportDTOList == null ? "size:0" : benIdImportDTOList.size()));
 		if (!benIdImportDTOList.isEmpty()) {
 			ArrayList<MBeneficiaryregidmapping> mBeneficiaryregidmappingList = benIdImportMapper
 					.benIdImportDTOToMBeneficiaryregidmappings(benIdImportDTOList);
-
+logger.info("Inside if block of importBenIdToLocalServer");
 			jdbcTemplate = getJdbcTemplate();
 			List<Object[]> dataList = new ArrayList<>();
 			Object[] objArr;
-			String query = " INSERT INTO db_identity.m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
+			String query = " INSERT INTO m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
 					+ " Provisioned, CreatedDate, CreatedBy, Reserved) VALUES (?,?,?,?,?,?) ";
-
+logger.info("query : " + query);
 			for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
-				objArr = new Object[6];
+				logger.info("inside for check->",obj);
+
+				logger.info("In for loop of importBenIdToLocalServer"+obj.getVanID());
+				objArr = new Object[7];
 
 				objArr[0] = obj.getBenRegId();
 				objArr[1] = obj.getBeneficiaryID();
@@ -1802,6 +1808,7 @@ private String cleanPhoneNumber(String phoneNumber) {
 				objArr[3] = obj.getCreatedDate();
 				objArr[4] = obj.getCreatedBy();
 				objArr[5] = false;
+				objArr[6] = obj.getVanID();
 
 				dataList.add(objArr);
 				logger.info("regid :" + obj.getBenRegId() + " - benid :" + obj.getBeneficiaryID());

@@ -15,6 +15,7 @@ import com.iemr.common.identity.domain.User;
 
 @Configuration
 public class RedisConfig {
+
 	@Bean
 	public ConfigureRedisAction configureRedisAction() {
 		return ConfigureRedisAction.NO_OP;
@@ -25,15 +26,14 @@ public class RedisConfig {
 		RedisTemplate<String, Object> template = new RedisTemplate<>();
 		template.setConnectionFactory(factory);
 
-		Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(Object.class);
+		Jackson2JsonRedisSerializer<User> serializer = new Jackson2JsonRedisSerializer<>(User.class);
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.registerModule(new JavaTimeModule());
 		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 		serializer.setObjectMapper(mapper);
-
-		template.setKeySerializer(new StringRedisSerializer());
 		template.setValueSerializer(serializer);
-		template.afterPropertiesSet();
+
 		return template;
 	}
+
 }

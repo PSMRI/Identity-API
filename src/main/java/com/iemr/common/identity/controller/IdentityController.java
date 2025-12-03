@@ -24,6 +24,7 @@ package com.iemr.common.identity.controller;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -44,11 +45,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSyntaxException;
 import com.iemr.common.identity.dto.BenIdImportDTO;
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.dto.BeneficiariesPartialDTO;
@@ -957,6 +960,7 @@ public class IdentityController {
 			@Param(value = "{\r\n" + "        \"vanID\": \"Integer\",\r\n"
 					+ "        \"benIDRequired\": \"Integer\"\r\n" + "       }") @RequestBody String regIDList) {
 		com.iemr.common.identity.utils.response.OutputResponse response = new com.iemr.common.identity.utils.response.OutputResponse();
+		logger.info("Test: inside saveGeneratedBenIDToLocalServer method with regIDList: " + regIDList);
 		try {
 			BenIdImportDTO[] benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(regIDList,
 					BenIdImportDTO[].class);
@@ -964,6 +968,7 @@ public class IdentityController {
 			List<BenIdImportDTO> benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
 
 			int i = svc.importBenIdToLocalServer(benIdImportDTOList);
+			logger.info("Number of unique benid imported to local server: " + i);
 			if (i > 0)
 				response.setResponse(i + " Unique benid imported to local server");
 			else {

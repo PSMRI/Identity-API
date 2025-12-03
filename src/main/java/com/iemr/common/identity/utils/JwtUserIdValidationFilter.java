@@ -97,34 +97,58 @@ public class JwtUserIdValidationFilter implements Filter {
 		}
 	}
 
+	/**
+	 * Handles CORS headers by validating the origin and setting appropriate
+	 * headers.
+	 * AMM-1927: Only sets CORS headers if the origin is from an allowed domain.
+	 * 
+	 * @param request  The HTTP request
+	 * @param response The HTTP response
+	 */
 	private void handleCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
 		String origin = request.getHeader("Origin");
 
 		logger.debug("Incoming Origin: {}", origin);
 		logger.debug("Allowed Origins Configured: {}", allowedOrigins);
 
-		if (origin != null && isOriginAllowed(origin)) {
+		// Only set CORS headers if the origin is allowed
+		if (isOriginAllowed(origin)) {
 			response.setHeader("Access-Control-Allow-Origin", origin);
 			response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
 			response.setHeader("Access-Control-Allow-Headers",
 					"Authorization, Content-Type, Accept, JwtToken, Jwttoken");
 			response.setHeader("Vary", "Origin");
 			response.setHeader("Access-Control-Allow-Credentials", "true");
+
+			logger.debug("CORS headers set for allowed origin: {}", origin);
 		} else {
 			logger.warn("Origin [{}] is NOT allowed. CORS headers NOT added.", origin);
 		}
-		
 	}
 
+	/**
+	 * Validates if the request origin is in the allowed origins list.
+	 * AMM-1927: Aligns with Admin-API implementation for consistent origin
+	 * validation.
+	 * 
+	 * @param origin The Origin header value from the HTTP request
+	 * @return true if the origin is allowed, false otherwise
+	 */
 	private boolean isOriginAllowed(String origin) {
-		if (origin == null || allowedOrigins == null || allowedOrigins.trim().isEmpty()) {
-			logger.warn("No allowed origins configured or origin is null");
+		// Null or empty origin is not allowed
+		if (origin == null || origin.isEmpty()) {
+			logger.debug("Origin is null or empty");
+			return false;
+		}
+
+		// Check if allowed origins are configured
+		if (allowedOrigins == null || allowedOrigins.trim().isEmpty()) {
+			logger.warn("No allowed origins configured");
 			return false;
 		}
 
 		return Arrays.stream(allowedOrigins.split(",")).map(String::trim).anyMatch(pattern -> {
-			String regex = pattern.replace(".", "\\.").replace("*", ".*").replace("http://localhost:.*",
-					"http://localhost:\\d+"); // special case for wildcard port
+			String regex = pattern.replace(".", "\\.").replace("*", ".*");
 
 			boolean matched = origin.matches(regex);
 			return matched;
@@ -135,7 +159,7 @@ public class JwtUserIdValidationFilter implements Filter {
 		if (userAgent == null)
 			return false;
 		userAgent = userAgent.toLowerCase();
-		return userAgent.contains("okhttp"); // iOS (custom clients)
+		return userAgent.contains("okhttp") || userAgent.contains("java/"); // iOS (custom clients)
 	}
 
 	private String getJwtTokenFromCookies(HttpServletRequest request) {
