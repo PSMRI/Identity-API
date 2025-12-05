@@ -17,6 +17,7 @@ import lombok.Data;
 @Entity
 @Table(name = "m_User",schema = "db_iemr")
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
