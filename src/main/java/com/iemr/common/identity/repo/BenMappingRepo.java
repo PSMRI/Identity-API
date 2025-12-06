@@ -142,4 +142,43 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
 	@Query("SELECT a FROM MBeneficiarymapping a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
 	MBeneficiarymapping getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
 			@Param("vanID") Integer vanID);
+
+	@Query("SELECT b.benRegId, b.benMapId FROM MBeneficiarymapping b where benRegId is not null and deleted = false")
+	List<Object[]> getAllBeneficiaryIds();
+
+	/**
+     * Get beneficiary IDs in batches for efficient processing
+     * @param offset Starting position
+     * @param limit Number of records to fetch
+     */
+    @Query(value = "SELECT benRegId, benMapId FROM MBeneficiarymapping " +
+                   "WHERE deleted = false ORDER BY benRegId LIMIT :limit OFFSET :offset")
+    List<Object[]> getBeneficiaryIdsBatch(@Param("offset") int offset, @Param("limit") int limit);
+    
+    /**
+     * Count total non-deleted beneficiaries
+     */
+    @Query(value = "SELECT COUNT(*) FROM MBeneficiarymapping WHERE deleted = false")
+    long countActiveBeneficiaries();
+
+
+      @Query("SELECT m FROM MBeneficiarymapping m " +
+           "LEFT JOIN FETCH m.mBeneficiarydetail " +
+           "LEFT JOIN FETCH m.mBeneficiarycontact " +
+           "LEFT JOIN FETCH m.mBeneficiaryaddress " +
+           "WHERE m.benRegId = :benRegId AND m.deleted = false")
+    MBeneficiarymapping findByBenRegIdWithDetails(@Param("benRegId") BigInteger benRegId);
+    
+    /**
+     * Simple find by benRegId
+     */
+    @Query("SELECT m FROM MBeneficiarymapping m WHERE m.benRegId = :benRegId AND m.deleted = false")
+    MBeneficiarymapping findByBenRegId(@Param("benRegId") BigInteger benRegId);
+    
+    /**
+     * Check if beneficiary exists by benRegId
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM MBeneficiarymapping WHERE benRegId = :benRegId AND deleted = false")
+    boolean existsByBenRegId(@Param("benRegId") BigInteger benRegId);
+
 }

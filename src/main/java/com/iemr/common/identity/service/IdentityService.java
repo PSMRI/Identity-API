@@ -90,12 +90,16 @@ import com.iemr.common.identity.repo.MBeneficiaryAccountRepo;
 import com.iemr.common.identity.repo.MBeneficiaryImageRepo;
 import com.iemr.common.identity.repo.V_BenAdvanceSearchRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHBeneficiaryDetailsRmnchRepo;
+import com.iemr.common.identity.service.elasticsearch.ElasticsearchService;
 import com.iemr.common.identity.utils.mapper.OutputMapper;
 import com.iemr.common.identity.utils.response.OutputResponse;
 
+import org.springframework.beans.factory.annotation.Value;
+
+import com.iemr.common.identity.service.elasticsearch.RealtimeElasticsearchSyncService;
+
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.QueryTimeoutException;
-
 
 @Service
 public class IdentityService {
@@ -113,6 +117,12 @@ public class IdentityService {
 
 	@Autowired
 	private RMNCHBeneficiaryDetailsRmnchRepo rMNCHBeneficiaryDetailsRmnchRepo;
+
+	@Autowired
+    private ElasticsearchService elasticsearchService;
+
+	@Autowired
+	private RealtimeElasticsearchSyncService realtimeSyncService;
 
 	@Autowired
 	IdentityMapper mapper;
@@ -150,6 +160,9 @@ public class IdentityService {
 	private BenIdImportMapper benIdImportMapper;
 	@Autowired
 	private V_BenAdvanceSearchRepo v_BenAdvanceSearchRepo;
+
+	@Value("${elasticsearch.enabled:false}")
+    private boolean esEnabled;
 
 	public void getBenAdress() {
 		logger.debug("Address count: " + addressRepo.count());
@@ -321,6 +334,21 @@ public class IdentityService {
 		logger.info("IdentityService.getBeneficiariesByBenId - start, beneficiaryID : " + benId);
 		List<BeneficiariesDTO> list = new ArrayList<BeneficiariesDTO>();
 
+		// Try Elasticsearch first if enabled
+        if (esEnabled) {
+            try {
+                list = elasticsearchService.searchByBenId(benId);
+                if (!list.isEmpty()) {
+                    logger.info("Found " + list.size() + " results from Elasticsearch for BenId: " + benId);
+                    return list;
+                }
+                logger.info("No results from Elasticsearch, falling back to database");
+            } catch (Exception e) {
+                logger.error("Elasticsearch search failed, falling back to database: " + e.getMessage());
+            }
+        }
+        
+
 		MBeneficiaryregidmapping regId = regIdRepo.findByBeneficiaryID(benId);
 		if (regId != null && regId.getBenRegId() != null) {
 			List<Object[]> benMapObjArr = mappingRepo.getBenMappingByRegID(regId.getBenRegId());
@@ -382,6 +410,21 @@ public class IdentityService {
 			throws NoResultException, QueryTimeoutException {
 		// new logic, 27-09-2018
 		List<BeneficiariesDTO> list = new ArrayList<>();
+
+		  // Try Elasticsearch first if enabled
+        if (esEnabled) {
+            try {
+                list = elasticsearchService.searchByPhoneNum(phoneNum);
+                if (!list.isEmpty()) {
+                    logger.info("Found " + list.size() + " results from Elasticsearch for PhoneNum: " + phoneNum);
+                    return list;
+                }
+                logger.info("No results from Elasticsearch, falling back to database");
+            } catch (Exception e) {
+                logger.error("Elasticsearch search failed, falling back to database: " + e.getMessage());
+            }
+        }
+		
 		try {
 			List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(phoneNum);
 

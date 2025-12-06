@@ -15,7 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 @Entity
-@Table(name = "m_User")
+@Table(schema = "db_iemr", name = "m_user")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 public class User {
