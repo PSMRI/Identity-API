@@ -321,6 +321,230 @@ public class IdentityService {
 		return list;
 	}
 
+
+	
+	public List<BeneficiariesDTO> getBeneficiarieswithES(IdentitySearchDTO searchDTO)
+        throws NoResultException, QueryTimeoutException, Exception {
+    List<BeneficiariesDTO> list = new ArrayList<BeneficiariesDTO>();
+
+    /**
+     * Try Elasticsearch first if enabled
+     */
+    if (esEnabled) {
+        try {
+            logger.info("Attempting Elasticsearch search");
+            
+            // Search by beneficiary Id
+            if (searchDTO.getBeneficiaryId() != null) {
+                logger.info("Elasticsearch: searching by beneficiaryId: {}", searchDTO.getBeneficiaryId());
+                list = elasticsearchService.searchByBenId(searchDTO.getBeneficiaryId());
+                if (!list.isEmpty()) {
+                    logger.info("Found {} results from Elasticsearch", list.size());
+                    return enrichBeneficiariesFromDatabase(list);
+                }
+            }
+            
+            // Search by beneficiary Reg Id
+            if (searchDTO.getBeneficiaryRegId() != null) {
+                logger.info("Elasticsearch: searching by beneficiaryRegId: {}", searchDTO.getBeneficiaryRegId());
+                list = elasticsearchService.searchByBenRegId(searchDTO.getBeneficiaryRegId());
+                if (!list.isEmpty()) {
+                    logger.info("Found {} results from Elasticsearch", list.size());
+                    return enrichBeneficiariesFromDatabase(list);
+                }
+            }
+            
+            // Search by contact number
+            if (searchDTO.getContactNumber() != null) {
+                logger.info("Elasticsearch: searching by phoneNum: {}", searchDTO.getContactNumber());
+                list = elasticsearchService.searchByPhoneNum(searchDTO.getContactNumber());
+                if (!list.isEmpty()) {
+                    logger.info("Found {} results from Elasticsearch", list.size());
+                    
+                    // Apply D2D filters if needed
+                    if (searchDTO.getIsD2D() != null && Boolean.TRUE.equals(searchDTO.getIsD2D())) {
+                        list = applyD2DFilters(list, searchDTO);
+                    }
+                    
+                    return enrichBeneficiariesFromDatabase(list);
+                }
+            }
+            
+            // Advanced search (multiple criteria)
+            if (hasMultipleCriteria(searchDTO)) {
+                logger.info("Elasticsearch: advanced search");
+                list = elasticsearchService.advancedSearch(
+                    searchDTO.getFirstName(),
+                    searchDTO.getLastName(),
+                    searchDTO.getContactNumber(),
+                    null, // gender from searchDTO if available
+                    null  // age from searchDTO if available
+                );
+                if (!list.isEmpty()) {
+                    logger.info("Found {} results from Elasticsearch", list.size());
+                    return enrichBeneficiariesFromDatabase(list);
+                }
+            }
+            
+            logger.info("No results from Elasticsearch, falling back to database");
+            
+        } catch (Exception e) {
+            logger.error("Elasticsearch search failed, falling back to database: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Fallback to MySQL database search
+     */
+    logger.info("Searching in MySQL database");
+    
+    // if beneficiary Id present
+    if (searchDTO.getBeneficiaryId() != null) {
+        logger.info("getting beneficiaries by ID for " + searchDTO.getBeneficiaryId());
+        return this.getBeneficiariesByBenId(searchDTO.getBeneficiaryId());
+    }
+
+    // if beneficiary Reg Id present
+    if (searchDTO.getBeneficiaryRegId() != null) {
+        logger.info("getting beneficiaries by reg ID for " + searchDTO.getBeneficiaryRegId());
+        return this.getBeneficiariesByBenRegId(searchDTO.getBeneficiaryRegId());
+    }
+
+    // if beneficiary Reg Id present
+    if (searchDTO.getContactNumber() != null) {
+        logger.info("getting beneficiaries by contact no for " + searchDTO.getContactNumber());
+        List<BeneficiariesDTO> list3 = this.getBeneficiariesByPhoneNum(searchDTO.getContactNumber());
+        if (!list3.isEmpty() && searchDTO.getIsD2D() != null && Boolean.TRUE.equals(searchDTO.getIsD2D())) {
+            list3 = applyD2DFilters(list3, searchDTO);
+        }
+        return list3;
+    }
+
+    // Advanced search from database
+    List<VBenAdvanceSearch> tmpList = mappingRepo.dynamicFilterSearchNew(searchDTO);
+    for (VBenAdvanceSearch obj : tmpList) {
+        list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTONew1(obj)));
+        logger.debug("benMapId: " + obj.getBenMapID());
+    }
+
+    return list;
+}
+
+/**
+ * Check if search has multiple criteria (for advanced search)
+ */
+private boolean hasMultipleCriteria(IdentitySearchDTO searchDTO) {
+    int criteriaCount = 0;
+    
+    if (searchDTO.getFirstName() != null && !searchDTO.getFirstName().trim().isEmpty()) criteriaCount++;
+    if (searchDTO.getLastName() != null && !searchDTO.getLastName().trim().isEmpty()) criteriaCount++;
+    if (searchDTO.getContactNumber() != null && !searchDTO.getContactNumber().trim().isEmpty()) criteriaCount++;
+    
+    return criteriaCount >= 2;
+}
+
+/**
+ * Enrich Elasticsearch results with complete data from database
+ * ES returns only basic fields, fetch complete data from DB
+ */
+private List<BeneficiariesDTO> enrichBeneficiariesFromDatabase(List<BeneficiariesDTO> esResults) {
+    List<BeneficiariesDTO> enrichedList = new ArrayList<>();
+    
+    for (BeneficiariesDTO esResult : esResults) {
+        try {
+            if (esResult.getBenRegId() != null) {
+                // Fetch complete data from database
+                List<BeneficiariesDTO> fullData = this.getBeneficiariesByBenRegId(esResult.getBenRegId());
+                if (!fullData.isEmpty()) {
+                    enrichedList.add(fullData.get(0));
+                } else {
+                    // If not in DB anymore, return ES data
+                    enrichedList.add(esResult);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error enriching beneficiary data: {}", e.getMessage());
+            // Return ES data if enrichment fails
+            enrichedList.add(esResult);
+        }
+    }
+    
+    return enrichedList;
+}
+
+/**
+ * Apply D2D filters to search results
+ */
+private List<BeneficiariesDTO> applyD2DFilters(List<BeneficiariesDTO> list, IdentitySearchDTO searchDTO) {
+    List<BeneficiariesDTO> filtered = new ArrayList<>();
+    
+    for (BeneficiariesDTO dto : list) {
+        boolean matches = true;
+        
+        if (searchDTO.getFirstName() != null) {
+            if (dto.getBeneficiaryDetails() == null || 
+                dto.getBeneficiaryDetails().getFirstName() == null ||
+                !dto.getBeneficiaryDetails().getFirstName().equalsIgnoreCase(searchDTO.getFirstName())) {
+                matches = false;
+            }
+        }
+        
+        if (matches && searchDTO.getLastName() != null) {
+            if (dto.getBeneficiaryDetails() == null || 
+                dto.getBeneficiaryDetails().getLastName() == null ||
+                !dto.getBeneficiaryDetails().getLastName().equalsIgnoreCase(searchDTO.getLastName())) {
+                matches = false;
+            }
+        }
+        
+        if (matches && searchDTO.getGenderId() != null) {
+            if (dto.getBeneficiaryDetails() == null || 
+                dto.getBeneficiaryDetails().getGenderId() == null ||
+                !dto.getBeneficiaryDetails().getGenderId().equals(searchDTO.getGenderId())) {
+                matches = false;
+            }
+        }
+        
+        if (matches && searchDTO.getHouseHoldID() != null) {
+            if (dto.getBeneficiaryDetails() == null || 
+                dto.getBeneficiaryDetails().getHouseHoldID() == null ||
+                !dto.getBeneficiaryDetails().getHouseHoldID().equals(searchDTO.getHouseHoldID())) {
+                matches = false;
+            }
+        }
+        
+        if (matches && searchDTO.getCurrentAddress() != null && searchDTO.getCurrentAddress().getStateId() != null) {
+            if (dto.getCurrentAddress() == null || 
+                dto.getCurrentAddress().getStateId() == null ||
+                !dto.getCurrentAddress().getStateId().equals(searchDTO.getCurrentAddress().getStateId())) {
+                matches = false;
+            }
+        }
+        
+        if (matches && searchDTO.getCurrentAddress() != null && searchDTO.getCurrentAddress().getDistrictId() != null) {
+            if (dto.getCurrentAddress() == null || 
+                dto.getCurrentAddress().getDistrictId() == null ||
+                !dto.getCurrentAddress().getDistrictId().equals(searchDTO.getCurrentAddress().getDistrictId())) {
+                matches = false;
+            }
+        }
+        
+        if (matches && searchDTO.getCurrentAddress() != null && searchDTO.getCurrentAddress().getVillageId() != null) {
+            if (dto.getCurrentAddress() == null || 
+                dto.getCurrentAddress().getVillageId() == null ||
+                !dto.getCurrentAddress().getVillageId().equals(searchDTO.getCurrentAddress().getVillageId())) {
+                matches = false;
+            }
+        }
+        
+        if (matches) {
+            filtered.add(dto);
+        }
+    }
+    
+    return filtered;
+}
+	
 	/**
 	 * 
 	 * Check which parameters available Get BenMapID based on the parameter/set of
@@ -1021,6 +1245,11 @@ public class IdentityService {
 			imageRepo.save(beneficiaryImage);
 		}
 
+// Trigger async sync to Elasticsearch
+if (identity.getBeneficiaryRegId() != null) {
+    logger.info("Triggering Elasticsearch sync for benRegId: {}", identity.getBeneficiaryRegId());
+    realtimeSyncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
+}
 		logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
 	}
 
@@ -1342,8 +1571,19 @@ public class IdentityService {
 			});
 		}
 
+		
+		// return partialMapper.mBeneficiarymappingToBeneficiaryCreateResp(benMapping);
 		logger.info("IdentityService.createIdentity - end. id = " + benMapping.getBenMapId());
-		return partialMapper.mBeneficiarymappingToBeneficiaryCreateResp(benMapping);
+
+BeneficiaryCreateResp response = partialMapper.mBeneficiarymappingToBeneficiaryCreateResp(benMapping);
+
+// Trigger async sync to Elasticsearch
+if (regMap != null && regMap.getBenRegId() != null) {
+    logger.info("Triggering Elasticsearch sync for benRegId: {}", regMap.getBenRegId());
+    realtimeSyncService.syncBeneficiaryAsync(regMap.getBenRegId());
+}
+
+return response;
 	}
 
 	private MBeneficiarydetail convertIdentityDTOToMBeneficiarydetail(IdentityDTO dto) {

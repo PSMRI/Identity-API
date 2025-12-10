@@ -96,7 +96,7 @@ public class IdentityController {
 			JsonElement json = JsonParser.parseString(searchFilter);
 			IdentitySearchDTO searchParams = InputMapper.getInstance().gson().fromJson(json, IdentitySearchDTO.class);
 
-			List<BeneficiariesDTO> list = svc.getBeneficiaries(searchParams);
+			List<BeneficiariesDTO> list = svc.getBeneficiarieswithES(searchParams);
 			list.removeIf(Objects::isNull);
 			Collections.sort(list);
 			response = getSuccessResponseString(list, 200, "success", "getBeneficiariesByAdvanceSearch");
