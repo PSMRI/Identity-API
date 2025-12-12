@@ -1,9 +1,6 @@
 package com.iemr.common.identity.data.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.math.BigInteger;
-
 import lombok.Data;
 
 @Data
@@ -24,6 +21,12 @@ public class BeneficiaryDocument {
     @JsonProperty("lastName")
     private String lastName;
     
+    @JsonProperty("fatherName")
+    private String fatherName;
+    
+    @JsonProperty("spouseName")
+    private String spouseName;
+    
     @JsonProperty("age")
     private Integer age;
     
@@ -36,37 +39,9 @@ public class BeneficiaryDocument {
     @JsonProperty("villageName")
     private String villageName;
     
-    // Add other fields from BeneficiariesDTO that you need to search
+    @JsonProperty("aadharNo")
+    private String aadharNo;
     
-    // Constructors
-    public BeneficiaryDocument() {}
-    
-    // Getters and Setters
-    public String getBenId() { return benId; }
-    public void setBenId(String benId) { this.benId = benId; }
-    
-    public Long getBenRegId() { return benRegId; }
-    public void setBenRegId(Long benRegId) { this.benRegId = benRegId; }
-    
-    public String getPhoneNum() { return phoneNum; }
-    public void setPhoneNum(String phoneNum) { this.phoneNum = phoneNum; }
-    
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-
-    public Integer getAge() { return age; }
-    public void setAge(Integer age) { this.age = age; }
-
-    public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
-
-    public String getDistrictName() { return districtName; }
-    public void setDistrictName(String districtName) { this.districtName = districtName; }
-
-    public String getVillageName() { return villageName; }
-    public void setVillageName(String villageName) { this.villageName = villageName; }
-
+    @JsonProperty("govtIdentityNo")
+    private String govtIdentityNo;
 }

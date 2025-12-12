@@ -1,9 +1,14 @@
 package com.iemr.common.identity.config;
 
+import java.io.IOException;
+
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -16,6 +21,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ElasticsearchConfig {
 
+	private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConfig.class);
+
     @Value("${elasticsearch.host}")
     private String esHost;
 
@@ -27,6 +34,9 @@ public class ElasticsearchConfig {
 
     @Value("${elasticsearch.password}")
     private String esPassword;
+
+    @Value("${elasticsearch.index.beneficiary}")
+    private String indexName;
 
     @Bean
     public ElasticsearchClient elasticsearchClient() {
@@ -48,5 +58,43 @@ public class ElasticsearchConfig {
         );
 
         return new ElasticsearchClient(transport);
+    }
+
+      @Bean
+    public Boolean createIndexMapping(ElasticsearchClient client) throws IOException {
+        
+        // Check if index exists
+        boolean exists = client.indices().exists(e -> e.index(indexName)).value();
+        
+        if (!exists) {
+            client.indices().create(c -> c
+                .index(indexName)
+                .mappings(m -> m
+                    .properties("beneficiaryRegID", p -> p.keyword(k -> k))
+                    .properties("firstName", p -> p.text(t -> t
+                        .fields("keyword", f -> f.keyword(k -> k))
+                        .analyzer("standard")
+                    ))
+                    .properties("lastName", p -> p.text(t -> t
+                        .fields("keyword", f -> f.keyword(k -> k))
+                        .analyzer("standard")
+                    ))
+                    .properties("phoneNum", p -> p.keyword(k -> k))
+                    .properties("fatherName", p -> p.text(t -> t.analyzer("standard")))
+                    .properties("spouseName", p -> p.text(t -> t.analyzer("standard")))
+                    .properties("aadharNo", p -> p.keyword(k -> k))
+                    .properties("govtIdentityNo", p -> p.keyword(k -> k))
+                )
+                .settings(s -> s
+                    .numberOfShards("3")
+                    .numberOfReplicas("1")
+                    .refreshInterval(t -> t.time("1s"))
+                )
+            );
+            
+            logger.info("Created Elasticsearch index with proper mappings");
+        }
+            return true;
+
     }
 }
