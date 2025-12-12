@@ -30,6 +30,7 @@ import com.iemr.common.identity.domain.Address;
 import lombok.Data;
 
 @Data
+@lombok.Builder
 public class IdentitySearchDTO {
 
 	private BigInteger beneficiaryId;

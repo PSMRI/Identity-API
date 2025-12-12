@@ -147,4 +147,134 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 	@Query("SELECT b FROM MBeneficiarydetail b WHERE b.familyId =:familyid  ")
 	List<MBeneficiarydetail> searchByFamilyId(@Param("familyid") String familyid);
 
+	  /**
+     * Find complete beneficiary data by IDs from Elasticsearch
+     */
+    @Query(value = "SELECT " +
+        "m.BenRegId, " +                                    // 0
+        "d.BeneficiaryRegID, " +                               // 1
+        "d.FirstName, " +                                   // 2
+        "d.LastName, " +                                    // 3
+        "d.GenderID, " +                                    // 4
+        "g.GenderName, " +                                  // 5
+        "d.DOB, " +                                         // 6
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " + // 7
+        "d.FatherName, " +                                  // 8
+        "d.SpouseName, " +                                  // 9
+        "d.IsHIVPositive, " +                                    // 10
+        "m.CreatedBy, " +                                   // 11
+        "m.CreatedDate, " +                                 // 12
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +          // 13
+        "m.BenAccountID, " +                                // 14
+        "addr.CurrStateId, " +                              // 15
+        "addr.CurrState, " +                                // 16
+        "addr.CurrDistrictId, " +                           // 17
+        "addr.CurrDistrict, " +                             // 18
+        "addr.CurrSubDistrictId, " +                        // 19
+        "addr.CurrSubDistrict, " +                          // 20
+        "addr.CurrPinCode, " +                              // 21
+        "addr.CurrServicePointId, " +                       // 22
+        "addr.CurrServicePoint, " +                         // 23
+        "addr.ParkingPlaceID, " +                           // 24
+        "contact.PreferredPhoneNum " +                      // 25
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+        "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+        "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId IN (:ids) AND m.Deleted = false", 
+        nativeQuery = true)
+    List<Object[]> findCompleteDataByIds(@Param("ids") List<Long> ids);
+    
+    /**
+     * Direct search in database (fallback)
+     */
+    @Query(value = "SELECT " +
+        "m.BenRegId, " +
+        "d.BeneficiaryRegID, " +
+        "d.FirstName, " +
+        "d.LastName, " +
+        "d.GenderID, " +
+        "g.GenderName, " +
+        "d.DOB, " +
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " +
+        "d.FatherName, " +
+        "d.SpouseName, " +
+        "d.IsHIVPositive, " +
+        "m.CreatedBy, " +
+        "m.CreatedDate, " +
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +
+        "m.BenAccountID, " +
+        "addr.CurrStateId, " +
+        "addr.CurrState, " +
+        "addr.CurrDistrictId, " +
+        "addr.CurrDistrict, " +
+        "addr.CurrSubDistrictId, " +
+        "addr.CurrSubDistrict, " +
+        "addr.CurrPinCode, " +
+        "addr.CurrServicePointId, " +
+        "addr.CurrServicePoint, " +
+        "addr.ParkingPlaceID, " +
+        "contact.PreferredPhoneNum " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+        "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+        "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE (d.FirstName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.LastName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.FatherName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.BeneficiaryRegID = :query " +
+        "   OR contact.PreferredPhoneNum = :query " +
+        "   OR contact.PhoneNum1 = :query " +
+        "   OR contact.PhoneNum2 = :query " +
+        "   OR contact.PhoneNum3 = :query " +
+        "   OR contact.PhoneNum4 = :query " +
+        "   OR contact.PhoneNum5 = :query) " +
+        "AND m.Deleted = false " +
+        "LIMIT 20", 
+        nativeQuery = true)
+    List<Object[]> searchBeneficiaries(@Param("query") String query);
+    
+    /**
+     * Get all phone numbers for a beneficiary
+     */
+    @Query(value = "SELECT " +
+        "contact.PreferredPhoneNum as phoneNo, " +
+        "'Preferred' as phoneType, " +
+        "1 as priority " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PreferredPhoneNum IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum1, contact.PhoneTyp1, 2 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum1 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum2, contact.PhoneTyp2, 3 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum2 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum3, contact.PhoneTyp3, 4 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum3 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum4, contact.PhoneTyp4, 5 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum4 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum5, contact.PhoneTyp5, 6 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum5 IS NOT NULL " +
+        "ORDER BY priority", 
+        nativeQuery = true)
+    List<Object[]> findPhoneNumbersByBeneficiaryId(@Param("beneficiaryId") Long beneficiaryId);
+    
+
+
 }

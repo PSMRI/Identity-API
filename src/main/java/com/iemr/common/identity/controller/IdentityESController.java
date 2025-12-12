@@ -2,9 +2,7 @@ package com.iemr.common.identity.controller;
 
 import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,13 +12,12 @@ import org.springframework.web.bind.annotation.*;
 
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
-import com.iemr.common.identity.service.IdentityService;
+import com.iemr.common.identity.service.elasticsearch.ElasticsearchService;
 import com.iemr.common.identity.mapper.InputMapper;
 
-
 /**
- * Enhanced Beneficiary Search Controller with Elasticsearch support
- * Provides fast search across multiple fields
+ * Elasticsearch-enabled Beneficiary Search Controller
+ * All search endpoints with ES support
  */
 @RestController
 @RequestMapping("/beneficiary")
@@ -29,420 +26,326 @@ public class IdentityESController {
     private static final Logger logger = LoggerFactory.getLogger(IdentityESController.class);
 
     @Autowired
-    private IdentityService identityService;
+    private ElasticsearchService elasticsearchService;
 
     /**
-     * Search beneficiary by BeneficiaryID
-     * Uses Elasticsearch if enabled, falls back to MySQL
+     * MAIN UNIVERSAL SEARCH ENDPOINT
+     * Searches across all fields - name, phone, ID, etc.
      * 
-     * Usage: GET /beneficiary/search/benId/{beneficiaryId}
-     * Example: GET /beneficiary/search/benId/123456
+     * Usage: GET /beneficiary/search?q=vani
+     * Usage: GET /beneficiary/search?q=9876543210
+     * Usage: GET /beneficiary/search?q=rajesh kumar
      */
-    @GetMapping("/search/benId/{beneficiaryId}")
-    public ResponseEntity<Map<String, Object>> searchByBenId(@PathVariable String beneficiaryId) {
-        logger.info("Search request received: beneficiaryId={}", beneficiaryId);
-        
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
-        
+   @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> search(@RequestParam String query) {
         try {
-            BigInteger benId = new BigInteger(beneficiaryId);
-            List<BeneficiariesDTO> results = identityService.getBeneficiariesByBenId(benId);
+            List<Map<String, Object>> results = elasticsearchService.universalSearch(query);
             
-            long timeTaken = System.currentTimeMillis() - startTime;
-            
-            response.put("status", "success");
-            response.put("count", results.size());
+            Map<String, Object> response = new HashMap<>();
             response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+            response.put("statusCode", 200);
+            response.put("errorMessage", "Success");
+            response.put("status", "Success");
             
             return ResponseEntity.ok(response);
             
-        } catch (NumberFormatException e) {
-            response.put("status", "error");
-            response.put("message", "Invalid beneficiary ID format");
-            return ResponseEntity.badRequest().body(response);
-            
         } catch (Exception e) {
-            logger.error("Error searching by beneficiaryId: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("data", new ArrayList<>());
+            errorResponse.put("statusCode", 500);
+            errorResponse.put("errorMessage", e.getMessage());
+            errorResponse.put("status", "Error");
+            
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
+     
+    // @GetMapping("/search")
+    // public ResponseEntity<Map<String, Object>> universalSearch(@RequestParam String q) {
+    //     logger.info("Universal search request: query={}", q);
+        
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
+        
+    //     try {
+    //         List<BeneficiariesDTO> results = elasticsearchService.universalSearch(q);
+    //         long timeTaken = System.currentTimeMillis() - startTime;
+            
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
+    //         response.put("query", q);
+            
+    //         return ResponseEntity.ok(response);
+            
+    //     } catch (Exception e) {
+    //         logger.error("Universal search error: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
     /**
-     * Search beneficiary by BeneficiaryRegID
+     * Search by BeneficiaryID (exact match)
      * 
-     * Usage: GET /beneficiary/search/benRegId/{benRegId}
-     * Example: GET /beneficiary/search/benRegId/987654
+     * Usage: GET /beneficiary/search/benId/123456
      */
-    @GetMapping("/search/benRegId/{benRegId}")
-    public ResponseEntity<Map<String, Object>> searchByBenRegId(@PathVariable String benRegId) {
-        logger.info("Search request received: benRegId={}", benRegId);
+    // @GetMapping("/search/benId/{beneficiaryId}")
+    // public ResponseEntity<Map<String, Object>> searchByBenId(@PathVariable String beneficiaryId) {
+    //     logger.info("Search by benId: {}", beneficiaryId);
         
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
         
-        try {
-            BigInteger benRegIdBig = new BigInteger(benRegId);
-            List<BeneficiariesDTO> results = identityService.getBeneficiariesByBenRegId(benRegIdBig);
+    //     try {
+    //         BigInteger benId = new BigInteger(beneficiaryId);
+    //         List<BeneficiariesDTO> results = elasticsearchService.searchByBenId(benId);
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
             
-            return ResponseEntity.ok(response);
+    //         return ResponseEntity.ok(response);
             
-        } catch (NumberFormatException e) {
-            response.put("status", "error");
-            response.put("message", "Invalid beneficiary registration ID format");
-            return ResponseEntity.badRequest().body(response);
+    //     } catch (NumberFormatException e) {
+    //         response.put("status", "error");
+    //         response.put("message", "Invalid beneficiary ID format");
+    //         return ResponseEntity.badRequest().body(response);
             
-        } catch (Exception e) {
-            logger.error("Error searching by benRegId: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Error searching by benId: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
-    /**
-     * Search beneficiary by Phone Number
-     * 
-     * Usage: GET /beneficiary/search/phone/{phoneNumber}
-     * Example: GET /beneficiary/search/phone/9876543210
-     */
-    @GetMapping("/search/phone/{phoneNumber}")
-    public ResponseEntity<Map<String, Object>> searchByPhoneNumber(@PathVariable String phoneNumber) {
-        logger.info("Search request received: phoneNumber={}", phoneNumber);
+    // /**
+    //  * Search by BeneficiaryRegID (exact match)
+    //  * 
+    //  * Usage: GET /beneficiary/search/benRegId/987654
+    //  */
+    // @GetMapping("/search/benRegId/{benRegId}")
+    // public ResponseEntity<Map<String, Object>> searchByBenRegId(@PathVariable String benRegId) {
+    //     logger.info("Search by benRegId: {}", benRegId);
         
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
         
-        try {
-            List<BeneficiariesDTO> results = identityService.getBeneficiariesByPhoneNum(phoneNumber);
+    //     try {
+    //         BigInteger benRegIdBig = new BigInteger(benRegId);
+    //         List<BeneficiariesDTO> results = elasticsearchService.searchByBenRegId(benRegIdBig);
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
             
-            return ResponseEntity.ok(response);
+    //         return ResponseEntity.ok(response);
             
-        } catch (Exception e) {
-            logger.error("Error searching by phone: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (NumberFormatException e) {
+    //         response.put("status", "error");
+    //         response.put("message", "Invalid beneficiary registration ID format");
+    //         return ResponseEntity.badRequest().body(response);
+            
+    //     } catch (Exception e) {
+    //         logger.error("Error searching by benRegId: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
-    /**
-     * Search beneficiary by ABHA Address / HealthID
-     * 
-     * Usage: GET /beneficiary/search/healthId/{healthId}
-     * Example: GET /beneficiary/search/healthId/rajesh@abdm
-     */
-    @GetMapping("/search/healthId/{healthId}")
-    public ResponseEntity<Map<String, Object>> searchByHealthId(@PathVariable String healthId) {
-        logger.info("Search request received: healthId={}", healthId);
+    // /**
+    //  * Search by Phone Number (supports partial match)
+    //  * 
+    //  * Usage: GET /beneficiary/search/phone/9876543210
+    //  * Usage: GET /beneficiary/search/phone/987654
+    //  */
+    // @GetMapping("/search/phone/{phoneNumber}")
+    // public ResponseEntity<Map<String, Object>> searchByPhoneNumber(@PathVariable String phoneNumber) {
+    //     logger.info("Search by phone: {}", phoneNumber);
         
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
         
-        try {
-            List<BeneficiariesDTO> results = identityService.getBeneficiaryByHealthIDAbhaAddress(healthId);
+    //     try {
+    //         List<BeneficiariesDTO> results = elasticsearchService.searchByPhoneNum(phoneNumber);
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
             
-            return ResponseEntity.ok(response);
+    //         return ResponseEntity.ok(response);
             
-        } catch (Exception e) {
-            logger.error("Error searching by healthId: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Error searching by phone: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
-    /**
-     * Search beneficiary by ABHA ID Number / HealthIDNo
-     * 
-     * Usage: GET /beneficiary/search/healthIdNo/{healthIdNo}
-     * Example: GET /beneficiary/search/healthIdNo/12345678901234
-     */
-    @GetMapping("/search/healthIdNo/{healthIdNo}")
-    public ResponseEntity<Map<String, Object>> searchByHealthIdNo(@PathVariable String healthIdNo) {
-        logger.info("Search request received: healthIdNo={}", healthIdNo);
+    // /**
+    //  * Search by First Name (fuzzy matching - handles typos)
+    //  * 
+    //  * Usage: GET /beneficiary/search/firstName/vani
+    //  * Usage: GET /beneficiary/search/firstName/rajesh
+    //  */
+    // @GetMapping("/search/firstName/{firstName}")
+    // public ResponseEntity<Map<String, Object>> searchByFirstName(@PathVariable String firstName) {
+    //     logger.info("Search by firstName: {}", firstName);
         
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
         
-        try {
-            List<BeneficiariesDTO> results = identityService.getBeneficiaryByHealthIDNoAbhaIdNo(healthIdNo);
+    //     try {
+    //         List<BeneficiariesDTO> results = elasticsearchService.searchByFirstName(firstName);
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
+    //         response.put("fuzzyMatchEnabled", true);
             
-            return ResponseEntity.ok(response);
+    //         return ResponseEntity.ok(response);
             
-        } catch (Exception e) {
-            logger.error("Error searching by healthIdNo: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Error searching by firstName: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
-    /**
-     * Search beneficiary by Family ID
-     * 
-     * Usage: GET /beneficiary/search/familyId/{familyId}
-     * Example: GET /beneficiary/search/familyId/FAM12345
-     */
-    @GetMapping("/search/familyId/{familyId}")
-    public ResponseEntity<Map<String, Object>> searchByFamilyId(@PathVariable String familyId) {
-        logger.info("Search request received: familyId={}", familyId);
+    // /**
+    //  * Search by Last Name (fuzzy matching)
+    //  * 
+    //  * Usage: GET /beneficiary/search/lastName/kumar
+    //  */
+    // @GetMapping("/search/lastName/{lastName}")
+    // public ResponseEntity<Map<String, Object>> searchByLastName(@PathVariable String lastName) {
+    //     logger.info("Search by lastName: {}", lastName);
         
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
         
-        try {
-            List<BeneficiariesDTO> results = identityService.searhBeneficiaryByFamilyId(familyId);
+    //     try {
+    //         List<BeneficiariesDTO> results = elasticsearchService.searchByLastName(lastName);
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
+    //         response.put("fuzzyMatchEnabled", true);
             
-            return ResponseEntity.ok(response);
+    //         return ResponseEntity.ok(response);
             
-        } catch (Exception e) {
-            logger.error("Error searching by familyId: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Error searching by lastName: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
-    /**
-     * Search beneficiary by Government Identity (Aadhaar, etc.)
-     * 
-     * Usage: GET /beneficiary/search/govIdentity/{identityNo}
-     * Example: GET /beneficiary/search/govIdentity/123456789012
-     */
-    @GetMapping("/search/govIdentity/{identityNo}")
-    public ResponseEntity<Map<String, Object>> searchByGovIdentity(@PathVariable String identityNo) {
-        logger.info("Search request received: govIdentity={}", identityNo);
+    // /**
+    //  * Advanced multi-field search with query parameters
+    //  * 
+    //  * Usage: GET /beneficiary/search/advanced?firstName=vani&phoneNum=9876
+    //  * Usage: GET /beneficiary/search/advanced?firstName=rajesh&lastName=kumar&gender=Male
+    //  */
+    // @GetMapping("/search/advanced")
+    // public ResponseEntity<Map<String, Object>> advancedSearchGet(
+    //         @RequestParam(required = false) String firstName,
+    //         @RequestParam(required = false) String lastName,
+    //         @RequestParam(required = false) String phoneNum,
+    //         @RequestParam(required = false) String gender,
+    //         @RequestParam(required = false) Integer age) {
         
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    //     logger.info("Advanced search: firstName={}, lastName={}, phoneNum={}, gender={}, age={}", 
+    //         firstName, lastName, phoneNum, gender, age);
         
-        try {
-            List<BeneficiariesDTO> results = identityService.searhBeneficiaryByGovIdentity(identityNo);
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
+        
+    //     try {
+    //         List<BeneficiariesDTO> results = elasticsearchService.advancedSearch(
+    //             firstName, lastName, phoneNum, gender, age
+    //         );
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
+    //         response.put("searchCriteria", Map.of(
+    //             "firstName", firstName != null ? firstName : "N/A",
+    //             "lastName", lastName != null ? lastName : "N/A",
+    //             "phoneNum", phoneNum != null ? phoneNum : "N/A",
+    //             "gender", gender != null ? gender : "N/A",
+    //             "age", age != null ? age : "N/A"
+    //         ));
             
-            return ResponseEntity.ok(response);
+    //         return ResponseEntity.ok(response);
             
-        } catch (Exception e) {
-            logger.error("Error searching by govIdentity: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Advanced search error: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 
-    /**
-     * Advanced search with multiple criteria (with Elasticsearch support)
-     * Supports fuzzy name matching via Elasticsearch
-     * 
-     * Usage: POST /beneficiary/search/advanced
-     * Body: IdentitySearchDTO JSON
-     */
-    @PostMapping("/search/advanced")
-    public ResponseEntity<Map<String, Object>> advancedSearch(@RequestBody String searchRequest) {
-        logger.info("Advanced search request received");
-    
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
+    // /**
+    //  * Advanced search with POST body (for complex queries)
+    //  * 
+    //  * Usage: POST /beneficiary/search/advanced
+    //  * Body: IdentitySearchDTO JSON
+    //  */
+    // @PostMapping("/search/advanced")
+    // public ResponseEntity<Map<String, Object>> advancedSearchPost(@RequestBody String searchRequest) {
+    //     logger.info("Advanced POST search request received");
         
-        try {
-            IdentitySearchDTO searchDTO = InputMapper.getInstance().gson()
-                .fromJson(searchRequest, IdentitySearchDTO.class);
-            
-            // Use the Elasticsearch-enabled method
-            List<BeneficiariesDTO> results = identityService.getBeneficiarieswithES(searchDTO);
-            
-            long timeTaken = System.currentTimeMillis() - startTime;
-            
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
-            response.put("elasticsearchEnabled", true);
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.error("Error in advanced search: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
-    /**
-     * Search beneficiary by Name (supports fuzzy matching via Elasticsearch)
-     * 
-     * Usage: GET /beneficiary/search/name?firstName=Rajesh&lastName=Kumar
-     */
-    @GetMapping("/search/name")
-    public ResponseEntity<Map<String, Object>> searchByName(
-            @RequestParam(required = false) String firstName,
-            @RequestParam(required = false) String lastName) {
+    //     Map<String, Object> response = new HashMap<>();
+    //     long startTime = System.currentTimeMillis();
         
-        logger.info("Name search request: firstName={}, lastName={}", firstName, lastName);
-        
-        Map<String, Object> response = new HashMap<>();
-        long startTime = System.currentTimeMillis();
-        
-        try {
-            if ((firstName == null || firstName.trim().isEmpty()) && 
-                (lastName == null || lastName.trim().isEmpty())) {
-                response.put("status", "error");
-                response.put("message", "At least one of firstName or lastName is required");
-                return ResponseEntity.badRequest().body(response);
-            }
+    //     try {
+    //         IdentitySearchDTO searchDTO = InputMapper.getInstance().gson()
+    //             .fromJson(searchRequest, IdentitySearchDTO.class);
             
-            // Create search DTO
-            IdentitySearchDTO searchDTO = new IdentitySearchDTO();
-            searchDTO.setFirstName(firstName);
-            searchDTO.setLastName(lastName);
+    //         List<BeneficiariesDTO> results = elasticsearchService.flexibleSearch(searchDTO);
             
-            // Use Elasticsearch-enabled search
-            List<BeneficiariesDTO> results = identityService.getBeneficiarieswithES(searchDTO);
+    //         long timeTaken = System.currentTimeMillis() - startTime;
             
-            long timeTaken = System.currentTimeMillis() - startTime;
+    //         response.put("status", "success");
+    //         response.put("count", results.size());
+    //         response.put("data", results);
+    //         response.put("searchTime", timeTaken + "ms");
+    //         response.put("elasticsearchEnabled", true);
             
-            response.put("status", "success");
-            response.put("count", results.size());
-            response.put("data", results);
-            response.put("searchTime", timeTaken + "ms");
-            response.put("fuzzySearchEnabled", true);
+    //         return ResponseEntity.ok(response);
             
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.error("Error searching by name: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
-    /**
-     * Multi-field search endpoint
-     * Searches across multiple fields simultaneously
-     * 
-     * Usage: GET /beneficiary/search/multi?query=rajesh&searchFields=name,phone
-     */
-    @GetMapping("/search/multi")
-    public ResponseEntity<Map<String, Object>> multiFieldSearch(
-            @RequestParam String query,
-            @RequestParam(required = false, defaultValue = "name,phone,benId") String searchFields) {
-        
-        logger.info("Multi-field search: query={}, fields={}", query, searchFields);
-        
-        Map<String, Object> response = new HashMap<>();
-        Map<String, List<BeneficiariesDTO>> resultsByField = new HashMap<>();
-        long startTime = System.currentTimeMillis();
-        
-        try {
-            String[] fields = searchFields.split(",");
-            int totalResults = 0;
-            
-            for (String field : fields) {
-                field = field.trim().toLowerCase();
-                List<BeneficiariesDTO> fieldResults = null;
-                
-                try {
-                    switch (field) {
-                        case "name":
-                            IdentitySearchDTO nameSearch = new IdentitySearchDTO();
-                            nameSearch.setFirstName(query);
-                            fieldResults = identityService.getBeneficiarieswithES(nameSearch);
-                            break;
-                            
-                        case "phone":
-                            fieldResults = identityService.getBeneficiariesByPhoneNum(query);
-                            break;
-                            
-                        case "benid":
-                            try {
-                                BigInteger benId = new BigInteger(query);
-                                fieldResults = identityService.getBeneficiariesByBenId(benId);
-                            } catch (NumberFormatException e) {
-                                // Skip if not a valid number
-                            }
-                            break;
-                            
-                        case "benregid":
-                            try {
-                                BigInteger benRegId = new BigInteger(query);
-                                fieldResults = identityService.getBeneficiariesByBenRegId(benRegId);
-                            } catch (NumberFormatException e) {
-                                // Skip if not a valid number
-                            }
-                            break;
-                    }
-                    
-                    if (fieldResults != null && !fieldResults.isEmpty()) {
-                        resultsByField.put(field, fieldResults);
-                        totalResults += fieldResults.size();
-                    }
-                    
-                } catch (Exception e) {
-                    logger.warn("Error searching field {}: {}", field, e.getMessage());
-                }
-            }
-            
-            long timeTaken = System.currentTimeMillis() - startTime;
-            
-            response.put("status", "success");
-            response.put("totalResults", totalResults);
-            response.put("resultsByField", resultsByField);
-            response.put("searchTime", timeTaken + "ms");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.error("Error in multi-field search: {}", e.getMessage(), e);
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Advanced POST search error: {}", e.getMessage(), e);
+    //         response.put("status", "error");
+    //         response.put("message", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    //     }
+    // }
 }

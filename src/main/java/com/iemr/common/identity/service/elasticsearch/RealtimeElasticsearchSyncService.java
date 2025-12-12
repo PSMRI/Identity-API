@@ -35,7 +35,7 @@ public class RealtimeElasticsearchSyncService {
     @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
 
-    @Value("${elasticsearch.enabled:false}")
+    @Value("${elasticsearch.enabled}")
     private boolean esEnabled;
 
     /**
@@ -88,42 +88,44 @@ public class RealtimeElasticsearchSyncService {
     /**
      * Convert DTO to Document
      */
-    private BeneficiaryDocument convertToDocument(BeneficiariesDTO dto) {
-        if (dto == null) {
-            return null;
-        }
+   private BeneficiaryDocument convertToDocument(BeneficiariesDTO dto) {
+    if (dto == null) return null;
 
-        try {
-            BeneficiaryDocument doc = new BeneficiaryDocument();
+    try {
+        BeneficiaryDocument doc = new BeneficiaryDocument();
 
-            if (dto.getBenRegId() != null) {
-                BigInteger benRegId = (BigInteger) dto.getBenRegId();
-                doc.setBenId(benRegId.toString());
-                doc.setBenRegId(benRegId.longValue());
-            } else if (dto.getBenId() != null) {
-                doc.setBenId(dto.getBenId().toString());
-                if (dto.getBenId() instanceof BigInteger) {
-                    doc.setBenRegId(((BigInteger) dto.getBenId()).longValue());
-                }
-            } else {
-                return null;
-            }
+        // IDs
+        doc.setBenId(dto.getBenId() != null ? dto.getBenId().toString() : null);
+        doc.setBenRegId(dto.getBenRegId() != null ? dto.getBenRegId().longValue() : null);
 
+        // Phone
+        if (dto.getContacts() != null && !dto.getContacts().isEmpty()) {
+            doc.setPhoneNum(dto.getContacts().get(0).getPhoneNum());
+        } else if (dto.getPreferredPhoneNum() != null) {
             doc.setPhoneNum(dto.getPreferredPhoneNum());
-
-            if (dto.getBeneficiaryDetails() != null) {
-                BenDetailDTO benDetails = dto.getBeneficiaryDetails();
-                doc.setFirstName(benDetails.getFirstName());
-                doc.setLastName(benDetails.getLastName());
-                doc.setAge(benDetails.getBeneficiaryAge());
-                doc.setGender(benDetails.getGender());
-            }
-
-            return doc;
-
-        } catch (Exception e) {
-            logger.error("Error converting DTO to document: {}", e.getMessage());
-            return null;
         }
+
+        // Names
+        if (dto.getBeneficiaryDetails() != null) {
+            BenDetailDTO benDetails = dto.getBeneficiaryDetails();
+            doc.setFirstName(benDetails.getFirstName());
+            doc.setLastName(benDetails.getLastName());
+            doc.setGender(benDetails.getGender());
+        }
+
+        // Age from DTO
+        doc.setAge(dto.getBeneficiaryAge());
+
+        // You can add district, village if available
+        // doc.setDistrictName(...);
+        // doc.setVillageName(...);
+
+        return doc;
+
+    } catch (Exception e) {
+        logger.error("Error converting DTO to document: {}", e.getMessage());
+        return null;
     }
+}
+
 }

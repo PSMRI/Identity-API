@@ -161,7 +161,7 @@ public class IdentityService {
 	@Autowired
 	private V_BenAdvanceSearchRepo v_BenAdvanceSearchRepo;
 
-	@Value("${elasticsearch.enabled:false}")
+	@Value("${elasticsearch.enabled}")
     private boolean esEnabled;
 
 	public void getBenAdress() {
@@ -330,68 +330,68 @@ public class IdentityService {
     /**
      * Try Elasticsearch first if enabled
      */
-    if (esEnabled) {
-        try {
-            logger.info("Attempting Elasticsearch search");
+    // if (esEnabled) {
+    //     try {
+    //         logger.info("Attempting Elasticsearch search");
             
-            // Search by beneficiary Id
-            if (searchDTO.getBeneficiaryId() != null) {
-                logger.info("Elasticsearch: searching by beneficiaryId: {}", searchDTO.getBeneficiaryId());
-                list = elasticsearchService.searchByBenId(searchDTO.getBeneficiaryId());
-                if (!list.isEmpty()) {
-                    logger.info("Found {} results from Elasticsearch", list.size());
-                    return enrichBeneficiariesFromDatabase(list);
-                }
-            }
+    //         // Search by beneficiary Id
+    //         if (searchDTO.getBeneficiaryId() != null) {
+    //             logger.info("Elasticsearch: searching by beneficiaryId: {}", searchDTO.getBeneficiaryId());
+    //             list = elasticsearchService.searchByBenId(searchDTO.getBeneficiaryId());
+    //             if (!list.isEmpty()) {
+    //                 logger.info("Found {} results from Elasticsearch", list.size());
+    //                 return enrichBeneficiariesFromDatabase(list);
+    //             }
+    //         }
             
-            // Search by beneficiary Reg Id
-            if (searchDTO.getBeneficiaryRegId() != null) {
-                logger.info("Elasticsearch: searching by beneficiaryRegId: {}", searchDTO.getBeneficiaryRegId());
-                list = elasticsearchService.searchByBenRegId(searchDTO.getBeneficiaryRegId());
-                if (!list.isEmpty()) {
-                    logger.info("Found {} results from Elasticsearch", list.size());
-                    return enrichBeneficiariesFromDatabase(list);
-                }
-            }
+    //         // Search by beneficiary Reg Id
+    //         if (searchDTO.getBeneficiaryRegId() != null) {
+    //             logger.info("Elasticsearch: searching by beneficiaryRegId: {}", searchDTO.getBeneficiaryRegId());
+    //             list = elasticsearchService.searchByBenRegId(searchDTO.getBeneficiaryRegId());
+    //             if (!list.isEmpty()) {
+    //                 logger.info("Found {} results from Elasticsearch", list.size());
+    //                 return enrichBeneficiariesFromDatabase(list);
+    //             }
+    //         }
             
-            // Search by contact number
-            if (searchDTO.getContactNumber() != null) {
-                logger.info("Elasticsearch: searching by phoneNum: {}", searchDTO.getContactNumber());
-                list = elasticsearchService.searchByPhoneNum(searchDTO.getContactNumber());
-                if (!list.isEmpty()) {
-                    logger.info("Found {} results from Elasticsearch", list.size());
+    //         // Search by contact number
+    //         if (searchDTO.getContactNumber() != null) {
+    //             logger.info("Elasticsearch: searching by phoneNum: {}", searchDTO.getContactNumber());
+    //             list = elasticsearchService.searchByPhoneNum(searchDTO.getContactNumber());
+    //             if (!list.isEmpty()) {
+    //                 logger.info("Found {} results from Elasticsearch", list.size());
                     
-                    // Apply D2D filters if needed
-                    if (searchDTO.getIsD2D() != null && Boolean.TRUE.equals(searchDTO.getIsD2D())) {
-                        list = applyD2DFilters(list, searchDTO);
-                    }
+    //                 // Apply D2D filters if needed
+    //                 if (searchDTO.getIsD2D() != null && Boolean.TRUE.equals(searchDTO.getIsD2D())) {
+    //                     list = applyD2DFilters(list, searchDTO);
+    //                 }
                     
-                    return enrichBeneficiariesFromDatabase(list);
-                }
-            }
+    //                 return enrichBeneficiariesFromDatabase(list);
+    //             }
+    //         }
             
-            // Advanced search (multiple criteria)
-            if (hasMultipleCriteria(searchDTO)) {
-                logger.info("Elasticsearch: advanced search");
-                list = elasticsearchService.advancedSearch(
-                    searchDTO.getFirstName(),
-                    searchDTO.getLastName(),
-                    searchDTO.getContactNumber(),
-                    null, // gender from searchDTO if available
-                    null  // age from searchDTO if available
-                );
-                if (!list.isEmpty()) {
-                    logger.info("Found {} results from Elasticsearch", list.size());
-                    return enrichBeneficiariesFromDatabase(list);
-                }
-            }
+    //         // Advanced search (multiple criteria)
+    //         if (hasMultipleCriteria(searchDTO)) {
+    //             logger.info("Elasticsearch: advanced search");
+    //             list = elasticsearchService.advancedSearch(
+    //                 searchDTO.getFirstName(),
+    //                 searchDTO.getLastName(),
+    //                 searchDTO.getContactNumber(),
+    //                 null, // gender from searchDTO if available
+    //                 null  // age from searchDTO if available
+    //             );
+    //             if (!list.isEmpty()) {
+    //                 logger.info("Found {} results from Elasticsearch", list.size());
+    //                 return enrichBeneficiariesFromDatabase(list);
+    //             }
+    //         }
             
-            logger.info("No results from Elasticsearch, falling back to database");
+    //         logger.info("No results from Elasticsearch, falling back to database");
             
-        } catch (Exception e) {
-            logger.error("Elasticsearch search failed, falling back to database: {}", e.getMessage());
-        }
-    }
+    //     } catch (Exception e) {
+    //         logger.error("Elasticsearch search failed, falling back to database: {}", e.getMessage());
+    //     }
+    // }
 
     /**
      * Fallback to MySQL database search
@@ -558,19 +558,19 @@ private List<BeneficiariesDTO> applyD2DFilters(List<BeneficiariesDTO> list, Iden
 		logger.info("IdentityService.getBeneficiariesByBenId - start, beneficiaryID : " + benId);
 		List<BeneficiariesDTO> list = new ArrayList<BeneficiariesDTO>();
 
-		// Try Elasticsearch first if enabled
-        if (esEnabled) {
-            try {
-                list = elasticsearchService.searchByBenId(benId);
-                if (!list.isEmpty()) {
-                    logger.info("Found " + list.size() + " results from Elasticsearch for BenId: " + benId);
-                    return list;
-                }
-                logger.info("No results from Elasticsearch, falling back to database");
-            } catch (Exception e) {
-                logger.error("Elasticsearch search failed, falling back to database: " + e.getMessage());
-            }
-        }
+		// // Try Elasticsearch first if enabled
+        // if (esEnabled) {
+        //     try {
+        //         list = elasticsearchService.searchByBenId(benId);
+        //         if (!list.isEmpty()) {
+        //             logger.info("Found " + list.size() + " results from Elasticsearch for BenId: " + benId);
+        //             return list;
+        //         }
+        //         logger.info("No results from Elasticsearch, falling back to database");
+        //     } catch (Exception e) {
+        //         logger.error("Elasticsearch search failed, falling back to database: " + e.getMessage());
+        //     }
+        // }
         
 
 		MBeneficiaryregidmapping regId = regIdRepo.findByBeneficiaryID(benId);
@@ -636,18 +636,18 @@ private List<BeneficiariesDTO> applyD2DFilters(List<BeneficiariesDTO> list, Iden
 		List<BeneficiariesDTO> list = new ArrayList<>();
 
 		  // Try Elasticsearch first if enabled
-        if (esEnabled) {
-            try {
-                list = elasticsearchService.searchByPhoneNum(phoneNum);
-                if (!list.isEmpty()) {
-                    logger.info("Found " + list.size() + " results from Elasticsearch for PhoneNum: " + phoneNum);
-                    return list;
-                }
-                logger.info("No results from Elasticsearch, falling back to database");
-            } catch (Exception e) {
-                logger.error("Elasticsearch search failed, falling back to database: " + e.getMessage());
-            }
-        }
+        // if (esEnabled) {
+        //     try {
+        //         list = elasticsearchService.searchByPhoneNum(phoneNum);
+        //         if (!list.isEmpty()) {
+        //             logger.info("Found " + list.size() + " results from Elasticsearch for PhoneNum: " + phoneNum);
+        //             return list;
+        //         }
+        //         logger.info("No results from Elasticsearch, falling back to database");
+        //     } catch (Exception e) {
+        //         logger.error("Elasticsearch search failed, falling back to database: " + e.getMessage());
+        //     }
+        // }
 		
 		try {
 			List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(phoneNum);
