@@ -4,116 +4,60 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.dto.BenDetailDTO;
-import com.iemr.common.identity.dto.BeneficiariesDTO;
+import com.iemr.common.identity.data.elasticsearch.BeneficiaryDocument;
+import com.iemr.common.identity.repo.BenMappingRepo;
 
 /**
- * Optimized service to fetch beneficiary data in bulk
- * Uses native SQL with joins for maximum performance
+ * Optimized service to fetch complete beneficiary data in bulk
+ * Uses the new complete data query from BenMappingRepo
  */
 @Service
 public class OptimizedBeneficiaryDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(OptimizedBeneficiaryDataService.class);
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    @Autowired
+    private BenMappingRepo mappingRepo;
 
     /**
-     * Fetch multiple beneficiaries in one query using native SQL
-     * This is MUCH faster than fetching one by one
+     * Fetch multiple beneficiaries with COMPLETE data in ONE query
+     * This is the KEY method that replaces multiple individual queries
      */
     @Transactional(readOnly = true, timeout = 30)
-    public List<BeneficiariesDTO> getBeneficiariesBatch(List<BigInteger> benRegIds) {
+    public List<BeneficiaryDocument> getBeneficiariesBatch(List<BigInteger> benRegIds) {
         if (benRegIds == null || benRegIds.isEmpty()) {
             return new ArrayList<>();
         }
 
         try {
-            // CORRECTED: Use exact column names from your tables
-            String sql = 
-                "SELECT " +
-                "  m.BenRegId, " +
-                "  m.BenMapId, " +
-                "  d.FirstName, " +
-                "  d.LastName, " +
-                "  d.Gender, " +  // Changed from Gender to GenderName
-                "  d.DOB, " +
-                "  c.PreferredPhoneNum " +
-                "FROM i_beneficiarymapping m " +
-                "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsId " +
-                "LEFT JOIN i_beneficiarycontacts c ON m.BenContactsId = c.BenContactsID " +
-                "WHERE m.BenRegId IN :benRegIds " +
-                "  AND m.deleted = false";
+            logger.debug("Fetching {} beneficiaries with complete data", benRegIds.size());
+            
+            // Use the new complete query from repo
+            List<Object[]> results = mappingRepo.findCompleteDataByBenRegIds(benRegIds);
+            
+            logger.info("Fetched {} complete beneficiary records", results.size());
 
-            Query query = entityManager.createNativeQuery(sql);
-            query.setParameter("benRegIds", benRegIds);
-
-            @SuppressWarnings("unchecked")
-            List<Object[]> results = query.getResultList();
-
-            logger.info("Fetched {} beneficiary records from database", results.size());
-
-            List<BeneficiariesDTO> beneficiaries = new ArrayList<>();
+            List<BeneficiaryDocument> documents = new ArrayList<>();
 
             for (Object[] row : results) {
                 try {
-                    BeneficiariesDTO dto = new BeneficiariesDTO();
-
-                    // BenRegId (column 0) - Handle both Long and BigInteger
-                    if (row[0] != null) {
-                        BigInteger benRegId = convertToBigInteger(row[0]);
-                        dto.setBenRegId(benRegId);
-                        dto.setBenId(benRegId); // Use benRegId as benId
+                    BeneficiaryDocument doc = mapRowToDocument(row);
+                    if (doc != null && doc.getBenId() != null) {
+                        documents.add(doc);
                     }
-
-                    // BenMapId (column 1) - Handle both Long and BigInteger
-                    if (row[1] != null) {
-                        dto.setBenMapId(convertToBigInteger(row[1]));
-                    }
-
-                    // Create BenDetailDTO
-                    BenDetailDTO detailDTO = new BenDetailDTO();
-                    detailDTO.setFirstName(row[2] != null ? row[2].toString() : null);
-                    detailDTO.setLastName(row[3] != null ? row[3].toString() : null);
-                    detailDTO.setGender(row[4] != null ? row[4].toString() : null);
-
-                    // Calculate age from DOB (column 5)
-                    if (row[5] != null) {
-                        try {
-                            java.sql.Timestamp dob = (java.sql.Timestamp) row[5];
-                            java.time.LocalDate birthDate = dob.toLocalDateTime().toLocalDate();
-                            java.time.LocalDate now = java.time.LocalDate.now();
-                            int age = java.time.Period.between(birthDate, now).getYears();
-                            detailDTO.setBeneficiaryAge(age);
-                        } catch (Exception e) {
-                            logger.debug("Error calculating age: {}", e.getMessage());
-                        }
-                    }
-
-                    dto.setBeneficiaryDetails(detailDTO);
-
-                    // Phone number (column 6)
-                    dto.setPreferredPhoneNum(row[6] != null ? row[6].toString() : null);
-
-                    beneficiaries.add(dto);
-
                 } catch (Exception e) {
-                    logger.error("Error parsing row: {}", e.getMessage(), e);
+                    logger.error("Error mapping row to document: {}", e.getMessage(), e);
                 }
             }
 
-            logger.debug("Converted {} beneficiaries to DTOs", beneficiaries.size());
-            return beneficiaries;
+            logger.debug("Successfully converted {} beneficiaries to documents", documents.size());
+            return documents;
 
         } catch (Exception e) {
             logger.error("Error fetching beneficiaries batch: {}", e.getMessage(), e);
@@ -125,34 +69,135 @@ public class OptimizedBeneficiaryDataService {
      * Single beneficiary fetch (for backward compatibility)
      */
     @Transactional(readOnly = true, timeout = 10)
-    public BeneficiariesDTO getBeneficiaryFromDatabase(BigInteger benRegId) {
+    public BeneficiaryDocument getBeneficiaryFromDatabase(BigInteger benRegId) {
         List<BigInteger> ids = new ArrayList<>();
         ids.add(benRegId);
         
-        List<BeneficiariesDTO> results = getBeneficiariesBatch(ids);
+        List<BeneficiaryDocument> results = getBeneficiariesBatch(ids);
         return results.isEmpty() ? null : results.get(0);
     }
     
     /**
-     * Helper method to convert Object to BigInteger
-     * Handles both Long and BigInteger types from database
+     * Map database row to BeneficiaryDocument for ES
+     * Matches the query column order from BenMappingRepo
      */
-    private BigInteger convertToBigInteger(Object value) {
-        if (value == null) {
-            return null;
+    private BeneficiaryDocument mapRowToDocument(Object[] row) {
+        BeneficiaryDocument doc = new BeneficiaryDocument();
+        
+        try {
+            int idx = 0;
+            
+            // Basic IDs (0-1)
+            Long benRegId = getLong(row[idx++]);
+            doc.setBenRegId(benRegId);
+            String beneficiaryRegID = getString(row[idx++]);  // Column 1: d.BeneficiaryRegID
+
+            // doc.setBenId(benRegId != null ? benRegId.toString() : null);
+             if (beneficiaryRegID != null && !beneficiaryRegID.isEmpty()) {
+                doc.setBenId(beneficiaryRegID);
+            } else {
+                doc.setBenId(benRegId != null ? benRegId.toString() : null);
+            }
+            doc.setBeneficiaryID(beneficiaryRegID);
+            
+            // Personal Info (2-10)
+            doc.setFirstName(getString(row[idx++]));
+            doc.setLastName(getString(row[idx++]));
+            doc.setGenderID(getInteger(row[idx++]));
+            doc.setGenderName(getString(row[idx++]));
+            doc.setGender(doc.getGenderName()); // Use genderName for gender
+            doc.setDOB(getDate(row[idx++]));
+            doc.setAge(getInteger(row[idx++]));
+            doc.setFatherName(getString(row[idx++]));
+            doc.setSpouseName(getString(row[idx++]));
+            doc.setIsHIVPos(getString(row[idx++]));
+            
+            // Metadata (11-14)
+            doc.setCreatedBy(getString(row[idx++]));
+            doc.setCreatedDate(getDate(row[idx++]));
+            doc.setLastModDate(getLong(row[idx++]));
+            doc.setBenAccountID(getLong(row[idx++]));
+            
+            // Contact (15)
+            doc.setPhoneNum(getString(row[idx++]));
+            
+            // Health IDs (16-18)
+            doc.setHealthID(getString(row[idx++]));
+            doc.setAbhaID(getString(row[idx++]));
+            doc.setFamilyID(getString(row[idx++]));
+            
+            // Current Address (19-30)
+            doc.setStateID(getInteger(row[idx++]));
+            doc.setStateName(getString(row[idx++]));
+            doc.setDistrictID(getInteger(row[idx++]));
+            doc.setDistrictName(getString(row[idx++]));
+            doc.setBlockID(getInteger(row[idx++]));
+            doc.setBlockName(getString(row[idx++]));
+            doc.setVillageID(getInteger(row[idx++]));
+            doc.setVillageName(getString(row[idx++]));
+            doc.setPinCode(getString(row[idx++]));
+            doc.setServicePointID(getInteger(row[idx++]));
+            doc.setServicePointName(getString(row[idx++]));
+            doc.setParkingPlaceID(getInteger(row[idx++]));
+            
+            // Permanent Address (31-38)
+            doc.setPermStateID(getInteger(row[idx++]));
+            doc.setPermStateName(getString(row[idx++]));
+            doc.setPermDistrictID(getInteger(row[idx++]));
+            doc.setPermDistrictName(getString(row[idx++]));
+            doc.setPermBlockID(getInteger(row[idx++]));
+            doc.setPermBlockName(getString(row[idx++]));
+            doc.setPermVillageID(getInteger(row[idx++]));
+            doc.setPermVillageName(getString(row[idx++]));
+            
+            // Identity (39-40)
+            // doc.setGovtIdentityNo(getString(row[idx++]));
+            // String aadhar = getString(row[idx]);
+            // doc.setAadharNo(aadhar != null ? aadhar : doc.getGovtIdentityNo());
+            
+        } catch (Exception e) {
+            logger.error("Error mapping row to document: {}", e.getMessage(), e);
         }
         
-        if (value instanceof BigInteger) {
-            return (BigInteger) value;
-        } else if (value instanceof Long) {
-            return BigInteger.valueOf((Long) value);
-        } else if (value instanceof Integer) {
-            return BigInteger.valueOf((Integer) value);
-        } else if (value instanceof String) {
-            return new BigInteger((String) value);
-        } else {
-            logger.warn("Unexpected type for BigInteger conversion: {}", value.getClass().getName());
-            return BigInteger.valueOf(((Number) value).longValue());
+        return doc;
+    }
+    
+    // Helper methods
+    private String getString(Object value) {
+        return value != null ? value.toString() : null;
+    }
+    
+    private Long getLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Long) return (Long) value;
+        if (value instanceof Integer) return ((Integer) value).longValue();
+        if (value instanceof BigInteger) return ((BigInteger) value).longValue();
+        try {
+            return Long.parseLong(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
         }
+    }
+    
+    private Integer getInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Integer) return (Integer) value;
+        if (value instanceof Long) return ((Long) value).intValue();
+        if (value instanceof BigInteger) return ((BigInteger) value).intValue();
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+    
+    private java.util.Date getDate(Object value) {
+        if (value == null) return null;
+        if (value instanceof java.util.Date) return (java.util.Date) value;
+        if (value instanceof java.sql.Timestamp) 
+            return new java.util.Date(((java.sql.Timestamp) value).getTime());
+        if (value instanceof java.sql.Date) 
+            return new java.util.Date(((java.sql.Date) value).getTime());
+        return null;
     }
 }

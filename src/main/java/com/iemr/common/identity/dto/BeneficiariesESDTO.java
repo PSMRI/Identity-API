@@ -1,15 +1,11 @@
 package com.iemr.common.identity.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Data
@@ -18,7 +14,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BeneficiariesESDTO {
     
-    // Basic fields
     @JsonProperty("benRegId")
     private Long benRegId;
     
@@ -46,11 +41,11 @@ public class BeneficiariesESDTO {
     @JsonProperty("phoneNum")
     private String phoneNum;
     
-    @JsonProperty("aadharNo")
-    private String aadharNo;
+    // @JsonProperty("aadharNo")
+    // private String aadharNo;
     
-    @JsonProperty("govtIdentityNo")
-    private String govtIdentityNo;
+    // @JsonProperty("govtIdentityNo")
+    // private String govtIdentityNo;
     
     @JsonProperty("fatherName")
     private String fatherName;
@@ -73,7 +68,15 @@ public class BeneficiariesESDTO {
     @JsonProperty("isHIVPos")
     private String isHIVPos;
     
-    // Demographics fields
+    @JsonProperty("healthID")
+    private String healthID;
+    
+    @JsonProperty("abhaID")
+    private String abhaID;
+    
+    @JsonProperty("familyID")
+    private String familyID;
+    
     @JsonProperty("stateID")
     private Integer stateID;
     
@@ -95,6 +98,12 @@ public class BeneficiariesESDTO {
     @JsonProperty("blockName")
     private String blockName;
     
+    @JsonProperty("villageID")
+    private Integer villageID;
+    
+    @JsonProperty("villageName")
+    private String villageName;
+    
     @JsonProperty("districtBranchID")
     private Integer districtBranchID;
     
@@ -113,7 +122,30 @@ public class BeneficiariesESDTO {
     @JsonProperty("pinCode")
     private String pinCode;
     
-    // Nested objects
+    @JsonProperty("permStateID")
+    private Integer permStateID;
+    
+    @JsonProperty("permStateName")
+    private String permStateName;
+    
+    @JsonProperty("permDistrictID")
+    private Integer permDistrictID;
+    
+    @JsonProperty("permDistrictName")
+    private String permDistrictName;
+    
+    @JsonProperty("permBlockID")
+    private Integer permBlockID;
+    
+    @JsonProperty("permBlockName")
+    private String permBlockName;
+    
+    @JsonProperty("permVillageID")
+    private Integer permVillageID;
+    
+    @JsonProperty("permVillageName")
+    private String permVillageName;
+    
     @JsonProperty("phoneNumbers")
     private List<PhoneNumberDTO> phoneNumbers;
     

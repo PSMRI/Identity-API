@@ -14,8 +14,6 @@ import co.elastic.clients.elasticsearch.core.DeleteRequest;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 
 import com.iemr.common.identity.data.elasticsearch.BeneficiaryDocument;
-import com.iemr.common.identity.dto.BenDetailDTO;
-import com.iemr.common.identity.dto.BeneficiariesDTO;
 
 /**
  * Service for real-time Elasticsearch synchronization
@@ -52,19 +50,16 @@ public class RealtimeElasticsearchSyncService {
         try {
             logger.info("Starting async sync for benRegId: {}", benRegId);
 
-            // Fetch beneficiary from database
-            BeneficiariesDTO benDTO = dataService.getBeneficiaryFromDatabase(benRegId);
+            // Fetch beneficiary from database - returns BeneficiaryDocument directly
+            BeneficiaryDocument doc = dataService.getBeneficiaryFromDatabase(benRegId);
 
-            if (benDTO == null) {
+            if (doc == null) {
                 logger.warn("Beneficiary not found in database: {}", benRegId);
                 return;
             }
 
-            // Convert to Elasticsearch document
-            BeneficiaryDocument doc = convertToDocument(benDTO);
-
-            if (doc == null || doc.getBenId() == null) {
-                logger.error("Failed to convert beneficiary to document: {}", benRegId);
+            if (doc.getBenId() == null) {
+                logger.error("BeneficiaryDocument has null benId: {}", benRegId);
                 return;
             }
 
@@ -86,46 +81,29 @@ public class RealtimeElasticsearchSyncService {
     }
 
     /**
-     * Convert DTO to Document
+     * Delete beneficiary from Elasticsearch
      */
-   private BeneficiaryDocument convertToDocument(BeneficiariesDTO dto) {
-    if (dto == null) return null;
-
-    try {
-        BeneficiaryDocument doc = new BeneficiaryDocument();
-
-        // IDs
-        doc.setBenId(dto.getBenId() != null ? dto.getBenId().toString() : null);
-        doc.setBenRegId(dto.getBenRegId() != null ? dto.getBenRegId().longValue() : null);
-
-        // Phone
-        if (dto.getContacts() != null && !dto.getContacts().isEmpty()) {
-            doc.setPhoneNum(dto.getContacts().get(0).getPhoneNum());
-        } else if (dto.getPreferredPhoneNum() != null) {
-            doc.setPhoneNum(dto.getPreferredPhoneNum());
+    @Async("elasticsearchSyncExecutor")
+    public void deleteBeneficiaryAsync(String benId) {
+        if (!esEnabled) {
+            logger.debug("Elasticsearch is disabled, skipping delete");
+            return;
         }
 
-        // Names
-        if (dto.getBeneficiaryDetails() != null) {
-            BenDetailDTO benDetails = dto.getBeneficiaryDetails();
-            doc.setFirstName(benDetails.getFirstName());
-            doc.setLastName(benDetails.getLastName());
-            doc.setGender(benDetails.getGender());
+        try {
+            logger.info("Starting async delete for benId: {}", benId);
+
+            DeleteRequest request = DeleteRequest.of(d -> d
+                .index(beneficiaryIndex)
+                .id(benId)
+            );
+
+            esClient.delete(request);
+
+            logger.info("Successfully deleted beneficiary from Elasticsearch: benId={}", benId);
+
+        } catch (Exception e) {
+            logger.error("Error deleting beneficiary {} from Elasticsearch: {}", benId, e.getMessage(), e);
         }
-
-        // Age from DTO
-        doc.setAge(dto.getBeneficiaryAge());
-
-        // You can add district, village if available
-        // doc.setDistrictName(...);
-        // doc.setVillageName(...);
-
-        return doc;
-
-    } catch (Exception e) {
-        logger.error("Error converting DTO to document: {}", e.getMessage());
-        return null;
     }
-}
-
 }
