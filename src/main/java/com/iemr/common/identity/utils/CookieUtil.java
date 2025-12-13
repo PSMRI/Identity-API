@@ -1,5 +1,6 @@
 package com.iemr.common.identity.utils;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -22,7 +23,15 @@ public class CookieUtil {
 		return Optional.empty();
 	}
 
-	public String getJwtTokenFromCookie(HttpServletRequest request) {
-		return getCookieValue(request, "Jwttoken").orElse(null);
+	public static String getJwtTokenFromCookie(HttpServletRequest request) {
+		Cookie[] cookies = request.getCookies();
+		if (cookies == null) {
+			return null; // No cookies present, return null safely
+		}
+		return Arrays.stream(cookies).filter(cookie -> "Jwttoken".equals(cookie.getName())).map(Cookie::getValue)
+				.findFirst().orElse(null);
 	}
+
 }
+
+

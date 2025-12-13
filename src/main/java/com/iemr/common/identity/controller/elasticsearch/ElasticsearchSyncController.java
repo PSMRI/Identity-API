@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.iemr.common.identity.data.elasticsearch.ElasticsearchSyncJob;
@@ -12,19 +11,20 @@ import com.iemr.common.identity.repo.BenMappingRepo;
 import com.iemr.common.identity.service.elasticsearch.ElasticsearchSyncService;
 import com.iemr.common.identity.service.elasticsearch.SyncJobService;
 import com.iemr.common.identity.service.elasticsearch.ElasticsearchSyncService.SyncStatus;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import org.springframework.http.ResponseEntity;
+import com.iemr.common.identity.utils.response.OutputResponse;
 import com.iemr.common.identity.domain.MBeneficiarymapping;
+import com.iemr.common.identity.service.elasticsearch.ElasticsearchIndexingService;
 
 /**
  * Controller to manage Elasticsearch synchronization operations
  * Supports both synchronous and asynchronous sync jobs
  */
 @RestController
-@RequestMapping("/elasticsearch/sync")
+@RequestMapping("/elasticsearch")
 public class ElasticsearchSyncController {
 
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchSyncController.class);
@@ -37,6 +37,9 @@ public class ElasticsearchSyncController {
     
     @Autowired
     private BenMappingRepo mappingRepo;
+
+    @Autowired
+    private ElasticsearchIndexingService indexingService;
 
     /**
      * Start async full sync (RECOMMENDED for millions of records)
@@ -59,7 +62,7 @@ public class ElasticsearchSyncController {
             response.put("message", "Sync job started in background");
             response.put("jobId", job.getJobId());
             response.put("jobStatus", job.getStatus());
-            response.put("checkStatusUrl", "/elasticsearch/sync/async/status/" + job.getJobId());
+            response.put("checkStatusUrl", "/elasticsearch/async/status/" + job.getJobId());
             
             return ResponseEntity.ok(response);
             
@@ -342,6 +345,88 @@ public class ElasticsearchSyncController {
             response.put("status", "error");
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+     /**
+     * Create or recreate the Elasticsearch index with proper mapping
+     * This will DELETE the existing index and create a new one
+     * 
+     * POST /elasticsearch/index/create
+     */
+    @PostMapping("/index/create")
+    public ResponseEntity<OutputResponse> createIndex() {
+        logger.info("API: Create Elasticsearch index request received");
+        OutputResponse response = new OutputResponse();
+
+        try {
+            indexingService.createIndexWithMapping();
+            
+            response.setResponse("Index created successfully. Ready for data sync.");
+            logger.info("Index created successfully");
+            
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error creating index: {}", e.getMessage(), e);
+            response.setError(5000, "Error creating index: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Recreate index and immediately start syncing data
+     * This is a convenience endpoint that does both operations
+     * 
+     * POST /elasticsearch/index/recreate-and-sync
+     */
+    @PostMapping("/index/recreate-and-sync")
+    public ResponseEntity<OutputResponse> recreateAndSync() {
+        logger.info("API: Recreate index and sync request received");
+        OutputResponse response = new OutputResponse();
+
+        try {
+            // Step 1: Recreate index
+            logger.info("Step 1: Recreating index...");
+            indexingService.createIndexWithMapping();
+            logger.info("Index recreated successfully");
+
+            // Step 2: Start sync
+            logger.info("Step 2: Starting data sync...");
+            Map<String, Integer> syncResult = indexingService.indexAllBeneficiaries();
+            
+            response.setResponse("Index recreated and sync started. Success: " + 
+                syncResult.get("success") + ", Failed: " + syncResult.get("failed"));
+            
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error in recreate and sync: {}", e.getMessage(), e);
+            response.setError(5000, "Error: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get information about the current index
+     * Shows mapping, document count, etc.
+     * 
+     * GET /elasticsearch/index/info
+     */
+    @GetMapping("/index/info")
+    public ResponseEntity<OutputResponse> getIndexInfo() {
+        logger.info("API: Get index info request received");
+        OutputResponse response = new OutputResponse();
+
+        try {
+            // You can add code here to get index stats using esClient
+            response.setResponse("Index info endpoint - implementation pending");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error getting index info: {}", e.getMessage(), e);
+            response.setError(5000, "Error: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
 }

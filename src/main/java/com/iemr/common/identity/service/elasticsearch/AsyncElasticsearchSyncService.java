@@ -4,10 +4,13 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -18,22 +21,15 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 
 import com.iemr.common.identity.data.elasticsearch.BeneficiaryDocument;
 import com.iemr.common.identity.data.elasticsearch.ElasticsearchSyncJob;
-import com.iemr.common.identity.dto.BenDetailDTO;
-import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.repo.elasticsearch.SyncJobRepo;
-import org.springframework.beans.factory.annotation.Value;
 
-/**
- * Async service for Elasticsearch sync operations
- * Runs sync jobs in background without blocking API calls
- */
 @Service
 public class AsyncElasticsearchSyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(AsyncElasticsearchSyncService.class);
     private static final int BATCH_SIZE = 100;
     private static final int ES_BULK_SIZE = 50;
-    private static final int STATUS_UPDATE_FREQUENCY = 10; // Update status every 10 batches
+    private static final int STATUS_UPDATE_FREQUENCY = 10;
 
     @Autowired
     private ElasticsearchClient esClient;
@@ -41,9 +37,6 @@ public class AsyncElasticsearchSyncService {
     @Autowired
     private TransactionalSyncWrapper transactionalWrapper;
 
-    @Autowired
-    private BeneficiaryDataService beneficiaryDataService;
-    
     @Autowired
     private OptimizedBeneficiaryDataService optimizedDataService;
 
@@ -54,25 +47,20 @@ public class AsyncElasticsearchSyncService {
     private String beneficiaryIndex;
 
     /**
-     * Start async full sync job
-     * Runs in background thread from elasticsearchSyncExecutor pool
+     * Start async full sync job with COMPLETE 38+ field data
      */
     @Async("elasticsearchSyncExecutor")
     public void syncAllBeneficiariesAsync(Long jobId, String triggeredBy) {
-        logger.info("========================================");
-        logger.info("Starting ASYNC full sync job: jobId={}", jobId);
-        logger.info("========================================");
+        logger.info("Starting ASYNC full sync with COMPLETE data: jobId={}", jobId);
 
         ElasticsearchSyncJob job = syncJobRepository.findByJobId(jobId)
             .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
 
         try {
-            // Update job status to RUNNING
             job.setStatus("RUNNING");
             job.setStartedAt(new Timestamp(System.currentTimeMillis()));
             syncJobRepository.save(job);
 
-            // Get total count
             long totalCount = transactionalWrapper.countActiveBeneficiaries();
             job.setTotalRecords(totalCount);
             syncJobRepository.save(job);
@@ -99,54 +87,101 @@ public class AsyncElasticsearchSyncService {
             // Process in batches
             while (offset < totalCount) {
                 try {
+                    logger.info("=== BATCH {} START: offset={} ===", batchCounter + 1, offset);
+                    
+                    // Get beneficiary IDs
+                    logger.debug("Calling getBeneficiaryIdsBatch(offset={}, limit={})", offset, BATCH_SIZE);
                     List<Object[]> batchIds = transactionalWrapper.getBeneficiaryIdsBatch(offset, BATCH_SIZE);
+                    
+                    logger.info("Retrieved {} IDs from database", batchIds != null ? batchIds.size() : 0);
 
                     if (batchIds == null || batchIds.isEmpty()) {
+                        logger.warn("No more batches to process at offset {}", offset);
                         break;
                     }
 
-                    // Extract benRegIds for batch fetch
+                    // Debug: Log first few IDs
+                    if (batchIds.size() > 0) {
+                        logger.debug("First ID type: {}, value: {}", 
+                            batchIds.get(0)[0].getClass().getName(), 
+                            batchIds.get(0)[0]);
+                    }
+
+                    // FIXED: Convert Long to BigInteger properly
+                    logger.debug("Converting {} IDs to BigInteger", batchIds.size());
                     List<BigInteger> benRegIds = batchIds.stream()
-                        .map(arr -> (BigInteger) arr[0])
-                        .collect(java.util.stream.Collectors.toList());
+                        .map(arr -> toBigInteger(arr[0]))
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
 
-                    // Fetch ALL beneficiaries in this batch in ONE query
-                    List<BeneficiariesDTO> benDTOs = optimizedDataService.getBeneficiariesBatch(benRegIds);
+                    logger.info("Converted {} valid BigInteger IDs", benRegIds.size());
+
+                    if (benRegIds.isEmpty()) {
+                        logger.error("No valid IDs in batch at offset {} - ALL IDs FAILED CONVERSION", offset);
+                        offset += BATCH_SIZE;
+                        continue;
+                    }
+
+                    // Debug: Log first few converted IDs
+                    if (benRegIds.size() > 0) {
+                        logger.debug("First converted BigInteger: {}", benRegIds.get(0));
+                    }
+
+                    logger.info("Fetching complete data for {} beneficiaries...", benRegIds.size());
+
+                    // *** CRITICAL: This returns COMPLETE BeneficiaryDocument with 38+ fields ***
+                    // NO CONVERSION NEEDED - documents are ready to index!
+                    List<BeneficiaryDocument> documents = optimizedDataService.getBeneficiariesBatch(benRegIds);
                     
-                    logger.debug("Fetched {} beneficiaries in single batch query", benDTOs.size());
+                    logger.info("✓ Fetched {} complete documents for batch at offset {}", documents.size(), offset);
+                    
+                    // Debug: Log first document details
+                    if (!documents.isEmpty() && documents.get(0) != null) {
+                        BeneficiaryDocument firstDoc = documents.get(0);
+                        logger.info("Sample doc - benId: {}, name: {} {}, district: {}, state: {}", 
+                            firstDoc.getBenId(), 
+                            firstDoc.getFirstName(), 
+                            firstDoc.getLastName(),
+                            firstDoc.getDistrictName(),
+                            firstDoc.getStateName());
+                    }
 
-                    // Process each beneficiary
-                    for (BeneficiariesDTO benDTO : benDTOs) {
+                    // Add documents directly to ES batch (NO CONVERSION!)
+                    int docsAddedInThisBatch = 0;
+                    for (BeneficiaryDocument doc : documents) {
                         try {
-                            if (benDTO != null) {
-                                BeneficiaryDocument doc = convertToDocument(benDTO);
-                                if (doc != null && doc.getBenId() != null) {
-                                    esBatch.add(doc);
+                            if (doc != null && doc.getBenId() != null) {
+                                esBatch.add(doc);
+                                docsAddedInThisBatch++;
 
-                                    if (esBatch.size() >= ES_BULK_SIZE) {
-                                        int indexed = bulkIndexDocuments(esBatch);
-                                        successCount += indexed;
-                                        failureCount += (esBatch.size() - indexed);
-                                        processedCount += esBatch.size();
-                                        esBatch.clear();
-                                    }
-                                } else {
-                                    failureCount++;
-                                    processedCount++;
+                                // Bulk index when batch is full
+                                if (esBatch.size() >= ES_BULK_SIZE) {
+                                    logger.info("ES batch full ({} docs), indexing now...", esBatch.size());
+                                    int indexed = bulkIndexDocuments(esBatch);
+                                    successCount += indexed;
+                                    failureCount += (esBatch.size() - indexed);
+                                    processedCount += esBatch.size();
+                                    
+                                    logger.info("✓ Indexed {}/{} documents successfully", indexed, esBatch.size());
+                                    esBatch.clear();
                                 }
                             } else {
+                                logger.warn("Skipping document - doc null: {}, benId null: {}", 
+                                    doc == null, doc != null ? (doc.getBenId() == null) : "N/A");
                                 failureCount++;
                                 processedCount++;
                             }
                         } catch (Exception e) {
-                            logger.error("Error processing beneficiary: {}", e.getMessage());
+                            logger.error("Error processing single document: {}", e.getMessage(), e);
                             failureCount++;
                             processedCount++;
                         }
                     }
                     
-                    // Account for any beneficiaries that weren't returned
-                    int notFetched = batchIds.size() - benDTOs.size();
+                    logger.info("Added {} documents to ES batch in this iteration", docsAddedInThisBatch);
+                    
+                    // Account for any beneficiaries not fetched
+                    int notFetched = benRegIds.size() - documents.size();
                     if (notFetched > 0) {
                         failureCount += notFetched;
                         processedCount += notFetched;
@@ -155,35 +190,43 @@ public class AsyncElasticsearchSyncService {
 
                     offset += BATCH_SIZE;
                     batchCounter++;
+                    
+                    logger.info("=== BATCH {} END: Processed={}, Success={}, Failed={} ===", 
+                        batchCounter, processedCount, successCount, failureCount);
 
                     // Update job status periodically
                     if (batchCounter % STATUS_UPDATE_FREQUENCY == 0) {
+                        logger.info("Updating job progress (every {} batches)...", STATUS_UPDATE_FREQUENCY);
                         updateJobProgress(job, processedCount, successCount, failureCount, 
                             offset, totalCount, startTime);
                     }
 
-                    // Small pause every 10 batches (not every 5)
+                    // Small pause every 10 batches
                     if (batchCounter % 10 == 0) {
-                        Thread.sleep(500); // Reduced to 500ms
+                        logger.debug("Pausing for 500ms after {} batches", batchCounter);
+                        Thread.sleep(500);
                     }
 
                 } catch (Exception e) {
-                    logger.error("Error processing batch at offset {}: {}", offset, e.getMessage());
+                    logger.error("!!! ERROR in batch at offset {}: {} !!!", offset, e.getMessage(), e);
+                    logger.error("Exception type: {}", e.getClass().getName());
+                    logger.error("Stack trace:", e);
                     
-                    // Save current progress before potentially failing
                     job.setCurrentOffset(offset);
                     job.setProcessedRecords(processedCount);
                     job.setSuccessCount(successCount);
                     job.setFailureCount(failureCount);
                     syncJobRepository.save(job);
                     
-                    // Wait before retrying
+                    // Skip this batch and continue
+                    offset += BATCH_SIZE;
                     Thread.sleep(2000);
                 }
             }
 
             // Index remaining documents
             if (!esBatch.isEmpty()) {
+                logger.info("Indexing final batch of {} documents", esBatch.size());
                 int indexed = bulkIndexDocuments(esBatch);
                 successCount += indexed;
                 failureCount += (esBatch.size() - indexed);
@@ -205,12 +248,14 @@ public class AsyncElasticsearchSyncService {
 
             logger.info("========================================");
             logger.info("Async sync job COMPLETED: jobId={}", jobId);
-            logger.info("Processed: {}, Success: {}, Failed: {}", processedCount, successCount, failureCount);
+            logger.info("Total: {}, Processed: {}, Success: {}, Failed: {}", 
+                totalCount, processedCount, successCount, failureCount);
+            logger.info("All 38+ beneficiary fields synced to Elasticsearch!");
             logger.info("========================================");
 
         } catch (Exception e) {
             logger.error("========================================");
-            logger.error("CRITICAL ERROR in async sync job: jobId={}, error={}", jobId, e.getMessage(), e);
+            logger.error("CRITICAL ERROR in async sync: jobId={}, error={}", jobId, e.getMessage(), e);
             logger.error("========================================");
 
             job.setStatus("FAILED");
@@ -221,8 +266,36 @@ public class AsyncElasticsearchSyncService {
     }
 
     /**
-     * Update job progress with estimated time remaining
+     * Helper method to safely convert various numeric types to BigInteger
+     * CRITICAL: Native SQL queries return Long, not BigInteger
      */
+    private BigInteger toBigInteger(Object value) {
+        if (value == null) {
+            logger.warn("Attempted to convert null value to BigInteger");
+            return null;
+        }
+        
+        try {
+            if (value instanceof BigInteger) {
+                return (BigInteger) value;
+            }
+            if (value instanceof Long) {
+                return BigInteger.valueOf((Long) value);
+            }
+            if (value instanceof Integer) {
+                return BigInteger.valueOf(((Integer) value).longValue());
+            }
+            if (value instanceof Number) {
+                return BigInteger.valueOf(((Number) value).longValue());
+            }
+            return new BigInteger(value.toString());
+        } catch (NumberFormatException e) {
+            logger.error("Cannot convert '{}' (type: {}) to BigInteger: {}", 
+                value, value.getClass().getName(), e.getMessage());
+            return null;
+        }
+    }
+
     private void updateJobProgress(ElasticsearchSyncJob job, long processed, long success, 
                                    long failure, int offset, long total, long startTime) {
         job.setProcessedRecords(processed);
@@ -231,7 +304,7 @@ public class AsyncElasticsearchSyncService {
         job.setCurrentOffset(offset);
 
         long elapsedTime = System.currentTimeMillis() - startTime;
-        double speed = processed / (elapsedTime / 1000.0);
+        double speed = elapsedTime > 0 ? processed / (elapsedTime / 1000.0) : 0;
         job.setProcessingSpeed(speed);
 
         if (speed > 0) {
@@ -243,12 +316,10 @@ public class AsyncElasticsearchSyncService {
         syncJobRepository.save(job);
 
         logger.info("Progress: {}/{} ({:.2f}%) - Speed: {:.2f} rec/sec - ETA: {} sec", 
-            processed, total, (processed * 100.0) / total, speed, job.getEstimatedTimeRemaining());
+            processed, total, (processed * 100.0) / total, speed, 
+            job.getEstimatedTimeRemaining() != null ? job.getEstimatedTimeRemaining() : 0);
     }
 
-    /**
-     * Bulk index documents
-     */
     private int bulkIndexDocuments(List<BeneficiaryDocument> documents) {
         if (documents == null || documents.isEmpty()) {
             return 0;
@@ -276,59 +347,21 @@ public class AsyncElasticsearchSyncService {
                 for (BulkResponseItem item : result.items()) {
                     if (item.error() == null) {
                         successCount++;
+                    } else {
+                        logger.error("ES indexing error for doc {}: {}", 
+                            item.id(), item.error().reason());
                     }
                 }
             } else {
                 successCount = documents.size();
             }
 
+            logger.debug("Bulk indexed {} documents successfully", successCount);
             return successCount;
 
         } catch (Exception e) {
-            logger.error("Error in bulk indexing: {}", e.getMessage());
+            logger.error("Error in bulk indexing: {}", e.getMessage(), e);
             return 0;
-        }
-    }
-
-    /**
-     * Convert DTO to Document
-     */
-    private BeneficiaryDocument convertToDocument(BeneficiariesDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-
-        try {
-            BeneficiaryDocument doc = new BeneficiaryDocument();
-
-            if (dto.getBenRegId() != null) {
-                BigInteger benRegId = (BigInteger) dto.getBenRegId();
-                doc.setBenId(benRegId.toString());
-                doc.setBenRegId(benRegId.longValue());
-            } else if (dto.getBenId() != null) {
-                doc.setBenId(dto.getBenId().toString());
-                if (dto.getBenId() instanceof BigInteger) {
-                    doc.setBenRegId(((BigInteger) dto.getBenId()).longValue());
-                }
-            } else {
-                return null;
-            }
-
-            doc.setPhoneNum(dto.getPreferredPhoneNum());
-
-            if (dto.getBeneficiaryDetails() != null) {
-                BenDetailDTO benDetails = dto.getBeneficiaryDetails();
-                doc.setFirstName(benDetails.getFirstName());
-                doc.setLastName(benDetails.getLastName());
-                doc.setAge(benDetails.getBeneficiaryAge());
-                doc.setGender(benDetails.getGender());
-            }
-
-            return doc;
-
-        } catch (Exception e) {
-            logger.error("Error converting DTO: {}", e.getMessage());
-            return null;
         }
     }
 }
