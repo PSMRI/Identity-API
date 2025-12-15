@@ -270,11 +270,11 @@ public class ElasticsearchService {
             result.put("genderName", esData.getGenderName());
             result.put("dob", esData.getDOB());
             result.put("age", esData.getAge());
-            result.put("actualAge", esData.getAge());
-            result.put("ageUnits", "Years");
+            // result.put("actualAge", esData.getAge());
+            // result.put("ageUnits", "Years");
             result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
             result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
-            result.put("isHIVPos", esData.getIsHIVPos() != null ? esData.getIsHIVPos() : "");
+            // result.put("isHIVPos", esData.getIsHIVPos() != null ? esData.getIsHIVPos() : "");
             result.put("createdBy", esData.getCreatedBy());
             result.put("createdDate", esData.getCreatedDate());
             result.put("lastModDate", esData.getLastModDate());
@@ -286,14 +286,14 @@ public class ElasticsearchService {
             result.put("familyID", esData.getFamilyID());
             
             // Permanent address fields at root level
-            result.put("permStateID", esData.getPermStateID());
-            result.put("permStateName", esData.getPermStateName());
-            result.put("permDistrictID", esData.getPermDistrictID());
-            result.put("permDistrictName", esData.getPermDistrictName());
-            result.put("permBlockID", esData.getPermBlockID());
-            result.put("permBlockName", esData.getPermBlockName());
-            result.put("permVillageID", esData.getPermVillageID());
-            result.put("permVillageName", esData.getPermVillageName());
+            // result.put("permStateID", esData.getPermStateID());
+            // result.put("permStateName", esData.getPermStateName());
+            // result.put("permDistrictID", esData.getPermDistrictID());
+            // result.put("permDistrictName", esData.getPermDistrictName());
+            // result.put("permBlockID", esData.getPermBlockID());
+            // result.put("permBlockName", esData.getPermBlockName());
+            // result.put("permVillageID", esData.getPermVillageID());
+            // result.put("permVillageName", esData.getPermVillageName());
             
             // Gender object
             Map<String, Object> mGender = new HashMap<>();
@@ -461,11 +461,11 @@ public class ElasticsearchService {
             result.put("dOB", dob);
             result.put("dob", dob);
             result.put("age", age);
-            result.put("actualAge", age);
-            result.put("ageUnits", "Years");
+            // result.put("actualAge", age);
+            // result.put("ageUnits", "Years");
             result.put("fatherName", fatherName != null ? fatherName : "");
             result.put("spouseName", spouseName != null ? spouseName : "");
-            result.put("isHIVPos", isHIVPos != null ? isHIVPos : "");
+            // result.put("isHIVPos", isHIVPos != null ? isHIVPos : "");
             result.put("createdBy", createdBy);
             result.put("createdDate", createdDate);
             result.put("lastModDate", lastModDate);
