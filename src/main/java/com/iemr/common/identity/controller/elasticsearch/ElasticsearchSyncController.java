@@ -237,7 +237,6 @@ public class ElasticsearchSyncController {
     @PostMapping("/single/{benRegId}")
     public ResponseEntity<Map<String, Object>> syncSingleBeneficiary(
             @PathVariable String benRegId) {
-        logger.info("Received request to sync single beneficiary: {}", benRegId);
         
         Map<String, Object> response = new HashMap<>();
         
@@ -310,7 +309,6 @@ public class ElasticsearchSyncController {
     @GetMapping("/debug/check/{benRegId}")
     public ResponseEntity<Map<String, Object>> checkBeneficiaryExists(
             @PathVariable String benRegId) {
-        logger.info("Checking if beneficiary exists: {}", benRegId);
         
         Map<String, Object> response = new HashMap<>();
         

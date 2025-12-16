@@ -49,7 +49,7 @@ public class SyncJobService {
         // Save job to database
         job = syncJobRepository.save(job);
 
-        logger.info("Created new full sync job: jobId={}, triggeredBy={}", job.getJobId(), triggeredBy);
+        logger.info("Created new full sync job");
 
         // Start async processing
         syncService.syncAllBeneficiariesAsync(job.getJobId(), triggeredBy);

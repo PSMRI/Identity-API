@@ -41,7 +41,6 @@ public class ElasticsearchService {
      * Universal search with optional user location for ranking
      */
     public List<Map<String, Object>> universalSearch(String query, Integer userId) {
-        logger.info("Universal ES search for: {} with userId: {}", query, userId);
         
         try {
             Map<String, Integer> userLocation = null;

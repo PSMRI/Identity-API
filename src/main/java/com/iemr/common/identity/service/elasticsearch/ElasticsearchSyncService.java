@@ -187,14 +187,13 @@ public class ElasticsearchSyncService {
      */
     public boolean syncSingleBeneficiary(String benRegId) {
         try {
-            logger.info("Syncing single beneficiary with BenRegId: {}", benRegId);
             
             BigInteger benRegIdBig = new BigInteger(benRegId);
             
             // Check if beneficiary exists in database first using transactional wrapper
             boolean exists = transactionalWrapper.existsByBenRegId(benRegIdBig);
             if (!exists) {
-                logger.error("Beneficiary does not exist in database: BenRegId={}", benRegId);
+                logger.error("Beneficiary does not exist in database}");
                 return false;
             }
             
@@ -204,7 +203,7 @@ public class ElasticsearchSyncService {
             BeneficiariesDTO benDTO = beneficiaryDataService.getBeneficiaryFromDatabase(benRegIdBig);
             
             if (benDTO == null) {
-                logger.error("Failed to fetch beneficiary details from database: BenRegId={}", benRegId);
+                logger.error("Failed to fetch beneficiary details from database");
                 return false;
             }
             
@@ -218,7 +217,7 @@ public class ElasticsearchSyncService {
             BeneficiaryDocument doc = convertToDocument(benDTO);
             
             if (doc == null || doc.getBenId() == null) {
-                logger.error("Failed to convert beneficiary to document: BenRegId={}", benRegId);
+                logger.error("Failed to convert beneficiary to document");
                 return false;
             }
             
@@ -233,7 +232,6 @@ public class ElasticsearchSyncService {
             );
             
             logger.info("SUCCESS! Beneficiary synced to Elasticsearch");
-            logger.info("BenRegId: {}, BenId: {}", benRegId, doc.getBenId());
             
             return true;
             
