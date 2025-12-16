@@ -28,8 +28,8 @@ public class BeneficiaryDataService {
      * Fetch beneficiary data directly from database by benRegId
      * This bypasses any Elasticsearch caching to get fresh database data
      * 
-     * @param benRegId The beneficiary registration ID
-     * @return BeneficiariesDTO or null if not found
+     * @param benRegId 
+     * @return 
      */
     public BeneficiariesDTO getBeneficiaryFromDatabase(BigInteger benRegId) {
         int maxRetries = 3;
@@ -39,7 +39,6 @@ public class BeneficiaryDataService {
             try {
                 logger.debug("Fetching beneficiary from database: benRegId={}, attempt={}", benRegId, retryCount + 1);
                 
-                // Fetch with details
                 MBeneficiarymapping mapping = mappingRepo.findByBenRegIdWithDetails(benRegId);
                 
                 if (mapping == null) {
@@ -47,7 +46,6 @@ public class BeneficiaryDataService {
                     return null;
                 }
                 
-                // Convert to DTO
                 BeneficiariesDTO dto = convertToDTO(mapping);
                 
                 logger.debug("Successfully fetched beneficiary: benRegId={}", benRegId);
@@ -63,9 +61,8 @@ public class BeneficiaryDataService {
                     return null;
                 }
                 
-                // Wait before retry
                 try {
-                    Thread.sleep(1000 * retryCount); // Exponential backoff
+                    Thread.sleep(1000 * retryCount); 
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     return null;
@@ -88,29 +85,23 @@ public class BeneficiaryDataService {
         BeneficiariesDTO dto = new BeneficiariesDTO();
         
         try {
-            // Basic IDs
             dto.setBenRegId(mapping.getBenRegId());
             dto.setBenMapId(mapping.getBenMapId());
             
-            // Use benRegId as benId if benId is not available
             if (mapping.getBenRegId() != null) {
                 dto.setBenId(mapping.getBenRegId());
             }
             
-            // Phone number from contact
             if (mapping.getMBeneficiarycontact() != null) {
                 dto.setPreferredPhoneNum(mapping.getMBeneficiarycontact().getPreferredPhoneNum());
             }
             
-            // Beneficiary details
             if (mapping.getMBeneficiarydetail() != null) {
                 BenDetailDTO detailDTO = new BenDetailDTO();
                 
                 detailDTO.setFirstName(mapping.getMBeneficiarydetail().getFirstName());
                 detailDTO.setLastName(mapping.getMBeneficiarydetail().getLastName());
-                // detailDTO.setGender(mapping.getMBeneficiarydetail().getGenderName());
                 
-                // Calculate age if DOB is available
                 if (mapping.getMBeneficiarydetail().getDob() != null) {
                     detailDTO.setBeneficiaryAge(calculateAge(mapping.getMBeneficiarydetail().getDob()));
                 }

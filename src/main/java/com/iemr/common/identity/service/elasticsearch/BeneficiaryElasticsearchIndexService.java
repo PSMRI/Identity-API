@@ -24,9 +24,9 @@ import com.iemr.common.identity.data.elasticsearch.ElasticsearchSyncJob;
 import com.iemr.common.identity.repo.elasticsearch.SyncJobRepo;
 
 @Service
-public class AsyncElasticsearchSyncService {
+public class BeneficiaryElasticsearchIndexService {
 
-    private static final Logger logger = LoggerFactory.getLogger(AsyncElasticsearchSyncService.class);
+    private static final Logger logger = LoggerFactory.getLogger(BeneficiaryElasticsearchIndexService.class);
     private static final int BATCH_SIZE = 100;
     private static final int ES_BULK_SIZE = 50;
     private static final int STATUS_UPDATE_FREQUENCY = 10;
@@ -35,10 +35,10 @@ public class AsyncElasticsearchSyncService {
     private ElasticsearchClient esClient;
 
     @Autowired
-    private TransactionalSyncWrapper transactionalWrapper;
+    private BeneficiaryTransactionHelper transactionalWrapper;
 
     @Autowired
-    private OptimizedBeneficiaryDataService optimizedDataService;
+    private BeneficiaryDocumentDataService dataService;
 
     @Autowired
     private SyncJobRepo syncJobRepository;
@@ -89,7 +89,6 @@ public class AsyncElasticsearchSyncService {
                 try {
                     logger.info("=== BATCH {} START: offset={} ===", batchCounter + 1, offset);
                     
-                    // Get beneficiary IDs
                     logger.debug("Calling getBeneficiaryIdsBatch(offset={}, limit={})", offset, BATCH_SIZE);
                     List<Object[]> batchIds = transactionalWrapper.getBeneficiaryIdsBatch(offset, BATCH_SIZE);
                     
@@ -100,14 +99,12 @@ public class AsyncElasticsearchSyncService {
                         break;
                     }
 
-                    // Debug: Log first few IDs
                     if (batchIds.size() > 0) {
                         logger.debug("First ID type: {}, value: {}", 
                             batchIds.get(0)[0].getClass().getName(), 
                             batchIds.get(0)[0]);
                     }
 
-                    // FIXED: Convert Long to BigInteger properly
                     logger.debug("Converting {} IDs to BigInteger", batchIds.size());
                     List<BigInteger> benRegIds = batchIds.stream()
                         .map(arr -> toBigInteger(arr[0]))
@@ -122,7 +119,6 @@ public class AsyncElasticsearchSyncService {
                         continue;
                     }
 
-                    // Debug: Log first few converted IDs
                     if (benRegIds.size() > 0) {
                         logger.debug("First converted BigInteger: {}", benRegIds.get(0));
                     }
@@ -130,12 +126,10 @@ public class AsyncElasticsearchSyncService {
                     logger.info("Fetching complete data for {} beneficiaries...", benRegIds.size());
 
                     // *** CRITICAL: This returns COMPLETE BeneficiaryDocument with 38+ fields ***
-                    // NO CONVERSION NEEDED - documents are ready to index!
-                    List<BeneficiaryDocument> documents = optimizedDataService.getBeneficiariesBatch(benRegIds);
+                    List<BeneficiaryDocument> documents = dataService.getBeneficiariesBatch(benRegIds);
                     
                     logger.info("✓ Fetched {} complete documents for batch at offset {}", documents.size(), offset);
                     
-                    // Debug: Log first document details
                     if (!documents.isEmpty() && documents.get(0) != null) {
                         BeneficiaryDocument firstDoc = documents.get(0);
                         logger.info("Sample doc - benId: {}, name: {} {}, district: {}, state: {}", 
@@ -146,7 +140,6 @@ public class AsyncElasticsearchSyncService {
                             firstDoc.getStateName());
                     }
 
-                    // Add documents directly to ES batch (NO CONVERSION!)
                     int docsAddedInThisBatch = 0;
                     for (BeneficiaryDocument doc : documents) {
                         try {
@@ -154,7 +147,6 @@ public class AsyncElasticsearchSyncService {
                                 esBatch.add(doc);
                                 docsAddedInThisBatch++;
 
-                                // Bulk index when batch is full
                                 if (esBatch.size() >= ES_BULK_SIZE) {
                                     logger.info("ES batch full ({} docs), indexing now...", esBatch.size());
                                     int indexed = bulkIndexDocuments(esBatch);
@@ -180,7 +172,6 @@ public class AsyncElasticsearchSyncService {
                     
                     logger.info("Added {} documents to ES batch in this iteration", docsAddedInThisBatch);
                     
-                    // Account for any beneficiaries not fetched
                     int notFetched = benRegIds.size() - documents.size();
                     if (notFetched > 0) {
                         failureCount += notFetched;
@@ -194,14 +185,12 @@ public class AsyncElasticsearchSyncService {
                     logger.info("=== BATCH {} END: Processed={}, Success={}, Failed={} ===", 
                         batchCounter, processedCount, successCount, failureCount);
 
-                    // Update job status periodically
                     if (batchCounter % STATUS_UPDATE_FREQUENCY == 0) {
                         logger.info("Updating job progress (every {} batches)...", STATUS_UPDATE_FREQUENCY);
                         updateJobProgress(job, processedCount, successCount, failureCount, 
                             offset, totalCount, startTime);
                     }
 
-                    // Small pause every 10 batches
                     if (batchCounter % 10 == 0) {
                         logger.debug("Pausing for 500ms after {} batches", batchCounter);
                         Thread.sleep(500);
@@ -218,13 +207,11 @@ public class AsyncElasticsearchSyncService {
                     job.setFailureCount(failureCount);
                     syncJobRepository.save(job);
                     
-                    // Skip this batch and continue
                     offset += BATCH_SIZE;
                     Thread.sleep(2000);
                 }
             }
 
-            // Index remaining documents
             if (!esBatch.isEmpty()) {
                 logger.info("Indexing final batch of {} documents", esBatch.size());
                 int indexed = bulkIndexDocuments(esBatch);
@@ -233,7 +220,6 @@ public class AsyncElasticsearchSyncService {
                 processedCount += esBatch.size();
             }
 
-            // Mark job as completed
             job.setStatus("COMPLETED");
             job.setCompletedAt(new Timestamp(System.currentTimeMillis()));
             job.setProcessedRecords(processedCount);
@@ -246,17 +232,13 @@ public class AsyncElasticsearchSyncService {
             
             syncJobRepository.save(job);
 
-            logger.info("========================================");
             logger.info("Async sync job COMPLETED: jobId={}", jobId);
             logger.info("Total: {}, Processed: {}, Success: {}, Failed: {}", 
                 totalCount, processedCount, successCount, failureCount);
             logger.info("All 38+ beneficiary fields synced to Elasticsearch!");
-            logger.info("========================================");
 
         } catch (Exception e) {
-            logger.error("========================================");
             logger.error("CRITICAL ERROR in async sync: jobId={}, error={}", jobId, e.getMessage(), e);
-            logger.error("========================================");
 
             job.setStatus("FAILED");
             job.setCompletedAt(new Timestamp(System.currentTimeMillis()));
@@ -315,9 +297,6 @@ public class AsyncElasticsearchSyncService {
 
         syncJobRepository.save(job);
 
-        logger.info("Progress: {}/{} ({:.2f}%) - Speed: {:.2f} rec/sec - ETA: {} sec", 
-            processed, total, (processed * 100.0) / total, speed, 
-            job.getEstimatedTimeRemaining() != null ? job.getEstimatedTimeRemaining() : 0);
     }
 
     private int bulkIndexDocuments(List<BeneficiaryDocument> documents) {

@@ -17,9 +17,9 @@ import com.iemr.common.identity.repo.BenMappingRepo;
  * This prevents connection timeout issues during long-running sync operations
  */
 @Service
-public class TransactionalSyncWrapper {
+public class BeneficiaryTransactionHelper {
 
-    private static final Logger logger = LoggerFactory.getLogger(TransactionalSyncWrapper.class);
+    private static final Logger logger = LoggerFactory.getLogger(BeneficiaryTransactionHelper.class);
 
     @Autowired
     private BenMappingRepo mappingRepo;

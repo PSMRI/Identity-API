@@ -14,7 +14,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 @EnableAsync
 @EnableScheduling
-public class AsyncConfig {
+public class ElasticsearchSyncConfig {
 
     /**
      * Thread pool for Elasticsearch sync operations

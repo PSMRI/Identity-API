@@ -20,15 +20,15 @@ import com.iemr.common.identity.data.elasticsearch.BeneficiaryDocument;
  * Triggers automatically when beneficiaries are created/updated in database
  */
 @Service
-public class RealtimeElasticsearchSyncService {
+public class BeneficiaryElasticsearchIndexUpdater {
 
-    private static final Logger logger = LoggerFactory.getLogger(RealtimeElasticsearchSyncService.class);
+    private static final Logger logger = LoggerFactory.getLogger(BeneficiaryElasticsearchIndexUpdater.class);
 
     @Autowired
     private ElasticsearchClient esClient;
 
     @Autowired
-    private OptimizedBeneficiaryDataService dataService;
+    private BeneficiaryDocumentDataService dataService;
 
     @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
@@ -50,7 +50,6 @@ public class RealtimeElasticsearchSyncService {
         try {
             logger.info("Starting async sync for benRegId: {}", benRegId);
 
-            // Fetch beneficiary from database - returns BeneficiaryDocument directly
             BeneficiaryDocument doc = dataService.getBeneficiaryFromDatabase(benRegId);
 
             if (doc == null) {
@@ -63,7 +62,6 @@ public class RealtimeElasticsearchSyncService {
                 return;
             }
 
-            // Index to Elasticsearch
             IndexRequest<BeneficiaryDocument> request = IndexRequest.of(i -> i
                 .index(beneficiaryIndex)
                 .id(doc.getBenId())
