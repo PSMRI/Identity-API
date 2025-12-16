@@ -16,8 +16,8 @@ import jakarta.persistence.Table;
 import lombok.Data;
 @Entity
 @Table(schema = "db_iemr", name = "m_user")
-@JsonIgnoreProperties(ignoreUnknown = true)
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

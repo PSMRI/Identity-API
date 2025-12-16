@@ -1526,7 +1526,7 @@ public class IdentityService {
 
         BeneficiaryCreateResp response = partialMapper.mBeneficiarymappingToBeneficiaryCreateResp(benMapping);
 
-// Trigger async sync to Elasticsearch
+        // Trigger async sync to Elasticsearch
         if (regMap != null && regMap.getBenRegId() != null) {
             logger.info("Triggering Elasticsearch sync for benRegId: {}", regMap.getBenRegId());
             syncService.syncBeneficiaryAsync(regMap.getBenRegId());
@@ -2043,3 +2043,4 @@ public class IdentityService {
 
     }
 }
+
