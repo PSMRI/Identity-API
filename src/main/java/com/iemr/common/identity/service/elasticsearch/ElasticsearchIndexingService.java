@@ -23,7 +23,7 @@ public class ElasticsearchIndexingService {
     @Autowired
     private ElasticsearchSyncService syncService;
     
-    @Value("${elasticsearch.index.beneficiary:beneficiary_index_v5}")
+    @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
     
     /**
@@ -62,12 +62,10 @@ public class ElasticsearchIndexingService {
             .properties("lastModDate", Property.of(p -> p.long_(l -> l)))
             .properties("benAccountID", Property.of(p -> p.long_(l -> l)))
             
-            // Health IDs
             .properties("healthID", Property.of(p -> p.keyword(k -> k)))
             .properties("abhaID", Property.of(p -> p.keyword(k -> k)))
             .properties("familyID", Property.of(p -> p.keyword(k -> k)))
             
-            // Current Address
             .properties("stateID", Property.of(p -> p.integer(i -> i)))
             .properties("stateName", Property.of(p -> p.keyword(k -> k)))
             .properties("districtID", Property.of(p -> p.integer(i -> i)))
@@ -81,7 +79,6 @@ public class ElasticsearchIndexingService {
             .properties("servicePointName", Property.of(p -> p.keyword(k -> k)))
             .properties("parkingPlaceID", Property.of(p -> p.integer(i -> i)))
             
-            // Permanent Address
             .properties("permStateID", Property.of(p -> p.integer(i -> i)))
             .properties("permStateName", Property.of(p -> p.keyword(k -> k)))
             .properties("permDistrictID", Property.of(p -> p.integer(i -> i)))
@@ -91,7 +88,6 @@ public class ElasticsearchIndexingService {
             .properties("permVillageID", Property.of(p -> p.integer(i -> i)))
             .properties("permVillageName", Property.of(p -> p.keyword(k -> k)))
             
-            // Identity
             .properties("aadharNo", Property.of(p -> p.keyword(k -> k)))
             .properties("govtIdentityNo", Property.of(p -> p.keyword(k -> k)))
         );
@@ -112,7 +108,6 @@ public class ElasticsearchIndexingService {
         logger.info("Starting full indexing via sync service...");
         
         try {
-            // Use the existing, battle-tested sync service
             ElasticsearchSyncService.SyncResult result = syncService.syncAllBeneficiaries();
             
             Map<String, Integer> response = new HashMap<>();

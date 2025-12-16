@@ -45,9 +45,9 @@ public class ElasticsearchSyncController {
      * Start async full sync (RECOMMENDED for millions of records)
      * Returns immediately with job ID for tracking
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/async/start
+     * Usage: POST http://localhost:8080/elasticsearch/sync/start
      */
-    @PostMapping("/async/start")
+    @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> startAsyncFullSync(
             @RequestParam(required = false, defaultValue = "API") String triggeredBy) {
         
@@ -62,7 +62,7 @@ public class ElasticsearchSyncController {
             response.put("message", "Sync job started in background");
             response.put("jobId", job.getJobId());
             response.put("jobStatus", job.getStatus());
-            response.put("checkStatusUrl", "/elasticsearch/async/status/" + job.getJobId());
+            response.put("checkStatusUrl", "/elasticsearch/status/" + job.getJobId());
             
             return ResponseEntity.ok(response);
             
@@ -83,9 +83,9 @@ public class ElasticsearchSyncController {
     /**
      * Get job status by ID
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/async/status/1
+     * Usage: GET http://localhost:8080/elasticsearch/sync/status/1
      */
-    @GetMapping("/async/status/{jobId}")
+    @GetMapping("/status/{jobId}")
     public ResponseEntity<Map<String, Object>> getAsyncJobStatus(@PathVariable Long jobId) {
         logger.info("Checking status for job: {}", jobId);
         
@@ -120,9 +120,9 @@ public class ElasticsearchSyncController {
     /**
      * Get all active jobs
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/async/active
+     * Usage: GET http://localhost:8080/elasticsearch/sync/active
      */
-    @GetMapping("/async/active")
+    @GetMapping("/active")
     public ResponseEntity<List<ElasticsearchSyncJob>> getActiveJobs() {
         logger.info("Fetching active jobs");
         return ResponseEntity.ok(syncJobService.getActiveJobs());
@@ -131,9 +131,9 @@ public class ElasticsearchSyncController {
     /**
      * Get recent jobs
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/async/recent
+     * Usage: GET http://localhost:8080/elasticsearch/sync/recent
      */
-    @GetMapping("/async/recent")
+    @GetMapping("/recent")
     public ResponseEntity<List<ElasticsearchSyncJob>> getRecentJobs() {
         logger.info("Fetching recent jobs");
         return ResponseEntity.ok(syncJobService.getRecentJobs());
@@ -142,9 +142,9 @@ public class ElasticsearchSyncController {
     /**
      * Resume a failed job
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/async/resume/1
+     * Usage: POST http://localhost:8080/elasticsearch/sync/resume/1
      */
-    @PostMapping("/async/resume/{jobId}")
+    @PostMapping("/resume/{jobId}")
     public ResponseEntity<Map<String, Object>> resumeJob(
             @PathVariable Long jobId,
             @RequestParam(required = false, defaultValue = "API") String triggeredBy) {
@@ -173,9 +173,9 @@ public class ElasticsearchSyncController {
     /**
      * Cancel a running job
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/async/cancel/1
+     * Usage: POST http://localhost:8080/elasticsearch/sync/cancel/1
      */
-    @PostMapping("/async/cancel/{jobId}")
+    @PostMapping("/cancel/{jobId}")
     public ResponseEntity<Map<String, Object>> cancelJob(@PathVariable Long jobId) {
         logger.info("Cancelling job: {}", jobId);
         
@@ -195,13 +195,13 @@ public class ElasticsearchSyncController {
 
     /**
      * LEGACY: Synchronous full sync (NOT recommended for large datasets)
-     * Use /async/start instead
+     * Use /start instead
      * 
      * Usage: POST http://localhost:8080/elasticsearch/sync/all
      */
     @PostMapping("/all")
     public ResponseEntity<Map<String, Object>> syncAllBeneficiaries() {
-        logger.warn("LEGACY sync endpoint called. Consider using /async/start instead.");
+        logger.warn("LEGACY sync endpoint called. Consider using /start instead.");
         logger.info("Received request to sync all beneficiaries (BLOCKING)");
         
         Map<String, Object> response = new HashMap<>();
@@ -213,7 +213,7 @@ public class ElasticsearchSyncController {
             response.put("successCount", result.getSuccessCount());
             response.put("failureCount", result.getFailureCount());
             response.put("error", result.getError());
-            response.put("warning", "This is a blocking operation. For large datasets, use /async/start");
+            response.put("warning", "This is a blocking operation. For large datasets, use /start");
             
             if (result.getError() != null) {
                 return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(response);

@@ -16,7 +16,6 @@ public class BeneficiaryESMapper {
         for (Map<String, Object> esDoc : esResults) {
             Map<String, Object> beneficiary = new HashMap<>();
             
-            // Basic beneficiary fields
             beneficiary.put("beneficiaryRegID", esDoc.get("beneficiaryRegID"));
             beneficiary.put("beneficiaryID", esDoc.get("beneficiaryID"));
             beneficiary.put("firstName", esDoc.get("firstName"));
@@ -36,19 +35,16 @@ public class BeneficiaryESMapper {
             beneficiary.put("lastModDate", esDoc.get("lastModDate"));
             beneficiary.put("benAccountID", esDoc.get("benAccountID"));
             
-            // Gender object
             Map<String, Object> mGender = new HashMap<>();
             mGender.put("genderID", esDoc.get("genderID"));
             mGender.put("genderName", esDoc.get("genderName"));
             beneficiary.put("m_gender", mGender);
             
-            // Demographics
             Map<String, Object> demographics = (Map<String, Object>) esDoc.get("demographics");
             if (demographics != null) {
                 Map<String, Object> benDemographics = new HashMap<>(demographics);
                 benDemographics.put("beneficiaryRegID", esDoc.get("beneficiaryRegID"));
                 
-                // Add nested objects for demographics
                 benDemographics.put("m_state", createStateObject(demographics));
                 benDemographics.put("m_district", createDistrictObject(demographics));
                 benDemographics.put("m_districtblock", createBlockObject(demographics));
@@ -57,7 +53,6 @@ public class BeneficiaryESMapper {
                 beneficiary.put("i_bendemographics", benDemographics);
             }
             
-            // Phone mappings
             List<Map<String, Object>> phoneMaps = new ArrayList<>();
             List<Map<String, Object>> phoneNumbers = (List<Map<String, Object>>) esDoc.get("phoneNumbers");
             if (phoneNumbers != null && !phoneNumbers.isEmpty()) {
@@ -65,7 +60,6 @@ public class BeneficiaryESMapper {
                     Map<String, Object> phoneMap = new HashMap<>(phone);
                     phoneMap.put("benificiaryRegID", esDoc.get("beneficiaryRegID"));
                     
-                    // Add relationship type object
                     Map<String, Object> relationType = new HashMap<>();
                     relationType.put("benRelationshipID", phone.get("benRelationshipID"));
                     relationType.put("benRelationshipType", phone.get("benRelationshipType"));
@@ -76,7 +70,6 @@ public class BeneficiaryESMapper {
             }
             beneficiary.put("benPhoneMaps", phoneMaps);
             
-            // Default values
             beneficiary.put("isConsent", false);
             beneficiary.put("m_title", new HashMap<>());
             beneficiary.put("maritalStatus", new HashMap<>());

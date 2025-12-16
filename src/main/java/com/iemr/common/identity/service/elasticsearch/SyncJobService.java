@@ -24,7 +24,7 @@ public class SyncJobService {
     private SyncJobRepo syncJobRepository;
 
     @Autowired
-    private AsyncElasticsearchSyncService asyncSyncService;
+    private BeneficiaryElasticsearchIndexService syncService;
 
     /**
      * Start a new full sync job
@@ -52,7 +52,7 @@ public class SyncJobService {
         logger.info("Created new full sync job: jobId={}, triggeredBy={}", job.getJobId(), triggeredBy);
 
         // Start async processing
-        asyncSyncService.syncAllBeneficiariesAsync(job.getJobId(), triggeredBy);
+        syncService.syncAllBeneficiariesAsync(job.getJobId(), triggeredBy);
 
         return job;
     }
@@ -75,7 +75,7 @@ public class SyncJobService {
         job = syncJobRepository.save(job);
 
         // Restart async processing from last offset
-        asyncSyncService.syncAllBeneficiariesAsync(job.getJobId(), triggeredBy);
+        syncService.syncAllBeneficiariesAsync(job.getJobId(), triggeredBy);
 
         return job;
     }

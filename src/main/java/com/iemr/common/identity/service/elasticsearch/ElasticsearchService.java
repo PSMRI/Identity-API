@@ -34,7 +34,7 @@ public class ElasticsearchService {
     @Autowired
     private BenAddressRepo benAddressRepo;
     
-    @Value("${elasticsearch.index.beneficiary:beneficiary_index_v5}")
+    @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
     
     /**
@@ -44,7 +44,6 @@ public class ElasticsearchService {
         logger.info("Universal ES search for: {} with userId: {}", query, userId);
         
         try {
-            // Get user location if userId provided
             Map<String, Integer> userLocation = null;
             if (userId != null) {
                 userLocation = getUserLocation(userId);
@@ -124,7 +123,6 @@ public class ElasticsearchService {
                 allResults = rankByLocation(allResults, userLocation);
             }
             
-            // Limit to top 20 results
             List<Map<String, Object>> results = allResults.stream()
                 .limit(20)
                 .collect(Collectors.toList());
@@ -182,7 +180,7 @@ public class ElasticsearchService {
             .sorted((r1, r2) -> {
                 int score1 = calculateLocationScore(r1, userBlockId, userVillageId);
                 int score2 = calculateLocationScore(r2, userBlockId, userVillageId);
-                return Integer.compare(score2, score1); // Higher score first
+                return Integer.compare(score2, score1); 
             })
             .collect(Collectors.toList());
     }
@@ -202,7 +200,6 @@ public class ElasticsearchService {
                 return score;
             }
             
-            // Check current address
             Integer currBlockId = getIntegerFromMap(demographics, "blockID");
             Integer currVillageId = getIntegerFromMap(demographics, "m_districtblock", "blockID");
             
@@ -216,16 +213,15 @@ public class ElasticsearchService {
                 score += 50;
             }
             
-            // Check permanent address as fallback
             Integer permBlockId = getIntegerFromMap(beneficiary, "permBlockID");
             Integer permVillageId = getIntegerFromMap(beneficiary, "permVillageID");
             
             if (userVillageId != null && userVillageId.equals(permVillageId)) {
-                score += 75; // Slightly lower than current village
+                score += 75; 
             }
             
             if (userBlockId != null && userBlockId.equals(permBlockId)) {
-                score += 25; // Lower than current block
+                score += 25; 
             }
             
         } catch (Exception e) {
@@ -270,38 +266,22 @@ public class ElasticsearchService {
             result.put("genderName", esData.getGenderName());
             result.put("dob", esData.getDOB());
             result.put("age", esData.getAge());
-            // result.put("actualAge", esData.getAge());
-            // result.put("ageUnits", "Years");
             result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
             result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
-            // result.put("isHIVPos", esData.getIsHIVPos() != null ? esData.getIsHIVPos() : "");
             result.put("createdBy", esData.getCreatedBy());
             result.put("createdDate", esData.getCreatedDate());
             result.put("lastModDate", esData.getLastModDate());
             result.put("benAccountID", esData.getBenAccountID());
             
-            // Health IDs
             result.put("healthID", esData.getHealthID());
             result.put("abhaID", esData.getAbhaID());
             result.put("familyID", esData.getFamilyID());
             
-            // Permanent address fields at root level
-            // result.put("permStateID", esData.getPermStateID());
-            // result.put("permStateName", esData.getPermStateName());
-            // result.put("permDistrictID", esData.getPermDistrictID());
-            // result.put("permDistrictName", esData.getPermDistrictName());
-            // result.put("permBlockID", esData.getPermBlockID());
-            // result.put("permBlockName", esData.getPermBlockName());
-            // result.put("permVillageID", esData.getPermVillageID());
-            // result.put("permVillageName", esData.getPermVillageName());
-            
-            // Gender object
             Map<String, Object> mGender = new HashMap<>();
             mGender.put("genderID", esData.getGenderID());
             mGender.put("genderName", esData.getGenderName());
             result.put("m_gender", mGender);
             
-            // Demographics object from ES with COMPLETE address data
             Map<String, Object> demographics = new HashMap<>();
             demographics.put("beneficiaryRegID", esData.getBenRegId());
             demographics.put("stateID", esData.getStateID());
@@ -319,7 +299,6 @@ public class ElasticsearchService {
             demographics.put("servicePointName", esData.getServicePointName());
             demographics.put("createdBy", esData.getCreatedBy());
             
-            // Nested m_state
             Map<String, Object> mState = new HashMap<>();
             mState.put("stateID", esData.getStateID());
             mState.put("stateName", esData.getStateName());
@@ -327,14 +306,12 @@ public class ElasticsearchService {
             mState.put("countryID", 1);
             demographics.put("m_state", mState);
             
-            // Nested m_district
             Map<String, Object> mDistrict = new HashMap<>();
             mDistrict.put("districtID", esData.getDistrictID());
             mDistrict.put("districtName", esData.getDistrictName());
             mDistrict.put("stateID", esData.getStateID());
             demographics.put("m_district", mDistrict);
             
-            // Nested m_districtblock
             Map<String, Object> mBlock = new HashMap<>();
             mBlock.put("blockID", esData.getBlockID());
             mBlock.put("blockName", esData.getBlockName());
@@ -342,7 +319,6 @@ public class ElasticsearchService {
             mBlock.put("stateID", esData.getStateID());
             demographics.put("m_districtblock", mBlock);
             
-            // Nested m_districtbranchmapping
             Map<String, Object> mBranch = new HashMap<>();
             mBranch.put("districtBranchID", null);
             mBranch.put("blockID", esData.getBlockID());
@@ -352,7 +328,6 @@ public class ElasticsearchService {
             
             result.put("i_bendemographics", demographics);
             
-            // Phone numbers from ES
             List<Map<String, Object>> benPhoneMaps = new ArrayList<>();
             if (esData.getPhoneNum() != null && !esData.getPhoneNum().isEmpty()) {
                 Map<String, Object> phoneMap = new HashMap<>();
@@ -371,7 +346,6 @@ public class ElasticsearchService {
             }
             result.put("benPhoneMaps", benPhoneMaps);
             
-            // Default values
             result.put("isConsent", false);
             result.put("m_title", new HashMap<>());
             result.put("maritalStatus", new HashMap<>());
@@ -421,7 +395,6 @@ public class ElasticsearchService {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            // Basic fields
             Long beneficiaryRegID = getLong(row[0]);
             String beneficiaryID = getString(row[1]);
             String firstName = getString(row[2]);
@@ -438,7 +411,6 @@ public class ElasticsearchService {
             Long lastModDate = getLong(row[13]);
             Long benAccountID = getLong(row[14]);
             
-            // Demographics
             Integer stateID = getInteger(row[15]);
             String stateName = getString(row[16]);
             Integer districtID = getInteger(row[17]);
@@ -451,7 +423,6 @@ public class ElasticsearchService {
             Integer parkingPlaceID = getInteger(row[24]);
             String phoneNum = getString(row[25]);
             
-            // Build result
             result.put("beneficiaryRegID", beneficiaryRegID);
             result.put("beneficiaryID", beneficiaryID);
             result.put("firstName", firstName);
@@ -461,23 +432,18 @@ public class ElasticsearchService {
             result.put("dOB", dob);
             result.put("dob", dob);
             result.put("age", age);
-            // result.put("actualAge", age);
-            // result.put("ageUnits", "Years");
             result.put("fatherName", fatherName != null ? fatherName : "");
             result.put("spouseName", spouseName != null ? spouseName : "");
-            // result.put("isHIVPos", isHIVPos != null ? isHIVPos : "");
             result.put("createdBy", createdBy);
             result.put("createdDate", createdDate);
             result.put("lastModDate", lastModDate);
             result.put("benAccountID", benAccountID);
             
-            // Gender object
             Map<String, Object> mGender = new HashMap<>();
             mGender.put("genderID", genderID);
             mGender.put("genderName", genderName);
             result.put("m_gender", mGender);
             
-            // Demographics object
             Map<String, Object> demographics = new HashMap<>();
             demographics.put("beneficiaryRegID", beneficiaryRegID);
             demographics.put("stateID", stateID);
@@ -493,7 +459,6 @@ public class ElasticsearchService {
             demographics.put("servicePointName", servicePointName);
             demographics.put("createdBy", createdBy);
             
-            // Nested m_state
             Map<String, Object> mState = new HashMap<>();
             mState.put("stateID", stateID);
             mState.put("stateName", stateName);
@@ -501,14 +466,12 @@ public class ElasticsearchService {
             mState.put("countryID", 1);
             demographics.put("m_state", mState);
             
-            // Nested m_district
             Map<String, Object> mDistrict = new HashMap<>();
             mDistrict.put("districtID", districtID);
             mDistrict.put("districtName", districtName);
             mDistrict.put("stateID", stateID);
             demographics.put("m_district", mDistrict);
             
-            // Nested m_districtblock
             Map<String, Object> mBlock = new HashMap<>();
             mBlock.put("blockID", blockID);
             mBlock.put("blockName", blockName);
@@ -516,7 +479,6 @@ public class ElasticsearchService {
             mBlock.put("stateID", stateID);
             demographics.put("m_districtblock", mBlock);
             
-            // Nested m_districtbranchmapping
             Map<String, Object> mBranch = new HashMap<>();
             mBranch.put("districtBranchID", null);
             mBranch.put("blockID", blockID);
@@ -526,11 +488,9 @@ public class ElasticsearchService {
             
             result.put("i_bendemographics", demographics);
             
-            // Phone numbers
             List<Map<String, Object>> benPhoneMaps = fetchPhoneNumbers(beneficiaryRegID);
             result.put("benPhoneMaps", benPhoneMaps);
             
-            // Default values
             result.put("isConsent", false);
             result.put("m_title", new HashMap<>());
             result.put("maritalStatus", new HashMap<>());

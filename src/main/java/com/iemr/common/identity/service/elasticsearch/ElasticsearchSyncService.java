@@ -43,7 +43,7 @@ public class ElasticsearchSyncService {
     private BeneficiaryDataService beneficiaryDataService;
     
     @Autowired
-    private TransactionalSyncWrapper transactionalWrapper;
+    private BeneficiaryTransactionHelper transactionalWrapper;
 
     @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
@@ -53,9 +53,7 @@ public class ElasticsearchSyncService {
      * This should be run as a one-time operation or scheduled job
      */
     public SyncResult syncAllBeneficiaries() {
-        logger.info("========================================");
         logger.info("Starting full beneficiary sync to Elasticsearch...");
-        logger.info("========================================");
         
         SyncResult result = new SyncResult();
         
@@ -168,12 +166,10 @@ public class ElasticsearchSyncService {
                 processedCount.addAndGet(esBatch.size());
             }
             
-            logger.info("========================================");
             logger.info("Sync completed successfully!");
             logger.info("Total Processed: {}", processedCount.get());
             logger.info("Successfully Indexed: {}", result.getSuccessCount());
             logger.info("Failed: {}", result.getFailureCount());
-            logger.info("========================================");
             
         } catch (Exception e) {
             logger.error("========================================");
@@ -191,7 +187,6 @@ public class ElasticsearchSyncService {
      */
     public boolean syncSingleBeneficiary(String benRegId) {
         try {
-            logger.info("========================================");
             logger.info("Syncing single beneficiary with BenRegId: {}", benRegId);
             
             BigInteger benRegIdBig = new BigInteger(benRegId);
@@ -200,7 +195,6 @@ public class ElasticsearchSyncService {
             boolean exists = transactionalWrapper.existsByBenRegId(benRegIdBig);
             if (!exists) {
                 logger.error("Beneficiary does not exist in database: BenRegId={}", benRegId);
-                logger.info("========================================");
                 return false;
             }
             
@@ -211,7 +205,6 @@ public class ElasticsearchSyncService {
             
             if (benDTO == null) {
                 logger.error("Failed to fetch beneficiary details from database: BenRegId={}", benRegId);
-                logger.info("========================================");
                 return false;
             }
             
@@ -226,7 +219,6 @@ public class ElasticsearchSyncService {
             
             if (doc == null || doc.getBenId() == null) {
                 logger.error("Failed to convert beneficiary to document: BenRegId={}", benRegId);
-                logger.info("========================================");
                 return false;
             }
             
@@ -240,17 +232,13 @@ public class ElasticsearchSyncService {
                 .document(doc)
             );
             
-            logger.info("========================================");
             logger.info("SUCCESS! Beneficiary synced to Elasticsearch");
             logger.info("BenRegId: {}, BenId: {}", benRegId, doc.getBenId());
-            logger.info("========================================");
             
             return true;
             
         } catch (Exception e) {
-            logger.error("========================================");
             logger.error("ERROR syncing beneficiary {}: {}", benRegId, e.getMessage(), e);
-            logger.error("========================================");
             return false;
         }
     }
@@ -282,7 +270,6 @@ public class ElasticsearchSyncService {
             
             int successCount = 0;
             
-            // Log errors if any
             if (result.errors()) {
                 logger.warn("Bulk indexing had some errors");
                 for (BulkResponseItem item : result.items()) {

@@ -35,9 +35,8 @@ public class IdentityESController {
      * MAIN UNIVERSAL SEARCH ENDPOINT
      * Searches across all fields - name, phone, ID, etc.
      * 
-     * Usage: GET /beneficiary/search?q=vani
-     * Usage: GET /beneficiary/search?q=9876543210
-     * Usage: GET /beneficiary/search?q=rajesh kumar
+     * Usage: GET /beneficiary/search?query=vani
+     * Usage: GET /beneficiary/search?query=9876543210
      */
    @GetMapping("/search")
     public ResponseEntity<Map<String, Object>> search(@RequestParam String query, HttpServletRequest request) {

@@ -18,9 +18,9 @@ import com.iemr.common.identity.repo.BenMappingRepo;
  * Uses the new complete data query from BenMappingRepo
  */
 @Service
-public class OptimizedBeneficiaryDataService {
+public class BeneficiaryDocumentDataService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OptimizedBeneficiaryDataService.class);
+    private static final Logger logger = LoggerFactory.getLogger(BeneficiaryDocumentDataService.class);
 
     @Autowired
     private BenMappingRepo mappingRepo;
@@ -38,7 +38,6 @@ public class OptimizedBeneficiaryDataService {
         try {
             logger.debug("Fetching {} beneficiaries with complete data", benRegIds.size());
             
-            // Use the new complete query from repo
             List<Object[]> results = mappingRepo.findCompleteDataByBenRegIds(benRegIds);
             
             logger.info("Fetched {} complete beneficiary records", results.size());
@@ -100,33 +99,28 @@ public class OptimizedBeneficiaryDataService {
             }
             doc.setBeneficiaryID(beneficiaryRegID);
             
-            // Personal Info (2-10)
             doc.setFirstName(getString(row[idx++]));
             doc.setLastName(getString(row[idx++]));
             doc.setGenderID(getInteger(row[idx++]));
             doc.setGenderName(getString(row[idx++]));
-            doc.setGender(doc.getGenderName()); // Use genderName for gender
+            doc.setGender(doc.getGenderName()); 
             doc.setDOB(getDate(row[idx++]));
             doc.setAge(getInteger(row[idx++]));
             doc.setFatherName(getString(row[idx++]));
             doc.setSpouseName(getString(row[idx++]));
             doc.setIsHIVPos(getString(row[idx++]));
             
-            // Metadata (11-14)
             doc.setCreatedBy(getString(row[idx++]));
             doc.setCreatedDate(getDate(row[idx++]));
             doc.setLastModDate(getLong(row[idx++]));
             doc.setBenAccountID(getLong(row[idx++]));
             
-            // Contact (15)
             doc.setPhoneNum(getString(row[idx++]));
             
-            // Health IDs (16-18)
             doc.setHealthID(getString(row[idx++]));
             doc.setAbhaID(getString(row[idx++]));
             doc.setFamilyID(getString(row[idx++]));
             
-            // Current Address (19-30)
             doc.setStateID(getInteger(row[idx++]));
             doc.setStateName(getString(row[idx++]));
             doc.setDistrictID(getInteger(row[idx++]));
@@ -140,7 +134,6 @@ public class OptimizedBeneficiaryDataService {
             doc.setServicePointName(getString(row[idx++]));
             doc.setParkingPlaceID(getInteger(row[idx++]));
             
-            // Permanent Address (31-38)
             doc.setPermStateID(getInteger(row[idx++]));
             doc.setPermStateName(getString(row[idx++]));
             doc.setPermDistrictID(getInteger(row[idx++]));
@@ -150,7 +143,6 @@ public class OptimizedBeneficiaryDataService {
             doc.setPermVillageID(getInteger(row[idx++]));
             doc.setPermVillageName(getString(row[idx++]));
             
-            // Identity (39-40)
             // doc.setGovtIdentityNo(getString(row[idx++]));
             // String aadhar = getString(row[idx]);
             // doc.setAadharNo(aadhar != null ? aadhar : doc.getGovtIdentityNo());
