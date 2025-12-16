@@ -162,7 +162,7 @@ public class JwtUserIdValidationFilter implements Filter {
 		return userAgent.contains("okhttp") || userAgent.contains("java/"); // iOS (custom clients)
 	}
 
-        @SuppressWarnings("static-access")
+    @SuppressWarnings("static-access")
 	private String getJwtTokenFromCookies(HttpServletRequest request) {
 		return cookieUtil.getJwtTokenFromCookie(request);
 	}
