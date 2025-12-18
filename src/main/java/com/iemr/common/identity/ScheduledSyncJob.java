@@ -12,9 +12,9 @@ import com.iemr.common.identity.service.elasticsearch.SyncJobService;
 
 /**
  * Scheduled jobs for Elasticsearch sync
- * 
- * To enable scheduled sync, set:
- * elasticsearch.sync.scheduled.enabled=true in application.properties
+ *
+ * To enable scheduled sync, set: elasticsearch.sync.scheduled.enabled=true in
+ * application.properties
  */
 @Component
 public class ScheduledSyncJob {
@@ -28,8 +28,8 @@ public class ScheduledSyncJob {
     private boolean scheduledSyncEnabled;
 
     /**
-     * Run full sync every day at 2 AM
-     * Cron: second, minute, hour, day, month, weekday
+     * Run full sync every day at 2 AM Cron: second, minute, hour, day, month,
+     * weekday
      */
     @Scheduled(cron = "${elasticsearch.sync.scheduled.cron:0 0 2 * * ?}")
     public void scheduledFullSync() {
@@ -38,11 +38,8 @@ public class ScheduledSyncJob {
             return;
         }
 
-        logger.info("========================================");
-        logger.info("Starting scheduled full sync job");
-        logger.info("========================================");
-
-        try {
+           logger.info("Starting scheduled full sync job");
+            try {
             // Check if there's already a sync running
             if (syncJobService.isFullSyncRunning()) {
                 logger.warn("Full sync already running. Skipping scheduled sync.");
@@ -59,8 +56,7 @@ public class ScheduledSyncJob {
     }
 
     /**
-     * Clean up old completed jobs (keep last 30 days)
-     * Runs every Sunday at 3 AM
+     * Clean up old completed jobs (keep last 30 days) Runs every Sunday at 3 AM
      */
     @Scheduled(cron = "0 0 3 * * SUN")
     public void cleanupOldJobs() {
@@ -69,8 +65,6 @@ public class ScheduledSyncJob {
         }
 
         logger.info("Running cleanup of old sync jobs...");
-        
-        // TODO: Implement cleanup logic
-        // Delete jobs older than 30 days with status COMPLETED or FAILED
+
     }
 }
