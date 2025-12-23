@@ -41,101 +41,121 @@ public class ElasticsearchService {
      * Universal search with optional user location for ranking
      */
     public List<Map<String, Object>> universalSearch(String query, Integer userId) {
-        
-        try {
-            Map<String, Integer> userLocation = null;
-            if (userId != null) {
-                userLocation = getUserLocation(userId);
-                logger.info("User location: {}", userLocation);
-            }
-            
-            boolean isNumeric = query.matches("\\d+");
-            
-            SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
-                .index(beneficiaryIndex)
-                .query(q -> q
-                    .bool(b -> {
-                        // Fuzzy multi-match for text fields
+    try {
+        Map<String, Integer> userLocation = null;
+        if (userId != null) {
+            userLocation = getUserLocation(userId);
+            logger.info("User location: {}", userLocation);
+        }
+
+        boolean isNumeric = query.matches("\\d+");
+
+        SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
+            .index(beneficiaryIndex)
+            .query(q -> q
+                .bool(b -> {
+                    if (!isNumeric) {
                         b.should(s1 -> s1.multiMatch(mm -> mm
                             .query(query)
-                            .fields("firstName^3", "lastName^2", "fatherName", "spouseName")
+                            .fields("firstName", "lastName", "fatherName", "spouseName")
                             .type(TextQueryType.BestFields)
                             .fuzziness("AUTO")
                         ));
+
+                        b.should(s2 -> s2.term(t -> t.field("firstName.keyword").value(query)));
+                        b.should(s3 -> s3.term(t -> t.field("lastName.keyword").value(query)));
+                        b.should(s4 -> s4.term(t -> t.field("fatherName.keyword").value(query)));
+                        b.should(s5 -> s5.term(t -> t.field("spouseName.keyword").value(query)));
+                    }
+
+                    b.should(s6 -> s6.term(t -> t.field("healthID").value(query)));
+                    b.should(s7 -> s7.term(t -> t.field("abhaID").value(query)));
+                    b.should(s8 -> s8.term(t -> t.field("familyID").value(query)));
+                    b.should(s9 -> s9.term(t -> t.field("beneficiaryID").value(query)));
+                    b.should(s10 -> s10.term(t -> t.field("benId").value(query)));
+                    b.should(s11 -> s11.term(t -> t.field("aadharNo").value(query)));
+                    b.should(s12 -> s12.term(t -> t.field("govtIdentityNo").value(query)));
+
+                    if (isNumeric) {
+                        b.should(s13 -> s13.wildcard(w -> w.field("phoneNum").value("*" + query + "*")));
+                        b.should(s14 -> s14.wildcard(w -> w.field("healthID").value("*" + query + "*")));
+                        b.should(s15 -> s15.wildcard(w -> w.field("abhaID").value("*" + query + "*")));
+                        b.should(s16 -> s16.wildcard(w -> w.field("familyID").value("*" + query + "*")));
+                        b.should(s17 -> s17.wildcard(w -> w.field("beneficiaryID").value("*" + query + "*")));
+                        b.should(s18 -> s18.wildcard(w -> w.field("benId").value("*" + query + "*")));
+                        b.should(s19 -> s19.wildcard(w -> w.field("aadharNo").value("*" + query + "*")));
+                        b.should(s20 -> s20.wildcard(w -> w.field("govtIdentityNo").value("*" + query + "*")));
                         
-                        // Exact match for phone number
-                        b.should(s2 -> s2.term(t -> t
-                            .field("phoneNum")
-                            .value(query)
-                        ));
-                        
-                        // NEW: Search in healthID, abhaID, familyID
-                        b.should(s3 -> s3.term(t -> t
-                            .field("healthID")
-                            .value(query)
-                        ));
-                        
-                        b.should(s4 -> s4.term(t -> t
-                            .field("abhaID")
-                            .value(query)
-                        ));
-                        
-                        b.should(s5 -> s5.term(t -> t
-                            .field("familyID")
-                            .value(query)
-                        ));
-                        
-                        // Numeric fields (only if query is numeric)
-                        if (isNumeric) {
-                            try {
-                                Long numericValue = Long.parseLong(query);
-                                b.should(s6 -> s6.term(t -> t.field("benRegId").value(numericValue)));
-                            } catch (NumberFormatException e) {
-                                logger.debug("Could not parse as long: {}", query);
-                            }
+                        b.should(s21 -> s21.prefix(p -> p.field("phoneNum").value(query)));
+                        b.should(s22 -> s22.prefix(p -> p.field("healthID").value(query)));
+                        b.should(s23 -> s23.prefix(p -> p.field("abhaID").value(query)));
+                        b.should(s24 -> s24.prefix(p -> p.field("familyID").value(query)));
+                        b.should(s25 -> s25.prefix(p -> p.field("beneficiaryID").value(query)));
+                        b.should(s26 -> s26.prefix(p -> p.field("benId").value(query)));
+
+                        try {
+                            Long numericValue = Long.parseLong(query);
+                            b.should(s27 -> s27.term(t -> t.field("benRegId").value(numericValue)));
+                            b.should(s28 -> s28.term(t -> t.field("benAccountID").value(numericValue)));
                             
-                            b.should(s7 -> s7.term(t -> t.field("benId").value(query)));
+                            int intValue = numericValue.intValue();
+                            b.should(s29 -> s29.term(t -> t.field("genderID").value(intValue)));
+                            b.should(s30 -> s30.term(t -> t.field("age").value(intValue)));
+                            b.should(s31 -> s31.term(t -> t.field("stateID").value(intValue)));
+                            b.should(s32 -> s32.term(t -> t.field("districtID").value(intValue)));
+                            b.should(s33 -> s33.term(t -> t.field("blockID").value(intValue)));
+                            b.should(s34 -> s34.term(t -> t.field("villageID").value(intValue)));
+                            b.should(s35 -> s35.term(t -> t.field("servicePointID").value(intValue)));
+                            b.should(s36 -> s36.term(t -> t.field("parkingPlaceID").value(intValue)));
+                            
+                            logger.info("Added numeric searches for value: {}", numericValue);
+                        } catch (NumberFormatException e) {
+                            logger.warn("Failed to parse numeric value: {}", query);
                         }
-                        
-                        b.minimumShouldMatch("1");
-                        return b;
-                    })
-                )
-                .size(100) // Increased to allow for location-based filtering
-            , BeneficiariesESDTO.class);
-            
-            logger.info("ES returned {} hits", response.hits().hits().size());
-            
-            // Convert ES results
-            List<Map<String, Object>> allResults = response.hits().hits().stream()
-                .map(hit -> mapESResultToExpectedFormat(hit.source()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-            
-            if (allResults.isEmpty()) {
-                logger.info("No results found in ES, falling back to database");
-                return searchInDatabaseDirectly(query);
-            }
-            
-            // Apply location-based ranking if user location available
-            if (userLocation != null) {
-                allResults = rankByLocation(allResults, userLocation);
-            }
-            
-            List<Map<String, Object>> results = allResults.stream()
-                .limit(20)
-                .collect(Collectors.toList());
-            
-            logger.info("Returning {} results from ES", results.size());
-            return results;
-            
-        } catch (Exception e) {
-            logger.error("ES universal search failed: {}", e.getMessage(), e);
-            logger.info("Fallback: Searching in MySQL database");
+                    }
+
+                    b.minimumShouldMatch("1");
+                    return b;
+                })
+            )
+            .size(100)
+        , BeneficiariesESDTO.class);
+
+        logger.info("ES returned {} hits for query: '{}'", response.hits().hits().size(), query);
+
+        List<Map<String, Object>> allResults = response.hits().hits().stream()
+            .map(hit -> {
+                if (hit.source() != null) {
+                    logger.debug("Hit score: {}, benRegId: {}, benId: {}, phoneNum: {}, healthID: {}, abhaID: {}", 
+                        hit.score(), 
+                        hit.source().getBenRegId(),
+                        hit.source().getBeneficiaryID(),
+                        hit.source().getPhoneNum(),
+                        hit.source().getHealthID(),
+                        hit.source().getAbhaID());
+                }
+                return mapESResultToExpectedFormat(hit.source());
+            })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        if (allResults.isEmpty()) {
+            logger.info("No results found in ES, falling back to database");
             return searchInDatabaseDirectly(query);
         }
+
+        if (userLocation != null) {
+            allResults = rankByLocation(allResults, userLocation);
+        }
+
+        return allResults.stream().limit(20).collect(Collectors.toList());
+
+    } catch (Exception e) {
+        logger.error("ES universal search failed: {}", e.getMessage(), e);
+        logger.info("Fallback: Searching in MySQL database");
+        return searchInDatabaseDirectly(query);
     }
-    
+}
     /**
      * Overloaded method without userId (backward compatibility)
      */
