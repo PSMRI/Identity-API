@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -49,6 +50,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.LongSerializationPolicy;
 import com.iemr.common.identity.data.rmnch.RMNCHBeneficiaryDetailsRmnch;
+import com.iemr.common.identity.domain.Address;
 import com.iemr.common.identity.domain.MBeneficiaryAccount;
 import com.iemr.common.identity.domain.MBeneficiaryImage;
 import com.iemr.common.identity.domain.MBeneficiaryaddress;
@@ -578,7 +580,95 @@ public class IdentityService {
         return list;
     }
 
-    /**
+
+/**
+ * Advanced search using Elasticsearch with fallback to database
+ */
+public Map<String, Object> advancedSearchBeneficiariesES(
+        String firstName, String lastName, Integer genderId, java.util.Date dob,
+        Integer stateId, Integer districtId, Integer blockId, Integer villageId,
+        String fatherName, String spouseName, String phoneNumber,
+        String beneficiaryId, String healthId, String aadharNo,
+        Integer userId, String auth, Boolean is1097) throws Exception {
+    
+    try {
+        logger.info("IdentityBeneficiaryService - Advanced ES search");
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        if (esEnabled) {
+            logger.info("ES enabled - using Elasticsearch for advanced search");
+            
+            List<Map<String, Object>> esResults = elasticsearchService.advancedSearch(
+                firstName, lastName, genderId, dob, stateId, districtId, 
+                blockId, villageId, fatherName, spouseName, phoneNumber, 
+                beneficiaryId, healthId, aadharNo, userId
+            );
+            
+            response.put("data", esResults);
+            response.put("count", esResults.size());
+            response.put("source", "elasticsearch");
+            
+        } else {
+            logger.info("ES disabled - using database for advanced search");
+            
+            // Build IdentitySearchDTO for database search
+            IdentitySearchDTO searchDTO = new IdentitySearchDTO();
+            searchDTO.setFirstName(firstName);
+            searchDTO.setLastName(lastName);
+            searchDTO.setGenderId(genderId);
+            searchDTO.setDob(dob != null ? new Timestamp(dob.getTime()) : null);
+            searchDTO.setFatherName(fatherName);
+            searchDTO.setSpouseName(spouseName);
+            searchDTO.setContactNumber(phoneNumber);
+            searchDTO.setBeneficiaryId(beneficiaryId != null ? new BigInteger(beneficiaryId) : null);
+            
+            if (stateId != null || districtId != null || blockId != null || villageId != null) {
+                Address addressDTO = new Address();
+                addressDTO.setStateId(stateId);
+                addressDTO.setDistrictId(districtId);
+                addressDTO.setSubDistrictId(blockId);
+                addressDTO.setVillageId(villageId);
+                searchDTO.setCurrentAddress(addressDTO);
+            }
+            
+            List<BeneficiariesDTO> dbResults = this.getBeneficiaries(searchDTO);
+            
+            // Convert to expected format
+            List<Map<String, Object>> formattedResults = dbResults.stream()
+                .map(this::convertBeneficiaryDTOToMap)
+                .collect(Collectors.toList());
+            
+            response.put("data", formattedResults);
+            response.put("count", formattedResults.size());
+            response.put("source", "database");
+        }
+        
+        return response;
+        
+    } catch (Exception e) {
+        logger.error("Advanced ES search failed: {}", e.getMessage(), e);
+        throw new Exception("Error in advanced search: " + e.getMessage(), e);
+    }
+}
+
+/**
+ * Convert BeneficiariesDTO to Map format
+ */
+private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
+    try {
+        ObjectMapper mapper = new ObjectMapper();
+        String json = mapper.writeValueAsString(dto);
+        return mapper.readValue(json, Map.class);
+    } catch (Exception e) {
+        logger.error("Error converting DTO to map", e);
+        return new HashMap<>();
+    }
+}
+
+
+
+ /**
      * *
      *
      * Search beneficiary by healthID / ABHA address

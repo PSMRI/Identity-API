@@ -23,6 +23,7 @@ package com.iemr.common.identity.repo;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.Modifying;
@@ -275,6 +276,84 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         nativeQuery = true)
     List<Object[]> findPhoneNumbersByBeneficiaryId(@Param("beneficiaryId") Long beneficiaryId);
     
+// Advance Search ES
+@Query(value =
+    "SELECT DISTINCT " +
+    "m.BenRegId, " +                                 // 0
+    "d.BeneficiaryRegID, " +                         // 1
+    "d.FirstName, " +                               // 2
+    "d.LastName, " +                                // 3
+    "d.GenderID, " +                                // 4
+    "g.GenderName, " +                              // 5
+    "d.DOB, " +                                     // 6
+    "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) AS Age, "+// 7
+    "d.FatherName, " +                              // 8
+    "d.SpouseName, " +                              // 9
+    "d.IsHIVPositive, " +                           // 10
+    "m.CreatedBy, " +                               // 11
+    "m.CreatedDate, " +                             // 12
+    "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +      // 13
+    "m.BenAccountID, " +                            // 14
+    "addr.CurrStateId, " +                          // 15
+    "addr.CurrState, " +                            // 16
+    "addr.CurrDistrictId, " +                       // 17
+    "addr.CurrDistrict, " +                         // 18
+    "addr.CurrSubDistrictId, " +                    // 19
+    "addr.CurrSubDistrict, " +                      // 20
+    "addr.CurrPinCode, " +                          // 21
+    "addr.CurrServicePointId, " +                   // 22
+    "addr.CurrServicePoint, " +                     // 23
+    "addr.ParkingPlaceID, " +                       // 24
+    "contact.PreferredPhoneNum " +                  // 25
+    "FROM i_beneficiarymapping m " +
+    "LEFT JOIN i_beneficiarydetails d " +
+    "       ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+    "LEFT JOIN db_iemr.m_gender g " +
+    "       ON d.GenderID = g.GenderID " +
+    "LEFT JOIN i_beneficiaryaddress addr " +
+    "       ON m.BenAddressId = addr.BenAddressID " +
+    "LEFT JOIN i_beneficiarycontacts contact " +
+    "       ON m.BenContactsId = contact.BenContactsID " +
+    "WHERE m.Deleted = false " +
+
+    "AND (:firstName IS NULL OR d.FirstName LIKE CONCAT('%', :firstName, '%')) " +
+    "AND (:lastName IS NULL OR d.LastName LIKE CONCAT('%', :lastName, '%')) " +
+    "AND (:genderId IS NULL OR d.GenderID = :genderId) " +
+    "AND (:dob IS NULL OR DATE(d.DOB) = DATE(:dob)) " +
+
+    "AND (:stateId IS NULL OR addr.CurrStateId = :stateId) " +
+    "AND (:districtId IS NULL OR addr.CurrDistrictId = :districtId) " +
+    "AND (:blockId IS NULL OR addr.CurrSubDistrictId = :blockId) " +
+
+    "AND (:fatherName IS NULL OR d.FatherName LIKE CONCAT('%', :fatherName, '%')) " +
+    "AND (:spouseName IS NULL OR d.SpouseName LIKE CONCAT('%', :spouseName, '%')) " +
+
+    "AND (:phoneNumber IS NULL OR " +
+    "     contact.PreferredPhoneNum LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum1 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum2 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum3 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum4 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum5 LIKE CONCAT('%', :phoneNumber, '%')) " +
+
+    "AND (:beneficiaryId IS NULL OR d.BeneficiaryRegID = :beneficiaryId) " +
+
+    "ORDER BY m.CreatedDate DESC " +
+    "LIMIT 100",
+    nativeQuery = true)
+List<Object[]> advancedSearchBeneficiaries(
+    @Param("firstName") String firstName,
+    @Param("lastName") String lastName,
+    @Param("genderId") Integer genderId,
+    @Param("dob") Date dob,
+    @Param("stateId") Integer stateId,
+    @Param("districtId") Integer districtId,
+    @Param("blockId") Integer blockId,
+    @Param("fatherName") String fatherName,
+    @Param("spouseName") String spouseName,
+    @Param("phoneNumber") String phoneNumber,
+    @Param("beneficiaryId") String beneficiaryId
+);
 
 
 }

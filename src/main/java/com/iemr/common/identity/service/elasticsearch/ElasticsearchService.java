@@ -156,6 +156,238 @@ public class ElasticsearchService {
         return searchInDatabaseDirectly(query);
     }
 }
+
+/**
+ * Advanced search with multiple criteria
+ * Searches by firstName, lastName, gender, DOB, address fields, etc.
+ */
+public List<Map<String, Object>> advancedSearch(
+        String firstName, 
+        String lastName,
+        Integer genderId,
+        Date dob,
+        Integer stateId,
+        Integer districtId,
+        Integer blockId,
+        Integer villageId,
+        String fatherName,
+        String spouseName,
+        String phoneNumber,
+        String beneficiaryId,
+        String healthId,
+        String aadharNo,
+        Integer userId) {
+    
+    try {
+        logger.info("ES Advanced Search - firstName: {}, lastName: {}, genderId: {}, stateId: {}, districtId: {}, blockId: {}, villageId: {}", 
+            firstName, lastName, genderId, stateId, districtId, blockId, villageId);
+
+        Map<String, Integer> userLocation = null;
+        if (userId != null) {
+            userLocation = getUserLocation(userId);
+        }
+
+        SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
+            .index(beneficiaryIndex)
+            .query(q -> q
+                .bool(b -> {
+                    // Name searches with fuzzy matching
+                    if (firstName != null && !firstName.trim().isEmpty()) {
+                        b.must(m -> m.bool(bb -> bb
+                            .should(s1 -> s1.match(mm -> mm
+                                .field("firstName")
+                                .query(firstName)
+                                .fuzziness("AUTO")
+                            ))
+                            .should(s2 -> s2.term(t -> t
+                                .field("firstName.keyword")
+                                .value(firstName)
+                            ))
+                            .minimumShouldMatch("1")
+                        ));
+                    }
+                    
+                    if (lastName != null && !lastName.trim().isEmpty()) {
+                        b.must(m -> m.bool(bb -> bb
+                            .should(s1 -> s1.match(mm -> mm
+                                .field("lastName")
+                                .query(lastName)
+                                .fuzziness("AUTO")
+                            ))
+                            .should(s2 -> s2.term(t -> t
+                                .field("lastName.keyword")
+                                .value(lastName)
+                            ))
+                            .minimumShouldMatch("1")
+                        ));
+                    }
+
+                    if (fatherName != null && !fatherName.trim().isEmpty()) {
+                        b.must(m -> m.match(mm -> mm
+                            .field("fatherName")
+                            .query(fatherName)
+                            .fuzziness("AUTO")
+                        ));
+                    }
+
+                    if (spouseName != null && !spouseName.trim().isEmpty()) {
+                        b.must(m -> m.match(mm -> mm
+                            .field("spouseName")
+                            .query(spouseName)
+                            .fuzziness("AUTO")
+                        ));
+                    }
+
+                    // Exact matches for IDs and structured data
+                    if (genderId != null) {
+                        b.must(m -> m.term(t -> t
+                            .field("genderID")
+                            .value(genderId)
+                        ));
+                    }
+
+                    if (dob != null) {
+                        b.must(m -> m.term(t -> t
+                            .field("dob")
+                            .value(dob.getTime())
+                        ));
+                    }
+
+                    // Location filters
+                    if (stateId != null) {
+                        b.must(m -> m.term(t -> t
+                            .field("stateID")
+                            .value(stateId)
+                        ));
+                    }
+
+                    if (districtId != null) {
+                        b.must(m -> m.term(t -> t
+                            .field("districtID")
+                            .value(districtId)
+                        ));
+                    }
+
+                    if (blockId != null) {
+                        b.must(m -> m.term(t -> t
+                            .field("blockID")
+                            .value(blockId)
+                        ));
+                    }
+
+                    if (villageId != null) {
+                        b.must(m -> m.term(t -> t
+                            .field("villageID")
+                            .value(villageId)
+                        ));
+                    }
+
+                    // Identity searches
+                    if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+                        b.must(m -> m.bool(bb -> bb
+                            .should(s1 -> s1.term(t -> t
+                                .field("phoneNum")
+                                .value(phoneNumber)
+                            ))
+                            .should(s2 -> s2.wildcard(w -> w
+                                .field("phoneNum")
+                                .value("*" + phoneNumber + "*")
+                            ))
+                            .minimumShouldMatch("1")
+                        ));
+                    }
+
+                    if (beneficiaryId != null && !beneficiaryId.trim().isEmpty()) {
+                        b.must(m -> m.term(t -> t
+                            .field("beneficiaryID")
+                            .value(beneficiaryId)
+                        ));
+                    }
+
+                    if (healthId != null && !healthId.trim().isEmpty()) {
+                        b.must(m -> m.bool(bb -> bb
+                            .should(s1 -> s1.term(t -> t
+                                .field("healthID")
+                                .value(healthId)
+                            ))
+                            .should(s2 -> s2.term(t -> t
+                                .field("abhaID")
+                                .value(healthId)
+                            ))
+                            .minimumShouldMatch("1")
+                        ));
+                    }
+
+                    if (aadharNo != null && !aadharNo.trim().isEmpty()) {
+                        b.must(m -> m.term(t -> t
+                            .field("aadharNo")
+                            .value(aadharNo)
+                        ));
+                    }
+
+                    return b;
+                })
+            )
+            .size(100)
+        , BeneficiariesESDTO.class);
+
+        logger.info("ES advanced search returned {} hits", response.hits().hits().size());
+
+        if (response.hits().hits().isEmpty()) {
+            logger.info("No results in ES, falling back to database");
+            return searchInDatabaseForAdvanced(firstName, lastName, genderId, dob, 
+                stateId, districtId, blockId, villageId, fatherName, spouseName, 
+                phoneNumber, beneficiaryId, healthId, aadharNo);
+        }
+
+        List<Map<String, Object>> results = response.hits().hits().stream()
+            .map(hit -> mapESResultToExpectedFormat(hit.source()))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        // Apply location ranking if user location available
+        if (userLocation != null && !results.isEmpty()) {
+            results = rankByLocation(results, userLocation);
+        }
+
+        return results.stream().limit(100).collect(Collectors.toList());
+
+    } catch (Exception e) {
+        logger.error("ES advanced search failed: {}", e.getMessage(), e);
+        logger.info("Fallback: Searching in MySQL database");
+        return searchInDatabaseForAdvanced(firstName, lastName, genderId, dob, 
+            stateId, districtId, blockId, villageId, fatherName, spouseName, 
+            phoneNumber, beneficiaryId, healthId, aadharNo);
+    }
+}
+
+/**
+ * Database fallback for advanced search
+ */
+private List<Map<String, Object>> searchInDatabaseForAdvanced(
+        String firstName, String lastName, Integer genderId, Date dob,
+        Integer stateId, Integer districtId, Integer blockId, Integer villageId,
+        String fatherName, String spouseName, String phoneNumber,
+        String beneficiaryId, String healthId, String aadharNo) {
+    
+    try {
+        List<Object[]> results = benDetailRepo.advancedSearchBeneficiaries(
+            firstName, lastName, genderId, dob, stateId, districtId, 
+            blockId, fatherName, spouseName, phoneNumber, 
+            beneficiaryId
+        );
+        
+        return results.stream()
+            .map(this::mapToExpectedFormat)
+            .collect(Collectors.toList());
+            
+    } catch (Exception e) {
+        logger.error("Database advanced search failed: {}", e.getMessage(), e);
+        return Collections.emptyList();
+    }
+}
+
+
     /**
      * Overloaded method without userId (backward compatibility)
      */
