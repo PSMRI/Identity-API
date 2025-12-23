@@ -359,4 +359,8 @@ public class RMNCHHouseHoldDetails {
 	@Column(name = "mohallaName")
 	private String mohallaName;
 
+	@Expose
+	@Column(name = "isDeactivate")
+	private String isDeactivate;
+
 }
