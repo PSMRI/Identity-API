@@ -592,13 +592,15 @@ public Map<String, Object> advancedSearchBeneficiariesES(
         Integer userId, String auth, Boolean is1097) throws Exception {
     
     try {
-        logger.info("IdentityBeneficiaryService - Advanced ES search");
+        logger.info("IdentityService.advancedSearchBeneficiariesES - start");
+        logger.info("ES enabled: {}", esEnabled);
         
         Map<String, Object> response = new HashMap<>();
         
         if (esEnabled) {
-            logger.info("ES enabled - using Elasticsearch for advanced search");
+            logger.info("Using Elasticsearch for advanced search");
             
+            // Call Elasticsearch service
             List<Map<String, Object>> esResults = elasticsearchService.advancedSearch(
                 firstName, lastName, genderId, dob, stateId, districtId, 
                 blockId, villageId, fatherName, spouseName, phoneNumber, 
@@ -609,10 +611,11 @@ public Map<String, Object> advancedSearchBeneficiariesES(
             response.put("count", esResults.size());
             response.put("source", "elasticsearch");
             
+            logger.info("ES returned {} results", esResults.size());
+            
         } else {
             logger.info("ES disabled - using database for advanced search");
             
-            // Build IdentitySearchDTO for database search
             IdentitySearchDTO searchDTO = new IdentitySearchDTO();
             searchDTO.setFirstName(firstName);
             searchDTO.setLastName(lastName);
@@ -621,7 +624,14 @@ public Map<String, Object> advancedSearchBeneficiariesES(
             searchDTO.setFatherName(fatherName);
             searchDTO.setSpouseName(spouseName);
             searchDTO.setContactNumber(phoneNumber);
-            searchDTO.setBeneficiaryId(beneficiaryId != null ? new BigInteger(beneficiaryId) : null);
+            
+            if (beneficiaryId != null && !beneficiaryId.trim().isEmpty()) {
+                try {
+                    searchDTO.setBeneficiaryId(new BigInteger(beneficiaryId));
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid beneficiaryId format: {}", beneficiaryId);
+                }
+            }
             
             if (stateId != null || districtId != null || blockId != null || villageId != null) {
                 Address addressDTO = new Address();
@@ -634,7 +644,6 @@ public Map<String, Object> advancedSearchBeneficiariesES(
             
             List<BeneficiariesDTO> dbResults = this.getBeneficiaries(searchDTO);
             
-            // Convert to expected format
             List<Map<String, Object>> formattedResults = dbResults.stream()
                 .map(this::convertBeneficiaryDTOToMap)
                 .collect(Collectors.toList());
@@ -642,17 +651,18 @@ public Map<String, Object> advancedSearchBeneficiariesES(
             response.put("data", formattedResults);
             response.put("count", formattedResults.size());
             response.put("source", "database");
+            
+            logger.info("Database returned {} results", formattedResults.size());
         }
         
+        logger.info("IdentityService.advancedSearchBeneficiariesES - end");
         return response;
         
     } catch (Exception e) {
-        logger.error("Advanced ES search failed: {}", e.getMessage(), e);
+        logger.error("Advanced search failed: {}", e.getMessage(), e);
         throw new Exception("Error in advanced search: " + e.getMessage(), e);
     }
-}
-
-/**
+}/**
  * Convert BeneficiariesDTO to Map format
  */
 private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {

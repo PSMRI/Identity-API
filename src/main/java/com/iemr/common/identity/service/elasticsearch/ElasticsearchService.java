@@ -4,7 +4,10 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 
+import com.iemr.common.identity.domain.Address;
+import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.dto.BeneficiariesESDTO;
+import com.iemr.common.identity.dto.IdentitySearchDTO;
 import com.iemr.common.identity.repo.BenDetailRepo;
 
 import org.slf4j.Logger;
@@ -14,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +41,9 @@ public class ElasticsearchService {
     @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
     
+    @Value("${elasticsearch.enabled}")
+    private boolean esEnabled;
+
     /**
      * Universal search with optional user location for ranking
      */
@@ -161,6 +168,7 @@ public class ElasticsearchService {
  * Advanced search with multiple criteria
  * Searches by firstName, lastName, gender, DOB, address fields, etc.
  */
+
 public List<Map<String, Object>> advancedSearch(
         String firstName, 
         String lastName,
@@ -240,7 +248,7 @@ public List<Map<String, Object>> advancedSearch(
 
                     // Exact matches for IDs and structured data
                     if (genderId != null) {
-                        b.must(m -> m.term(t -> t
+                        b.filter(m -> m.term(t -> t
                             .field("genderID")
                             .value(genderId)
                         ));
@@ -255,21 +263,21 @@ public List<Map<String, Object>> advancedSearch(
 
                     // Location filters
                     if (stateId != null) {
-                        b.must(m -> m.term(t -> t
+                        b.filter(m -> m.term(t -> t
                             .field("stateID")
                             .value(stateId)
                         ));
                     }
 
                     if (districtId != null) {
-                        b.must(m -> m.term(t -> t
+                        b.filter(m -> m.term(t -> t
                             .field("districtID")
                             .value(districtId)
                         ));
                     }
 
                     if (blockId != null) {
-                        b.must(m -> m.term(t -> t
+                        b.filter(m -> m.term(t -> t
                             .field("blockID")
                             .value(blockId)
                         ));
