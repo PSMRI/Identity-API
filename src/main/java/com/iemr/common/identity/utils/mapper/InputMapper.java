@@ -21,6 +21,7 @@
 */
 package com.iemr.common.identity.utils.mapper;
 
+import com.iemr.common.identity.utils.BooleanTypeAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,8 @@ public class InputMapper {
 		if (builder == null) {
 			builder = new GsonBuilder();
 			builder.setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+			builder.registerTypeAdapter(Boolean.class, new BooleanTypeAdapter());
+			builder.registerTypeAdapter(boolean.class, new BooleanTypeAdapter());
 		}
 	}
 
