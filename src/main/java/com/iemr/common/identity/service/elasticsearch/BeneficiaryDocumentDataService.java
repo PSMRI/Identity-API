@@ -89,15 +89,11 @@ public class BeneficiaryDocumentDataService {
             // Basic IDs (0-1)
             Long benRegId = getLong(row[idx++]);
             doc.setBenRegId(benRegId);
-            String beneficiaryRegID = getString(row[idx++]);  // Column 1: d.BeneficiaryRegID
-
-            // doc.setBenId(benRegId != null ? benRegId.toString() : null);
-             if (beneficiaryRegID != null && !beneficiaryRegID.isEmpty()) {
-                doc.setBenId(beneficiaryRegID);
-            } else {
-                doc.setBenId(benRegId != null ? benRegId.toString() : null);
-            }
-            doc.setBeneficiaryID(beneficiaryRegID);
+            String beneficiaryID = getString(row[idx++]); 
+             if (beneficiaryID != null && !beneficiaryID.isEmpty()) {
+                doc.setBenId(beneficiaryID);
+            } 
+            doc.setBeneficiaryID(beneficiaryID);
             
             doc.setFirstName(getString(row[idx++]));
             doc.setLastName(getString(row[idx++]));

@@ -165,7 +165,7 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
      */
     @Query(value = "SELECT " +
         "m.BenRegId, " +                                        // 0
-        "d.BeneficiaryRegID, " +                                // 1
+        "brm.BeneficiaryId, " +
         "d.FirstName, " +                                       // 2
         "d.LastName, " +                                        // 3
         "d.GenderID, " +                                        // 4
@@ -208,6 +208,7 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
 		"LEFT JOIN db_iemr.m_benhealthidmapping h ON m.BenRegId = h.BeneficiaryRegID " +
 		 "LEFT JOIN i_beneficiaryfamilymapping fam " +
         "       ON m.BenRegId = fam.AssociatedBenRegID " +

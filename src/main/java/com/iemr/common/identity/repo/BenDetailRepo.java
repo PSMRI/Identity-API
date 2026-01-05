@@ -153,7 +153,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
      */
     @Query(value = "SELECT " +
         "m.BenRegId, " +                                    // 0
-        "d.BeneficiaryRegID, " +                               // 1
+        "brm.beneficiaryID, " +                               // 1
         "d.FirstName, " +                                   // 2
         "d.LastName, " +                                    // 3
         "d.GenderID, " +                                    // 4
@@ -180,6 +180,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "contact.PreferredPhoneNum " +                      // 25
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
@@ -192,7 +193,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
      */
     @Query(value = "SELECT " +
         "m.BenRegId, " +
-        "d.BeneficiaryRegID, " +
+        "brm.beneficiaryID, " +
         "d.FirstName, " +
         "d.LastName, " +
         "d.GenderID, " +
@@ -220,6 +221,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
         "WHERE (d.FirstName LIKE CONCAT('%', :query, '%') " +
@@ -280,7 +282,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 @Query(value =
     "SELECT DISTINCT " +
     "m.BenRegId, " +                                 // 0
-    "d.BeneficiaryRegID, " +                         // 1
+    "brm.beneficiaryID, " +                         // 1
     "d.FirstName, " +                               // 2
     "d.LastName, " +                                // 3
     "d.GenderID, " +                                // 4
@@ -314,6 +316,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     "       ON m.BenAddressId = addr.BenAddressID " +
     "LEFT JOIN i_beneficiarycontacts contact " +
     "       ON m.BenContactsId = contact.BenContactsID " +
+	"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
     "WHERE m.Deleted = false " +
 
     "AND (:firstName IS NULL OR d.FirstName LIKE CONCAT('%', :firstName, '%')) " +

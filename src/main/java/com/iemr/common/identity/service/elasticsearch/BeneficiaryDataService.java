@@ -88,8 +88,8 @@ public class BeneficiaryDataService {
             dto.setBenRegId(mapping.getBenRegId());
             dto.setBenMapId(mapping.getBenMapId());
             
-            if (mapping.getBenRegId() != null) {
-                dto.setBenId(mapping.getBenRegId());
+           if (mapping.getMBeneficiaryregidmapping() != null) {
+            dto.setBenId(mapping.getMBeneficiaryregidmapping().getBeneficiaryID());
             }
             
             if (mapping.getMBeneficiarycontact() != null) {
