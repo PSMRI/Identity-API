@@ -125,7 +125,7 @@ public class ElasticsearchService {
                     return b;
                 })
             )
-            .size(100)
+            .size(10000)
         , BeneficiariesESDTO.class);
 
         logger.info("ES returned {} hits for query: '{}'", response.hits().hits().size(), query);
@@ -155,7 +155,9 @@ public class ElasticsearchService {
             allResults = rankByLocation(allResults, userLocation);
         }
 
-        return allResults.stream().limit(20).collect(Collectors.toList());
+        // return allResults.stream().limit(20).collect(Collectors.toList());
+        return allResults;
+
 
     } catch (Exception e) {
         logger.error("ES universal search failed: {}", e.getMessage(), e);
@@ -336,7 +338,7 @@ public List<Map<String, Object>> advancedSearch(
                     return b;
                 })
             )
-            .size(100)
+            .size(10000)
         , BeneficiariesESDTO.class);
 
         logger.info("ES advanced search returned {} hits", response.hits().hits().size());
@@ -358,7 +360,8 @@ public List<Map<String, Object>> advancedSearch(
             results = rankByLocation(results, userLocation);
         }
 
-        return results.stream().limit(100).collect(Collectors.toList());
+        // return results.stream().limit(100).collect(Collectors.toList());
+        return results;
 
     } catch (Exception e) {
         logger.error("ES advanced search failed: {}", e.getMessage(), e);
