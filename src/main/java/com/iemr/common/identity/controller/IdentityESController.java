@@ -76,7 +76,7 @@ public class IdentityESController {
  */
 
 @Operation(summary = "Get beneficiaries by advance search using Elasticsearch")
-@PostMapping(path = "/advanceSearchES", headers = "Authorization")
+@PostMapping(path = "/advancedSearchES", headers = "Authorization")
 public ResponseEntity<Map<String, Object>> advanceSearchBeneficiariesES(
         @RequestBody String searchFilter,
         HttpServletRequest request) {
