@@ -1,6 +1,9 @@
 package com.iemr.common.identity.service.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 
@@ -21,7 +24,10 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
-
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
 import com.iemr.common.identity.repo.BenAddressRepo;
 
 @Service
@@ -47,101 +53,132 @@ public class ElasticsearchService {
     /**
      * Universal search with optional user location for ranking
      */
-    public List<Map<String, Object>> universalSearch(String query, Integer userId) {
+   
+/**
+ * Advanced search with multiple criteria
+ * Searches by firstName, lastName, gender, DOB, address fields, etc.
+ */
+
+/**
+ * Universal search with score-based filtering and location ranking
+ * Only returns records that actually match the query (not all 10000)
+ */
+public List<Map<String, Object>> universalSearch(String query, Integer userId) {
     try {
-        Map<String, Integer> userLocation = null;
-        if (userId != null) {
-            userLocation = getUserLocation(userId);
-            logger.info("User location: {}", userLocation);
-        }
+        final Map<String, Integer> userLocation =
+        (userId != null) ? getUserLocation(userId) : null;
+
 
         boolean isNumeric = query.matches("\\d+");
+        
+        // Determine minimum score threshold based on query type
+        double minScore = isNumeric ? 1.0 : 3.0;
 
         SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
             .index(beneficiaryIndex)
             .query(q -> q
-                .bool(b -> {
-                    if (!isNumeric) {
-                        b.should(s1 -> s1.multiMatch(mm -> mm
-                            .query(query)
-                            .fields("firstName", "lastName", "fatherName", "spouseName")
-                            .type(TextQueryType.BestFields)
-                            .fuzziness("AUTO")
-                        ));
+                .functionScore(fs -> fs
+                    .query(qq -> qq
+                        .bool(b -> {
+                            if (!isNumeric) {
+                                // Name searches with higher boost for exact matches
+                                b.should(s1 -> s1.multiMatch(mm -> mm
+                                    .query(query)
+                                    .fields("firstName^3", "lastName^3", "fatherName^2", "spouseName^2")
+                                    .type(TextQueryType.BestFields)
+                                    .fuzziness("AUTO")
+                                ));
 
-                        b.should(s2 -> s2.term(t -> t.field("firstName.keyword").value(query)));
-                        b.should(s3 -> s3.term(t -> t.field("lastName.keyword").value(query)));
-                        b.should(s4 -> s4.term(t -> t.field("fatherName.keyword").value(query)));
-                        b.should(s5 -> s5.term(t -> t.field("spouseName.keyword").value(query)));
-                    }
+                                // Exact keyword matches get highest boost
+                                b.should(s2 -> s2.term(t -> t.field("firstName.keyword").value(query).boost(5.0f)));
+                                b.should(s3 -> s3.term(t -> t.field("lastName.keyword").value(query).boost(5.0f)));
+                                b.should(s4 -> s4.term(t -> t.field("fatherName.keyword").value(query).boost(4.0f)));
+                                b.should(s5 -> s5.term(t -> t.field("spouseName.keyword").value(query).boost(4.0f)));
+                            }
 
-                    b.should(s6 -> s6.term(t -> t.field("healthID").value(query)));
-                    b.should(s7 -> s7.term(t -> t.field("abhaID").value(query)));
-                    b.should(s8 -> s8.term(t -> t.field("familyID").value(query)));
-                    b.should(s9 -> s9.term(t -> t.field("beneficiaryID").value(query)));
-                    b.should(s10 -> s10.term(t -> t.field("benId").value(query)));
-                    b.should(s11 -> s11.term(t -> t.field("aadharNo").value(query)));
-                    b.should(s12 -> s12.term(t -> t.field("govtIdentityNo").value(query)));
+                            // ID searches - exact matches get very high boost
+                            b.should(s6 -> s6.term(t -> t.field("healthID").value(query).boost(10.0f)));
+                            b.should(s7 -> s7.term(t -> t.field("abhaID").value(query).boost(10.0f)));
+                            b.should(s8 -> s8.term(t -> t.field("familyID").value(query).boost(8.0f)));
+                            b.should(s9 -> s9.term(t -> t.field("beneficiaryID").value(query).boost(10.0f)));
+                            b.should(s10 -> s10.term(t -> t.field("benId").value(query).boost(10.0f)));
+                            b.should(s11 -> s11.term(t -> t.field("aadharNo").value(query).boost(9.0f)));
+                            b.should(s12 -> s12.term(t -> t.field("govtIdentityNo").value(query).boost(8.0f)));
 
-                    if (isNumeric) {
-                        b.should(s13 -> s13.wildcard(w -> w.field("phoneNum").value("*" + query + "*")));
-                        b.should(s14 -> s14.wildcard(w -> w.field("healthID").value("*" + query + "*")));
-                        b.should(s15 -> s15.wildcard(w -> w.field("abhaID").value("*" + query + "*")));
-                        b.should(s16 -> s16.wildcard(w -> w.field("familyID").value("*" + query + "*")));
-                        b.should(s17 -> s17.wildcard(w -> w.field("beneficiaryID").value("*" + query + "*")));
-                        b.should(s18 -> s18.wildcard(w -> w.field("benId").value("*" + query + "*")));
-                        b.should(s19 -> s19.wildcard(w -> w.field("aadharNo").value("*" + query + "*")));
-                        b.should(s20 -> s20.wildcard(w -> w.field("govtIdentityNo").value("*" + query + "*")));
-                        
-                        b.should(s21 -> s21.prefix(p -> p.field("phoneNum").value(query)));
-                        b.should(s22 -> s22.prefix(p -> p.field("healthID").value(query)));
-                        b.should(s23 -> s23.prefix(p -> p.field("abhaID").value(query)));
-                        b.should(s24 -> s24.prefix(p -> p.field("familyID").value(query)));
-                        b.should(s25 -> s25.prefix(p -> p.field("beneficiaryID").value(query)));
-                        b.should(s26 -> s26.prefix(p -> p.field("benId").value(query)));
+                            if (isNumeric) {
+                                // Partial matches for numeric fields
+                                b.should(s13 -> s13.wildcard(w -> w.field("phoneNum").value("*" + query + "*").boost(3.0f)));
+                                b.should(s14 -> s14.wildcard(w -> w.field("healthID").value("*" + query + "*").boost(2.0f)));
+                                b.should(s15 -> s15.wildcard(w -> w.field("abhaID").value("*" + query + "*").boost(2.0f)));
+                                b.should(s16 -> s16.wildcard(w -> w.field("familyID").value("*" + query + "*").boost(2.0f)));
+                                b.should(s17 -> s17.wildcard(w -> w.field("beneficiaryID").value("*" + query + "*").boost(2.0f)));
+                                b.should(s18 -> s18.wildcard(w -> w.field("benId").value("*" + query + "*").boost(2.0f)));
+                                b.should(s19 -> s19.wildcard(w -> w.field("aadharNo").value("*" + query + "*").boost(2.0f)));
+                                b.should(s20 -> s20.wildcard(w -> w.field("govtIdentityNo").value("*" + query + "*").boost(2.0f)));
+                                
+                                // Prefix matches
+                                b.should(s21 -> s21.prefix(p -> p.field("phoneNum").value(query).boost(4.0f)));
+                                b.should(s22 -> s22.prefix(p -> p.field("healthID").value(query).boost(3.0f)));
+                                b.should(s23 -> s23.prefix(p -> p.field("abhaID").value(query).boost(3.0f)));
+                                b.should(s24 -> s24.prefix(p -> p.field("familyID").value(query).boost(3.0f)));
+                                b.should(s25 -> s25.prefix(p -> p.field("beneficiaryID").value(query).boost(3.0f)));
+                                b.should(s26 -> s26.prefix(p -> p.field("benId").value(query).boost(3.0f)));
 
-                        try {
-                            Long numericValue = Long.parseLong(query);
-                            b.should(s27 -> s27.term(t -> t.field("benRegId").value(numericValue)));
-                            b.should(s28 -> s28.term(t -> t.field("benAccountID").value(numericValue)));
-                            
-                            int intValue = numericValue.intValue();
-                            b.should(s29 -> s29.term(t -> t.field("genderID").value(intValue)));
-                            b.should(s30 -> s30.term(t -> t.field("age").value(intValue)));
-                            b.should(s31 -> s31.term(t -> t.field("stateID").value(intValue)));
-                            b.should(s32 -> s32.term(t -> t.field("districtID").value(intValue)));
-                            b.should(s33 -> s33.term(t -> t.field("blockID").value(intValue)));
-                            b.should(s34 -> s34.term(t -> t.field("villageID").value(intValue)));
-                            b.should(s35 -> s35.term(t -> t.field("servicePointID").value(intValue)));
-                            b.should(s36 -> s36.term(t -> t.field("parkingPlaceID").value(intValue)));
-                            
-                            logger.info("Added numeric searches for value: {}", numericValue);
-                        } catch (NumberFormatException e) {
-                            logger.warn("Failed to parse numeric value: {}", query);
-                        }
-                    }
+                                try {
+                                    Long numericValue = Long.parseLong(query);
+                                    b.should(s27 -> s27.term(t -> t.field("benRegId").value(numericValue).boost(10.0f)));
+                                    b.should(s28 -> s28.term(t -> t.field("benAccountID").value(numericValue).boost(8.0f)));
+                                    
+                                    int intValue = numericValue.intValue();
+                                    b.should(s29 -> s29.term(t -> t.field("genderID").value(intValue).boost(2.0f)));
+                                    b.should(s30 -> s30.term(t -> t.field("age").value(intValue).boost(1.0f)));
+                                    b.should(s31 -> s31.term(t -> t.field("stateID").value(intValue).boost(1.0f)));
+                                    b.should(s32 -> s32.term(t -> t.field("districtID").value(intValue).boost(1.0f)));
+                                    b.should(s33 -> s33.term(t -> t.field("blockID").value(intValue).boost(1.0f)));
+                                    b.should(s34 -> s34.term(t -> t.field("villageID").value(intValue).boost(1.0f)));
+                                    b.should(s35 -> s35.term(t -> t.field("servicePointID").value(intValue).boost(1.0f)));
+                                    b.should(s36 -> s36.term(t -> t.field("parkingPlaceID").value(intValue).boost(1.0f)));
+                                    
+                                    logger.info("Added numeric searches for value: {}", numericValue);
+                                } catch (NumberFormatException e) {
+                                    logger.warn("Failed to parse numeric value: {}", query);
+                                }
+                            }
 
-                    b.minimumShouldMatch("1");
-                    return b;
-                })
+                            b.minimumShouldMatch("1");
+                            return b;
+                        })
+                    )
+                    // Add location-based scoring if user location is available
+                    .functions(getFunctionScores(userLocation))
+                    .scoreMode(FunctionScoreMode.Sum)
+                    .boostMode(FunctionBoostMode.Multiply)
+                )
             )
-            .size(10000)
+            .minScore(minScore)  // KEY: Only return results above minimum score
+            .size(500)  // Reasonable limit - returns only matches up to 500
+            .sort(so -> so
+                .score(sc -> sc.order(SortOrder.Desc))  // Sort by relevance score
+            )
         , BeneficiariesESDTO.class);
 
-        logger.info("ES returned {} hits for query: '{}'", response.hits().hits().size(), query);
+        logger.info("ES returned {} hits for query: '{}' (min score: {})", 
+            response.hits().hits().size(), query, minScore);
 
         List<Map<String, Object>> allResults = response.hits().hits().stream()
             .map(hit -> {
                 if (hit.source() != null) {
-                    logger.debug("Hit score: {}, benRegId: {}, benId: {}, phoneNum: {}, healthID: {}, abhaID: {}", 
+                    logger.debug("Hit score: {}, benRegId: {}, name: {} {}", 
                         hit.score(), 
                         hit.source().getBenRegId(),
-                        hit.source().getBeneficiaryID(),
-                        hit.source().getPhoneNum(),
-                        hit.source().getHealthID(),
-                        hit.source().getAbhaID());
+                        hit.source().getFirstName(),
+                        hit.source().getLastName());
                 }
-                return mapESResultToExpectedFormat(hit.source());
+                Map<String, Object> result = mapESResultToExpectedFormat(hit.source());
+                if (result != null) {
+                    result.put("_score", hit.score());  // Include score for debugging
+                }
+                return result;
             })
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
@@ -151,13 +188,8 @@ public class ElasticsearchService {
             return searchInDatabaseDirectly(query);
         }
 
-        if (userLocation != null) {
-            allResults = rankByLocation(allResults, userLocation);
-        }
-
-        // return allResults.stream().limit(20).collect(Collectors.toList());
+        logger.info("Returning {} matched results", allResults.size());
         return allResults;
-
 
     } catch (Exception e) {
         logger.error("ES universal search failed: {}", e.getMessage(), e);
@@ -167,10 +199,40 @@ public class ElasticsearchService {
 }
 
 /**
- * Advanced search with multiple criteria
- * Searches by firstName, lastName, gender, DOB, address fields, etc.
+ * Generate function scores for location-based ranking
  */
+private List<FunctionScore> getFunctionScores(Map<String, Integer> userLocation) {
+    if (userLocation == null) {
+        return List.of();
+    }
 
+    List<FunctionScore> scores = new ArrayList<>();
+    
+    Integer userVillageId = userLocation.get("villageId");
+    Integer userBlockId = userLocation.get("blockId");
+    
+    // Village match - highest boost
+    if (userVillageId != null) {
+        scores.add(FunctionScore.of(f -> f
+            .filter(ff -> ff.term(t -> t.field("villageID").value(userVillageId)))
+            .weight(3.0)
+        ));
+    }
+    
+    // Block match - medium boost
+    if (userBlockId != null) {
+        scores.add(FunctionScore.of(f -> f
+            .filter(ff -> ff.term(t -> t.field("blockID").value(userBlockId)))
+            .weight(2.0)
+        ));
+    }
+    
+    return scores;
+}
+
+/**
+ * Advanced search with multiple criteria - only returns actual matches
+ */
 public List<Map<String, Object>> advancedSearch(
         String firstName, 
         String lastName,
@@ -192,153 +254,178 @@ public List<Map<String, Object>> advancedSearch(
         logger.info("ES Advanced Search - firstName: {}, lastName: {}, genderId: {}, stateId: {}, districtId: {}, blockId: {}, villageId: {}", 
             firstName, lastName, genderId, stateId, districtId, blockId, villageId);
 
-        Map<String, Integer> userLocation = null;
-        if (userId != null) {
-            userLocation = getUserLocation(userId);
-        }
+        final Map<String, Integer> userLocation =
+        (userId != null) ? getUserLocation(userId) : null;
+
 
         SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
             .index(beneficiaryIndex)
             .query(q -> q
-                .bool(b -> {
-                    // Name searches with fuzzy matching
-                    if (firstName != null && !firstName.trim().isEmpty()) {
-                        b.must(m -> m.bool(bb -> bb
-                            .should(s1 -> s1.match(mm -> mm
-                                .field("firstName")
-                                .query(firstName)
-                                .fuzziness("AUTO")
-                            ))
-                            .should(s2 -> s2.term(t -> t
-                                .field("firstName.keyword")
-                                .value(firstName)
-                            ))
-                            .minimumShouldMatch("1")
-                        ));
-                    }
-                    
-                    if (lastName != null && !lastName.trim().isEmpty()) {
-                        b.must(m -> m.bool(bb -> bb
-                            .should(s1 -> s1.match(mm -> mm
-                                .field("lastName")
-                                .query(lastName)
-                                .fuzziness("AUTO")
-                            ))
-                            .should(s2 -> s2.term(t -> t
-                                .field("lastName.keyword")
-                                .value(lastName)
-                            ))
-                            .minimumShouldMatch("1")
-                        ));
-                    }
+                .functionScore(fs -> fs
+                    .query(qq -> qq
+                        .bool(b -> {
+                            // Name searches with fuzzy matching and boost
+                            if (firstName != null && !firstName.trim().isEmpty()) {
+                                b.must(m -> m.bool(bb -> bb
+                                    .should(s1 -> s1.match(mm -> mm
+                                        .field("firstName")
+                                        .query(firstName)
+                                        .fuzziness("AUTO")
+                                        .boost(2.0f)
+                                    ))
+                                    .should(s2 -> s2.term(t -> t
+                                        .field("firstName.keyword")
+                                        .value(firstName)
+                                        .boost(5.0f)
+                                    ))
+                                    .minimumShouldMatch("1")
+                                ));
+                            }
+                            
+                            if (lastName != null && !lastName.trim().isEmpty()) {
+                                b.must(m -> m.bool(bb -> bb
+                                    .should(s1 -> s1.match(mm -> mm
+                                        .field("lastName")
+                                        .query(lastName)
+                                        .fuzziness("AUTO")
+                                        .boost(2.0f)
+                                    ))
+                                    .should(s2 -> s2.term(t -> t
+                                        .field("lastName.keyword")
+                                        .value(lastName)
+                                        .boost(5.0f)
+                                    ))
+                                    .minimumShouldMatch("1")
+                                ));
+                            }
 
-                    if (fatherName != null && !fatherName.trim().isEmpty()) {
-                        b.must(m -> m.match(mm -> mm
-                            .field("fatherName")
-                            .query(fatherName)
-                            .fuzziness("AUTO")
-                        ));
-                    }
+                            if (fatherName != null && !fatherName.trim().isEmpty()) {
+                                b.must(m -> m.match(mm -> mm
+                                    .field("fatherName")
+                                    .query(fatherName)
+                                    .fuzziness("AUTO")
+                                    .boost(2.0f)
+                                ));
+                            }
 
-                    if (spouseName != null && !spouseName.trim().isEmpty()) {
-                        b.must(m -> m.match(mm -> mm
-                            .field("spouseName")
-                            .query(spouseName)
-                            .fuzziness("AUTO")
-                        ));
-                    }
+                            if (spouseName != null && !spouseName.trim().isEmpty()) {
+                                b.must(m -> m.match(mm -> mm
+                                    .field("spouseName")
+                                    .query(spouseName)
+                                    .fuzziness("AUTO")
+                                    .boost(2.0f)
+                                ));
+                            }
 
-                    // Exact matches for IDs and structured data
-                    if (genderId != null) {
-                        b.filter(m -> m.term(t -> t
-                            .field("genderID")
-                            .value(genderId)
-                        ));
-                    }
+                            // Exact matches for IDs and structured data
+                            if (genderId != null) {
+                                b.filter(m -> m.term(t -> t
+                                    .field("genderID")
+                                    .value(genderId)
+                                ));
+                            }
 
-                    if (dob != null) {
-                        b.must(m -> m.term(t -> t
-                            .field("dob")
-                            .value(dob.getTime())
-                        ));
-                    }
+                            if (dob != null) {
+                                b.must(m -> m.term(t -> t
+                                    .field("dob")
+                                    .value(dob.getTime())
+                                    .boost(5.0f)
+                                ));
+                            }
 
-                    // Location filters
-                    if (stateId != null) {
-                        b.filter(m -> m.term(t -> t
-                            .field("stateID")
-                            .value(stateId)
-                        ));
-                    }
+                            // Location filters
+                            if (stateId != null) {
+                                b.filter(m -> m.term(t -> t
+                                    .field("stateID")
+                                    .value(stateId)
+                                ));
+                            }
 
-                    if (districtId != null) {
-                        b.filter(m -> m.term(t -> t
-                            .field("districtID")
-                            .value(districtId)
-                        ));
-                    }
+                            if (districtId != null) {
+                                b.filter(m -> m.term(t -> t
+                                    .field("districtID")
+                                    .value(districtId)
+                                ));
+                            }
 
-                    if (blockId != null) {
-                        b.filter(m -> m.term(t -> t
-                            .field("blockID")
-                            .value(blockId)
-                        ));
-                    }
+                            if (blockId != null) {
+                                b.filter(m -> m.term(t -> t
+                                    .field("blockID")
+                                    .value(blockId)
+                                ));
+                            }
 
-                    if (villageId != null) {
-                        b.must(m -> m.term(t -> t
-                            .field("villageID")
-                            .value(villageId)
-                        ));
-                    }
+                            if (villageId != null) {
+                                b.must(m -> m.term(t -> t
+                                    .field("villageID")
+                                    .value(villageId)
+                                    .boost(3.0f)
+                                ));
+                            }
 
-                    // Identity searches
-                    if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
-                        b.must(m -> m.bool(bb -> bb
-                            .should(s1 -> s1.term(t -> t
-                                .field("phoneNum")
-                                .value(phoneNumber)
-                            ))
-                            .should(s2 -> s2.wildcard(w -> w
-                                .field("phoneNum")
-                                .value("*" + phoneNumber + "*")
-                            ))
-                            .minimumShouldMatch("1")
-                        ));
-                    }
+                            // Identity searches
+                            if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+                                b.must(m -> m.bool(bb -> bb
+                                    .should(s1 -> s1.term(t -> t
+                                        .field("phoneNum")
+                                        .value(phoneNumber)
+                                        .boost(5.0f)
+                                    ))
+                                    .should(s2 -> s2.wildcard(w -> w
+                                        .field("phoneNum")
+                                        .value("*" + phoneNumber + "*")
+                                        .boost(2.0f)
+                                    ))
+                                    .minimumShouldMatch("1")
+                                ));
+                            }
 
-                    if (beneficiaryId != null && !beneficiaryId.trim().isEmpty()) {
-                        b.must(m -> m.term(t -> t
-                            .field("beneficiaryID")
-                            .value(beneficiaryId)
-                        ));
-                    }
+                            if (beneficiaryId != null && !beneficiaryId.trim().isEmpty()) {
+                                b.must(m -> m.term(t -> t
+                                    .field("beneficiaryID")
+                                    .value(beneficiaryId)
+                                    .boost(10.0f)
+                                ));
+                            }
 
-                    if (healthId != null && !healthId.trim().isEmpty()) {
-                        b.must(m -> m.bool(bb -> bb
-                            .should(s1 -> s1.term(t -> t
-                                .field("healthID")
-                                .value(healthId)
-                            ))
-                            .should(s2 -> s2.term(t -> t
-                                .field("abhaID")
-                                .value(healthId)
-                            ))
-                            .minimumShouldMatch("1")
-                        ));
-                    }
+                            if (healthId != null && !healthId.trim().isEmpty()) {
+                                b.must(m -> m.bool(bb -> bb
+                                    .should(s1 -> s1.term(t -> t
+                                        .field("healthID")
+                                        .value(healthId)
+                                        .boost(10.0f)
+                                    ))
+                                    .should(s2 -> s2.term(t -> t
+                                        .field("abhaID")
+                                        .value(healthId)
+                                        .boost(10.0f)
+                                    ))
+                                    .minimumShouldMatch("1")
+                                ));
+                            }
 
-                    if (aadharNo != null && !aadharNo.trim().isEmpty()) {
-                        b.must(m -> m.term(t -> t
-                            .field("aadharNo")
-                            .value(aadharNo)
-                        ));
-                    }
+                            if (aadharNo != null && !aadharNo.trim().isEmpty()) {
+                                b.must(m -> m.term(t -> t
+                                    .field("aadharNo")
+                                    .value(aadharNo)
+                                    .boost(10.0f)
+                                ));
+                            }
 
-                    return b;
-                })
+                            return b;
+                        })
+                    )
+                    // Add location-based scoring
+                    .functions(getFunctionScores(userLocation))
+                    .scoreMode(FunctionScoreMode.Sum)
+                    .boostMode(FunctionBoostMode.Multiply)
+                )
             )
-            .size(10000)
+            .minScore(2.0)  // Only return good matches
+            .size(500)  // Reasonable limit
+            .sort(so -> so
+                .score(sc -> sc.order(SortOrder.Desc))
+            )
         , BeneficiariesESDTO.class);
 
         logger.info("ES advanced search returned {} hits", response.hits().hits().size());
@@ -351,16 +438,17 @@ public List<Map<String, Object>> advancedSearch(
         }
 
         List<Map<String, Object>> results = response.hits().hits().stream()
-            .map(hit -> mapESResultToExpectedFormat(hit.source()))
+            .map(hit -> {
+                Map<String, Object> result = mapESResultToExpectedFormat(hit.source());
+                if (result != null) {
+                    result.put("_score", hit.score());  // Include score
+                }
+                return result;
+            })
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
-        // Apply location ranking if user location available
-        if (userLocation != null && !results.isEmpty()) {
-            results = rankByLocation(results, userLocation);
-        }
-
-        // return results.stream().limit(100).collect(Collectors.toList());
+        logger.info("Returning {} matched results", results.size());
         return results;
 
     } catch (Exception e) {
