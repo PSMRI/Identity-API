@@ -63,83 +63,53 @@ public class ElasticsearchService {
  * Universal search with score-based filtering and location ranking
  * Only returns records that actually match the query (not all 10000)
  */
-public List<Map<String, Object>> universalSearch(String query, Integer userId) {
+
+public Map<String, Object> universalSearch(String query, Integer userId, int page, int size) {
     try {
         final Map<String, Integer> userLocation =
-        (userId != null) ? getUserLocation(userId) : null;
-
+            (userId != null) ? getUserLocation(userId) : null;
 
         boolean isNumeric = query.matches("\\d+");
-        
-        // Determine minimum score threshold based on query type
         double minScore = isNumeric ? 1.0 : 3.0;
+        
+        // Calculate from parameter for pagination
+        int from = page * size;
+        
+        // Add a reasonable max limit
+        int maxSize = Math.min(size, 100); // Limit to 100 per page
 
         SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
             .index(beneficiaryIndex)
+            .from(from)  
+            .size(maxSize)
             .query(q -> q
                 .functionScore(fs -> fs
                     .query(qq -> qq
                         .bool(b -> {
+                            
                             if (!isNumeric) {
-                                // Name searches with higher boost for exact matches
                                 b.should(s1 -> s1.multiMatch(mm -> mm
                                     .query(query)
                                     .fields("firstName^3", "lastName^3", "fatherName^2", "spouseName^2")
                                     .type(TextQueryType.BestFields)
                                     .fuzziness("AUTO")
                                 ));
-
-                                // Exact keyword matches get highest boost
                                 b.should(s2 -> s2.term(t -> t.field("firstName.keyword").value(query).boost(5.0f)));
                                 b.should(s3 -> s3.term(t -> t.field("lastName.keyword").value(query).boost(5.0f)));
-                                b.should(s4 -> s4.term(t -> t.field("fatherName.keyword").value(query).boost(4.0f)));
-                                b.should(s5 -> s5.term(t -> t.field("spouseName.keyword").value(query).boost(4.0f)));
                             }
 
-                            // ID searches - exact matches get very high boost
+                            // ID searches
                             b.should(s6 -> s6.term(t -> t.field("healthID").value(query).boost(10.0f)));
                             b.should(s7 -> s7.term(t -> t.field("abhaID").value(query).boost(10.0f)));
-                            b.should(s8 -> s8.term(t -> t.field("familyID").value(query).boost(8.0f)));
-                            b.should(s9 -> s9.term(t -> t.field("beneficiaryID").value(query).boost(10.0f)));
-                            b.should(s10 -> s10.term(t -> t.field("benId").value(query).boost(10.0f)));
-                            b.should(s11 -> s11.term(t -> t.field("aadharNo").value(query).boost(9.0f)));
-                            b.should(s12 -> s12.term(t -> t.field("govtIdentityNo").value(query).boost(8.0f)));
-
+                            b.should(s8 -> s8.term(t -> t.field("beneficiaryID").value(query).boost(10.0f)));
+                            
                             if (isNumeric) {
-                                // Partial matches for numeric fields
                                 b.should(s13 -> s13.wildcard(w -> w.field("phoneNum").value("*" + query + "*").boost(3.0f)));
-                                b.should(s14 -> s14.wildcard(w -> w.field("healthID").value("*" + query + "*").boost(2.0f)));
-                                b.should(s15 -> s15.wildcard(w -> w.field("abhaID").value("*" + query + "*").boost(2.0f)));
-                                b.should(s16 -> s16.wildcard(w -> w.field("familyID").value("*" + query + "*").boost(2.0f)));
-                                b.should(s17 -> s17.wildcard(w -> w.field("beneficiaryID").value("*" + query + "*").boost(2.0f)));
-                                b.should(s18 -> s18.wildcard(w -> w.field("benId").value("*" + query + "*").boost(2.0f)));
-                                b.should(s19 -> s19.wildcard(w -> w.field("aadharNo").value("*" + query + "*").boost(2.0f)));
-                                b.should(s20 -> s20.wildcard(w -> w.field("govtIdentityNo").value("*" + query + "*").boost(2.0f)));
-                                
-                                // Prefix matches
                                 b.should(s21 -> s21.prefix(p -> p.field("phoneNum").value(query).boost(4.0f)));
-                                b.should(s22 -> s22.prefix(p -> p.field("healthID").value(query).boost(3.0f)));
-                                b.should(s23 -> s23.prefix(p -> p.field("abhaID").value(query).boost(3.0f)));
-                                b.should(s24 -> s24.prefix(p -> p.field("familyID").value(query).boost(3.0f)));
-                                b.should(s25 -> s25.prefix(p -> p.field("beneficiaryID").value(query).boost(3.0f)));
-                                b.should(s26 -> s26.prefix(p -> p.field("benId").value(query).boost(3.0f)));
-
+                                
                                 try {
                                     Long numericValue = Long.parseLong(query);
                                     b.should(s27 -> s27.term(t -> t.field("benRegId").value(numericValue).boost(10.0f)));
-                                    b.should(s28 -> s28.term(t -> t.field("benAccountID").value(numericValue).boost(8.0f)));
-                                    
-                                    int intValue = numericValue.intValue();
-                                    b.should(s29 -> s29.term(t -> t.field("genderID").value(intValue).boost(2.0f)));
-                                    b.should(s30 -> s30.term(t -> t.field("age").value(intValue).boost(1.0f)));
-                                    b.should(s31 -> s31.term(t -> t.field("stateID").value(intValue).boost(1.0f)));
-                                    b.should(s32 -> s32.term(t -> t.field("districtID").value(intValue).boost(1.0f)));
-                                    b.should(s33 -> s33.term(t -> t.field("blockID").value(intValue).boost(1.0f)));
-                                    b.should(s34 -> s34.term(t -> t.field("villageID").value(intValue).boost(1.0f)));
-                                    b.should(s35 -> s35.term(t -> t.field("servicePointID").value(intValue).boost(1.0f)));
-                                    b.should(s36 -> s36.term(t -> t.field("parkingPlaceID").value(intValue).boost(1.0f)));
-                                    
-                                    logger.info("Added numeric searches for value: {}", numericValue);
                                 } catch (NumberFormatException e) {
                                     logger.warn("Failed to parse numeric value: {}", query);
                                 }
@@ -149,55 +119,68 @@ public List<Map<String, Object>> universalSearch(String query, Integer userId) {
                             return b;
                         })
                     )
-                    // Add location-based scoring if user location is available
                     .functions(getFunctionScores(userLocation))
                     .scoreMode(FunctionScoreMode.Sum)
                     .boostMode(FunctionBoostMode.Multiply)
                 )
             )
-            .minScore(minScore)  // KEY: Only return results above minimum score
-            .size(500)  // Reasonable limit - returns only matches up to 500
-            .sort(so -> so
-                .score(sc -> sc.order(SortOrder.Desc))  // Sort by relevance score
-            )
+            .minScore(minScore)
+            .sort(so -> so.score(sc -> sc.order(SortOrder.Desc)))
+            .trackTotalHits(th -> th.enabled(true)) // Track total hits
         , BeneficiariesESDTO.class);
 
-        logger.info("ES returned {} hits for query: '{}' (min score: {})", 
-            response.hits().hits().size(), query, minScore);
+        long totalHits = response.hits().total().value();
+        
+        logger.info("ES returned {} hits out of {} total for query: '{}' (page: {}, size: {})", 
+            response.hits().hits().size(), totalHits, query, page, size);
 
-        List<Map<String, Object>> allResults = response.hits().hits().stream()
+        List<Map<String, Object>> results = response.hits().hits().stream()
             .map(hit -> {
-                if (hit.source() != null) {
-                    logger.debug("Hit score: {}, benRegId: {}, name: {} {}", 
-                        hit.score(), 
-                        hit.source().getBenRegId(),
-                        hit.source().getFirstName(),
-                        hit.source().getLastName());
-                }
                 Map<String, Object> result = mapESResultToExpectedFormat(hit.source());
                 if (result != null) {
-                    result.put("_score", hit.score());  // Include score for debugging
+                    result.put("_score", hit.score());
                 }
                 return result;
             })
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
-        if (allResults.isEmpty()) {
-            logger.info("No results found in ES, falling back to database");
-            return searchInDatabaseDirectly(query);
-        }
+        Map<String, Object> paginatedResponse = new HashMap<>();
+        paginatedResponse.put("data", results);
+        paginatedResponse.put("totalResults", totalHits);
+        paginatedResponse.put("currentPage", page);
+        paginatedResponse.put("pageSize", maxSize);
+        paginatedResponse.put("totalPages", (int) Math.ceil((double) totalHits / maxSize));
+        paginatedResponse.put("hasMore", from + results.size() < totalHits);
 
-        logger.info("Returning {} matched results", allResults.size());
-        return allResults;
+        return paginatedResponse;
 
     } catch (Exception e) {
         logger.error("ES universal search failed: {}", e.getMessage(), e);
-        logger.info("Fallback: Searching in MySQL database");
-        return searchInDatabaseDirectly(query);
+        return createFallbackPaginatedResponse(query, page, size);
     }
 }
 
+private Map<String, Object> createFallbackPaginatedResponse(String query, int page, int size) {
+    List<Map<String, Object>> dbResults = searchInDatabaseDirectly(query);
+    int from = page * size;
+    int to = Math.min(from + size, dbResults.size());
+    
+    List<Map<String, Object>> pageResults = dbResults.subList(
+        Math.min(from, dbResults.size()), 
+        to
+    );
+    
+    Map<String, Object> response = new HashMap<>();
+    response.put("data", pageResults);
+    response.put("totalResults", dbResults.size());
+    response.put("currentPage", page);
+    response.put("pageSize", size);
+    response.put("totalPages", (int) Math.ceil((double) dbResults.size() / size));
+    response.put("hasMore", to < dbResults.size());
+    
+    return response;
+}
 /**
  * Generate function scores for location-based ranking
  */
@@ -615,6 +598,7 @@ private List<Map<String, Object>> searchInDatabaseForAdvanced(
             result.put("genderID", esData.getGenderID());
             result.put("genderName", esData.getGenderName());
             result.put("dob", esData.getDOB());
+            result.put("dOB", esData.getDOB());
             result.put("age", esData.getAge());
             result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
             result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
