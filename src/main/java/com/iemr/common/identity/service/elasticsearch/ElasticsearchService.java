@@ -50,15 +50,7 @@ public class ElasticsearchService {
     @Value("${elasticsearch.enabled}")
     private boolean esEnabled;
 
-    /**
-     * Universal search with optional user location for ranking
-     */
-   
-/**
- * Advanced search with multiple criteria
- * Searches by firstName, lastName, gender, DOB, address fields, etc.
- */
-
+    
 /**
  * Universal search with score-based filtering and location ranking
  * Only returns records that actually match the query (not all 10000)
@@ -155,10 +147,10 @@ public List<Map<String, Object>> universalSearch(String query, Integer userId) {
                     .boostMode(FunctionBoostMode.Multiply)
                 )
             )
-            .minScore(minScore)  // KEY: Only return results above minimum score
-            .size(500)  // Reasonable limit - returns only matches up to 500
+            .minScore(minScore)  
+            .size(500)  
             .sort(so -> so
-                .score(sc -> sc.order(SortOrder.Desc))  // Sort by relevance score
+                .score(sc -> sc.order(SortOrder.Desc)) 
             )
         , BeneficiariesESDTO.class);
 
@@ -176,7 +168,7 @@ public List<Map<String, Object>> universalSearch(String query, Integer userId) {
                 }
                 Map<String, Object> result = mapESResultToExpectedFormat(hit.source());
                 if (result != null) {
-                    result.put("_score", hit.score());  // Include score for debugging
+                    result.put("_score", hit.score()); 
                 }
                 return result;
             })
@@ -421,8 +413,8 @@ public List<Map<String, Object>> advancedSearch(
                     .boostMode(FunctionBoostMode.Multiply)
                 )
             )
-            .minScore(2.0)  // Only return good matches
-            .size(500)  // Reasonable limit
+            .minScore(2.0)  
+            .size(500)  
             .sort(so -> so
                 .score(sc -> sc.order(SortOrder.Desc))
             )
@@ -615,6 +607,7 @@ private List<Map<String, Object>> searchInDatabaseForAdvanced(
             result.put("genderID", esData.getGenderID());
             result.put("genderName", esData.getGenderName());
             result.put("dob", esData.getDOB());
+            result.put("dOB", esData.getDOB());
             result.put("age", esData.getAge());
             result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
             result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
