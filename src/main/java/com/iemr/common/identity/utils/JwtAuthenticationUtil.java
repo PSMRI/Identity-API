@@ -109,7 +109,7 @@ public class JwtAuthenticationUtil {
     private User fetchUserFromDB(String userId) {
         String redisKey = "user_" + userId; // Redis key format
         List<User> users = jdbcTemplate.query(
-                "SELECT * FROM m_user WHERE UserID = ? AND Deleted = false",
+                "SELECT * FROM db_iemr.m_user WHERE UserID = ? AND Deleted = false",
                 new BeanPropertyRowMapper<>(User.class), userId);
 
         if (users.isEmpty()) {
