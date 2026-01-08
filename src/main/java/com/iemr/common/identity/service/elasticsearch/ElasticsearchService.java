@@ -468,14 +468,6 @@ private List<Map<String, Object>> searchInDatabaseForAdvanced(
         return Collections.emptyList();
     }
 }
-
-
-    /**
-     * Overloaded method without userId (backward compatibility)
-     */
-    public List<Map<String, Object>> universalSearch(String query) {
-        return universalSearch(query, null);
-    }
     
     /**
      * Get user location from database
