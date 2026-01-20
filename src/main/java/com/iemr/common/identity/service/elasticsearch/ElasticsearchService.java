@@ -510,141 +510,166 @@ public class ElasticsearchService {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            // Basic fields from ES
-            result.put("beneficiaryRegID", esData.getBenRegId());
-            result.put("beneficiaryID", esData.getBeneficiaryID());
-            result.put("firstName", esData.getFirstName());
-            result.put("lastName", esData.getLastName());
-            result.put("genderID", esData.getGenderID());
-            result.put("genderName", esData.getGenderName());
-            result.put("dob", esData.getDOB());
-            result.put("dOB", esData.getDOB());
-            result.put("age", esData.getAge());
-            result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
-            result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
-            result.put("createdBy", esData.getCreatedBy());
-            result.put("createdDate", esData.getCreatedDate());
-            result.put("lastModDate", esData.getLastModDate());
-            result.put("benAccountID", esData.getBenAccountID());
+        // Basic fields from ES
+        result.put("beneficiaryRegID", esData.getBenRegId());
+        result.put("beneficiaryID", esData.getBeneficiaryID());
+        result.put("firstName", esData.getFirstName());
+        result.put("lastName", esData.getLastName() != null ? esData.getLastName() : "");
+        result.put("genderID", esData.getGenderID());
+        result.put("genderName", esData.getGenderName());
+        result.put("dob", esData.getDOB());
+        result.put("dOB", esData.getDOB());
+        result.put("age", esData.getAge());
+        result.put("actualAge", esData.getAge()); // NEW
+        result.put("ageUnits", "Years"); // NEW
+        
+        result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
+        result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
+        result.put("isHIVPos", esData.getIsHIVPos() != null ? esData.getIsHIVPos() : "");
+        
+        result.put("createdBy", esData.getCreatedBy());
+        result.put("createdDate", esData.getCreatedDate());
+        result.put("lastModDate", esData.getLastModDate());
+        result.put("benAccountID", esData.getBenAccountID());
 
-            result.put("familyID", esData.getFamilyID());
+        // Family ID - use both formats
+        result.put("familyID", esData.getFamilyID());
+        result.put("familyId", esData.getFamilyID()); // NEW - alternate key
 
-            List<Map<String, Object>> abhaDetails = new ArrayList<>();
-            if (esData.getHealthID() != null || esData.getAbhaID() != null) {
-                Map<String, Object> abhaDetail = new HashMap<>();
-                abhaDetail.put("healthIDNumber", esData.getAbhaID());
-                abhaDetail.put("healthID", esData.getAbhaID());
-                if (esData.getAbhaCreatedDate() != null) {
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+        // Marital status - NEW
+        result.put("maritalStatusName", null); // TODO: Add to ES if available
+        result.put("maritalStatus", new HashMap<>());
 
-                    LocalDateTime localDateTime = LocalDateTime.parse(esData.getAbhaCreatedDate(), formatter);
+        // Head of family - NEW (add these fields to BeneficiariesESDTO if available)
+        result.put("headOfFamily_RelationID", null);
+        result.put("headOfFamily_Relation", null);
 
-                    long createdDateMillis = localDateTime
-                            .atZone(ZoneId.of("Asia/Kolkata"))
-                            .toInstant()
-                            .toEpochMilli();
-
-                    abhaDetail.put("createdDate", createdDateMillis);
-                }
-
-                abhaDetail.put("beneficiaryRegID", esData.getBenRegId());
-                abhaDetails.add(abhaDetail);
+        // ABHA Details
+        List<Map<String, Object>> abhaDetails = new ArrayList<>();
+        if (esData.getHealthID() != null || esData.getAbhaID() != null) {
+            Map<String, Object> abhaDetail = new HashMap<>();
+            abhaDetail.put("healthIDNumber", esData.getAbhaID());
+            abhaDetail.put("healthID", esData.getAbhaID());
+            if (esData.getAbhaCreatedDate() != null) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+                LocalDateTime localDateTime = LocalDateTime.parse(esData.getAbhaCreatedDate(), formatter);
+                long createdDateMillis = localDateTime
+                        .atZone(ZoneId.of("Asia/Kolkata"))
+                        .toInstant()
+                        .toEpochMilli();
+                abhaDetail.put("createdDate", createdDateMillis);
             }
-            result.put("abhaDetails", abhaDetails);
-
-            Map<String, Object> mGender = new HashMap<>();
-            mGender.put("genderID", esData.getGenderID());
-            mGender.put("genderName", esData.getGenderName());
-            result.put("m_gender", mGender);
-
-            Map<String, Object> demographics = new HashMap<>();
-            demographics.put("beneficiaryRegID", esData.getBenRegId());
-            demographics.put("stateID", esData.getStateID());
-            demographics.put("stateName", esData.getStateName());
-            demographics.put("districtID", esData.getDistrictID());
-            demographics.put("districtName", esData.getDistrictName());
-            demographics.put("blockID", esData.getBlockID());
-            demographics.put("blockName", esData.getBlockName());
-            demographics.put("villageID", esData.getVillageID());
-            demographics.put("villageName", esData.getVillageName());
-            demographics.put("districtBranchID", null);
-            demographics.put("districtBranchName", null);
-            demographics.put("parkingPlaceID", esData.getParkingPlaceID());
-            demographics.put("servicePointID", esData.getServicePointID());
-            demographics.put("servicePointName", esData.getServicePointName());
-            demographics.put("createdBy", esData.getCreatedBy());
-
-            Map<String, Object> mState = new HashMap<>();
-            mState.put("stateID", esData.getStateID());
-            mState.put("stateName", esData.getStateName());
-            mState.put("stateCode", null);
-            mState.put("countryID", 1);
-            demographics.put("m_state", mState);
-
-            Map<String, Object> mDistrict = new HashMap<>();
-            mDistrict.put("districtID", esData.getDistrictID());
-            mDistrict.put("districtName", esData.getDistrictName());
-            mDistrict.put("stateID", esData.getStateID());
-            demographics.put("m_district", mDistrict);
-
-            Map<String, Object> mBlock = new HashMap<>();
-            mBlock.put("blockID", esData.getBlockID());
-            mBlock.put("blockName", esData.getBlockName());
-            mBlock.put("districtID", esData.getDistrictID());
-            mBlock.put("stateID", esData.getStateID());
-            demographics.put("m_districtblock", mBlock);
-
-            Map<String, Object> mBranch = new HashMap<>();
-            mBranch.put("districtBranchID", null);
-            mBranch.put("blockID", esData.getBlockID());
-            mBranch.put("villageName", esData.getVillageName());
-            mBranch.put("pinCode", esData.getPinCode());
-            demographics.put("m_districtbranchmapping", mBranch);
-
-            result.put("i_bendemographics", demographics);
-
-            List<Map<String, Object>> benPhoneMaps = new ArrayList<>();
-            if (esData.getPhoneNum() != null && !esData.getPhoneNum().isEmpty()) {
-                Map<String, Object> phoneMap = new HashMap<>();
-                phoneMap.put("benPhMapID", 1L);
-                phoneMap.put("benificiaryRegID", esData.getBenRegId());
-                phoneMap.put("parentBenRegID", esData.getBenRegId());
-                phoneMap.put("benRelationshipID", 1);
-                phoneMap.put("phoneNo", esData.getPhoneNum());
-
-                Map<String, Object> relationType = new HashMap<>();
-                relationType.put("benRelationshipID", 1);
-                relationType.put("benRelationshipType", "Self");
-                phoneMap.put("benRelationshipType", relationType);
-
-                benPhoneMaps.add(phoneMap);
-            }
-            result.put("benPhoneMaps", benPhoneMaps);
-
-            result.put("isConsent", false);
-            result.put("m_title", new HashMap<>());
-            result.put("maritalStatus", new HashMap<>());
-            result.put("changeInSelfDetails", false);
-            result.put("changeInAddress", false);
-            result.put("changeInContacts", false);
-            result.put("changeInIdentities", false);
-            result.put("changeInOtherDetails", false);
-            result.put("changeInFamilyDetails", false);
-            result.put("changeInAssociations", false);
-            result.put("changeInBankDetails", false);
-            result.put("changeInBenImage", false);
-            result.put("is1097", false);
-            result.put("emergencyRegistration", false);
-            result.put("passToNurse", false);
-            result.put("beneficiaryIdentities", new ArrayList<>());
-
-        } catch (Exception e) {
-            logger.error("Error mapping ES result: {}", e.getMessage(), e);
-            return null;
+            abhaDetail.put("beneficiaryRegID", esData.getBenRegId());
+            abhaDetails.add(abhaDetail);
         }
+        result.put("abhaDetails", abhaDetails);
 
-        return result;
+        // Gender object
+        Map<String, Object> mGender = new HashMap<>();
+        mGender.put("genderID", esData.getGenderID());
+        mGender.put("genderName", esData.getGenderName());
+        result.put("m_gender", mGender);
+
+        // Demographics - UPDATED with all fields
+        Map<String, Object> demographics = new HashMap<>();
+        demographics.put("beneficiaryRegID", esData.getBenRegId());
+        
+        // Current address
+        demographics.put("stateID", esData.getStateID());
+        demographics.put("stateName", esData.getStateName());
+        demographics.put("districtID", esData.getDistrictID());
+        demographics.put("districtName", esData.getDistrictName());
+        demographics.put("blockID", esData.getBlockID());
+        demographics.put("blockName", esData.getBlockName());
+        demographics.put("villageID", esData.getVillageID()); // FIXED
+        demographics.put("villageName", esData.getVillageName()); // FIXED
+        
+        demographics.put("districtBranchID", esData.getVillageID());
+        demographics.put("districtBranchName", esData.getVillageName());
+        demographics.put("parkingPlaceID", esData.getParkingPlaceID());
+        demographics.put("servicePointID", esData.getServicePointID());
+        demographics.put("servicePointName", esData.getServicePointName());
+        demographics.put("createdBy", esData.getCreatedBy());
+
+        // State object
+        Map<String, Object> mState = new HashMap<>();
+        mState.put("stateID", esData.getStateID());
+        mState.put("stateName", esData.getStateName());
+        mState.put("stateCode", null); 
+        mState.put("countryID", 1);
+        demographics.put("m_state", mState);
+
+        // District object
+        Map<String, Object> mDistrict = new HashMap<>();
+        mDistrict.put("districtID", esData.getDistrictID());
+        mDistrict.put("districtName", esData.getDistrictName());
+        mDistrict.put("stateID", esData.getStateID());
+        demographics.put("m_district", mDistrict);
+
+        // Block object
+        Map<String, Object> mBlock = new HashMap<>();
+        mBlock.put("blockID", esData.getBlockID());
+        mBlock.put("blockName", esData.getBlockName());
+        mBlock.put("districtID", esData.getDistrictID());
+        mBlock.put("stateID", esData.getStateID());
+        demographics.put("m_districtblock", mBlock);
+
+        // Branch mapping object
+        Map<String, Object> mBranch = new HashMap<>();
+        mBranch.put("districtBranchID", null);
+        mBranch.put("blockID", esData.getBlockID());
+        mBranch.put("villageName", esData.getVillageName()); // FIXED
+        mBranch.put("pinCode", esData.getPinCode());
+        demographics.put("m_districtbranchmapping", mBranch);
+
+        result.put("i_bendemographics", demographics);
+
+        // Phone maps
+        List<Map<String, Object>> benPhoneMaps = new ArrayList<>();
+        if (esData.getPhoneNum() != null && !esData.getPhoneNum().isEmpty()) {
+            Map<String, Object> phoneMap = new HashMap<>();
+            phoneMap.put("benPhMapID", 1L);
+            phoneMap.put("benificiaryRegID", esData.getBenRegId());
+            phoneMap.put("parentBenRegID", esData.getBenRegId());
+            phoneMap.put("benRelationshipID", 1);
+            phoneMap.put("phoneNo", esData.getPhoneNum());
+
+            Map<String, Object> relationType = new HashMap<>();
+            relationType.put("benRelationshipID", 1);
+            relationType.put("benRelationshipType", "Self");
+            phoneMap.put("benRelationshipType", relationType);
+
+            benPhoneMaps.add(phoneMap);
+        }
+        result.put("benPhoneMaps", benPhoneMaps);
+
+        // Boolean flags
+        result.put("isConsent", false);
+        result.put("changeInSelfDetails", false);
+        result.put("changeInAddress", false);
+        result.put("changeInContacts", false);
+        result.put("changeInIdentities", false);
+        result.put("changeInOtherDetails", false);
+        result.put("changeInFamilyDetails", false);
+        result.put("changeInAssociations", false);
+        result.put("changeInBankDetails", false);
+        result.put("changeInBenImage", false);
+        result.put("is1097", false);
+        result.put("emergencyRegistration", false);
+        result.put("passToNurse", false);
+        
+        // Empty objects/arrays
+        result.put("m_title", new HashMap<>());
+        result.put("maritalStatus", new HashMap<>());
+        result.put("beneficiaryIdentities", new ArrayList<>());
+
+    } catch (Exception e) {
+        logger.error("Error mapping ES result: {}", e.getMessage(), e);
+        return null;
     }
+
+    return result;
+}
 
     /**
      * Direct database search as fallback
@@ -666,130 +691,141 @@ public class ElasticsearchService {
     /**
      * Map database result to expected API format
      */
-    private Map<String, Object> mapToExpectedFormat(Object[] row) {
-        Map<String, Object> result = new HashMap<>();
+  private Map<String, Object> mapToExpectedFormat(Object[] row) {
+    Map<String, Object> result = new HashMap<>();
 
-        try {
-            Long beneficiaryRegID = getLong(row[0]);
-            String beneficiaryID = getString(row[1]);
-            String firstName = getString(row[2]);
-            String lastName = getString(row[3]);
-            Integer genderID = getInteger(row[4]);
-            String genderName = getString(row[5]);
-            Date dob = getDate(row[6]);
-            Integer age = getInteger(row[7]);
-            String fatherName = getString(row[8]);
-            String spouseName = getString(row[9]);
-            String isHIVPos = getString(row[10]);
-            String createdBy = getString(row[11]);
-            Date createdDate = getDate(row[12]);
-            Long lastModDate = getLong(row[13]);
-            Long benAccountID = getLong(row[14]);
+    try {
+        Long beneficiaryRegID = getLong(row[0]);
+        String beneficiaryID = getString(row[1]);
+        String firstName = getString(row[2]);
+        String lastName = getString(row[3]);
+        Integer genderID = getInteger(row[4]);
+        String genderName = getString(row[5]);
+        Date dob = getDate(row[6]);
+        Integer age = getInteger(row[7]);
+        String fatherName = getString(row[8]);
+        String spouseName = getString(row[9]);
+        String isHIVPos = getString(row[10]);
+        String createdBy = getString(row[11]);
+        Date createdDate = getDate(row[12]);
+        Long lastModDate = getLong(row[13]);
+        Long benAccountID = getLong(row[14]);
 
-            Integer stateID = getInteger(row[15]);
-            String stateName = getString(row[16]);
-            Integer districtID = getInteger(row[17]);
-            String districtName = getString(row[18]);
-            Integer blockID = getInteger(row[19]);
-            String blockName = getString(row[20]);
-            String pinCode = getString(row[21]);
-            Integer servicePointID = getInteger(row[22]);
-            String servicePointName = getString(row[23]);
-            Integer parkingPlaceID = getInteger(row[24]);
-            String phoneNum = getString(row[25]);
+        Integer stateID = getInteger(row[15]);
+        String stateName = getString(row[16]);
+        Integer districtID = getInteger(row[17]);
+        String districtName = getString(row[18]);
+        Integer blockID = getInteger(row[19]);
+        String blockName = getString(row[20]);
+        String pinCode = getString(row[21]);
+        Integer servicePointID = getInteger(row[22]);
+        String servicePointName = getString(row[23]);
+        Integer parkingPlaceID = getInteger(row[24]);
+        String phoneNum = getString(row[25]);
+        
+        Integer villageID = getInteger(row[26]); 
+        String villageName = getString(row[27]);
 
-            result.put("beneficiaryRegID", beneficiaryRegID);
-            result.put("beneficiaryID", beneficiaryID);
-            result.put("firstName", firstName);
-            result.put("lastName", lastName);
-            result.put("genderID", genderID);
-            result.put("genderName", genderName);
-            result.put("dOB", dob);
-            result.put("dob", dob);
-            result.put("age", age);
-            result.put("fatherName", fatherName != null ? fatherName : "");
-            result.put("spouseName", spouseName != null ? spouseName : "");
-            result.put("createdBy", createdBy);
-            result.put("createdDate", createdDate);
-            result.put("lastModDate", lastModDate);
-            result.put("benAccountID", benAccountID);
+        result.put("beneficiaryRegID", beneficiaryRegID);
+        result.put("beneficiaryID", beneficiaryID);
+        result.put("firstName", firstName);
+        result.put("lastName", lastName != null ? lastName : "");
+        result.put("genderID", genderID);
+        result.put("genderName", genderName);
+        result.put("dOB", dob);
+        result.put("dob", dob);
+        result.put("age", age);
+        result.put("actualAge", age); // NEW
+        result.put("ageUnits", "Years"); // NEW
+        result.put("fatherName", fatherName != null ? fatherName : "");
+        result.put("spouseName", spouseName != null ? spouseName : "");
+        result.put("isHIVPos", isHIVPos != null ? isHIVPos : "");
+        result.put("createdBy", createdBy);
+        result.put("createdDate", createdDate);
+        result.put("lastModDate", lastModDate);
+        result.put("benAccountID", benAccountID);
 
-            Map<String, Object> mGender = new HashMap<>();
-            mGender.put("genderID", genderID);
-            mGender.put("genderName", genderName);
-            result.put("m_gender", mGender);
+        // NEW fields
+        result.put("maritalStatusName", null);
+        result.put("maritalStatus", new HashMap<>());
 
-            Map<String, Object> demographics = new HashMap<>();
-            demographics.put("beneficiaryRegID", beneficiaryRegID);
-            demographics.put("stateID", stateID);
-            demographics.put("stateName", stateName);
-            demographics.put("districtID", districtID);
-            demographics.put("districtName", districtName);
-            demographics.put("blockID", blockID);
-            demographics.put("blockName", blockName);
-            demographics.put("districtBranchID", null);
-            demographics.put("districtBranchName", null);
-            demographics.put("parkingPlaceID", parkingPlaceID);
-            demographics.put("servicePointID", servicePointID);
-            demographics.put("servicePointName", servicePointName);
-            demographics.put("createdBy", createdBy);
+        Map<String, Object> mGender = new HashMap<>();
+        mGender.put("genderID", genderID);
+        mGender.put("genderName", genderName);
+        result.put("m_gender", mGender);
 
-            Map<String, Object> mState = new HashMap<>();
-            mState.put("stateID", stateID);
-            mState.put("stateName", stateName);
-            mState.put("stateCode", null);
-            mState.put("countryID", 1);
-            demographics.put("m_state", mState);
+        Map<String, Object> demographics = new HashMap<>();
+        demographics.put("beneficiaryRegID", beneficiaryRegID);
+        demographics.put("stateID", stateID);
+        demographics.put("stateName", stateName);
+        demographics.put("districtID", districtID);
+        demographics.put("districtName", districtName);
+        demographics.put("blockID", blockID);
+        demographics.put("blockName", blockName);
+        demographics.put("villageID", villageID); 
+        demographics.put("villageName", villageName); 
+        demographics.put("districtBranchID", villageID);
+        demographics.put("districtBranchName", villageName);
+        demographics.put("parkingPlaceID", parkingPlaceID);
+        demographics.put("servicePointID", servicePointID);
+        demographics.put("servicePointName", servicePointName);
+        demographics.put("createdBy", createdBy);
 
-            Map<String, Object> mDistrict = new HashMap<>();
-            mDistrict.put("districtID", districtID);
-            mDistrict.put("districtName", districtName);
-            mDistrict.put("stateID", stateID);
-            demographics.put("m_district", mDistrict);
+        Map<String, Object> mState = new HashMap<>();
+        mState.put("stateID", stateID);
+        mState.put("stateName", stateName);
+        mState.put("stateCode", null);
+        mState.put("countryID", 1);
+        demographics.put("m_state", mState);
 
-            Map<String, Object> mBlock = new HashMap<>();
-            mBlock.put("blockID", blockID);
-            mBlock.put("blockName", blockName);
-            mBlock.put("districtID", districtID);
-            mBlock.put("stateID", stateID);
-            demographics.put("m_districtblock", mBlock);
+        Map<String, Object> mDistrict = new HashMap<>();
+        mDistrict.put("districtID", districtID);
+        mDistrict.put("districtName", districtName);
+        mDistrict.put("stateID", stateID);
+        demographics.put("m_district", mDistrict);
 
-            Map<String, Object> mBranch = new HashMap<>();
-            mBranch.put("districtBranchID", null);
-            mBranch.put("blockID", blockID);
-            mBranch.put("villageName", null);
-            mBranch.put("pinCode", pinCode);
-            demographics.put("m_districtbranchmapping", mBranch);
+        Map<String, Object> mBlock = new HashMap<>();
+        mBlock.put("blockID", blockID);
+        mBlock.put("blockName", blockName);
+        mBlock.put("districtID", districtID);
+        mBlock.put("stateID", stateID);
+        demographics.put("m_districtblock", mBlock);
 
-            result.put("i_bendemographics", demographics);
+        Map<String, Object> mBranch = new HashMap<>();
+        mBranch.put("districtBranchID", null);
+        mBranch.put("blockID", blockID);
+        mBranch.put("villageName", villageName); // FIXED
+        mBranch.put("pinCode", pinCode);
+        demographics.put("m_districtbranchmapping", mBranch);
 
-            List<Map<String, Object>> benPhoneMaps = fetchPhoneNumbers(beneficiaryRegID);
-            result.put("benPhoneMaps", benPhoneMaps);
+        result.put("i_bendemographics", demographics);
 
-            result.put("isConsent", false);
-            result.put("m_title", new HashMap<>());
-            result.put("maritalStatus", new HashMap<>());
-            result.put("changeInSelfDetails", false);
-            result.put("changeInAddress", false);
-            result.put("changeInContacts", false);
-            result.put("changeInIdentities", false);
-            result.put("changeInOtherDetails", false);
-            result.put("changeInFamilyDetails", false);
-            result.put("changeInAssociations", false);
-            result.put("changeInBankDetails", false);
-            result.put("changeInBenImage", false);
-            result.put("is1097", false);
-            result.put("emergencyRegistration", false);
-            result.put("passToNurse", false);
-            result.put("beneficiaryIdentities", new ArrayList<>());
+        List<Map<String, Object>> benPhoneMaps = fetchPhoneNumbers(beneficiaryRegID);
+        result.put("benPhoneMaps", benPhoneMaps);
 
-        } catch (Exception e) {
-            logger.error("Error mapping result: {}", e.getMessage(), e);
-        }
+        result.put("isConsent", false);
+        result.put("m_title", new HashMap<>());
+        result.put("maritalStatus", new HashMap<>());
+        result.put("changeInSelfDetails", false);
+        result.put("changeInAddress", false);
+        result.put("changeInContacts", false);
+        result.put("changeInIdentities", false);
+        result.put("changeInOtherDetails", false);
+        result.put("changeInFamilyDetails", false);
+        result.put("changeInAssociations", false);
+        result.put("changeInBankDetails", false);
+        result.put("changeInBenImage", false);
+        result.put("is1097", false);
+        result.put("emergencyRegistration", false);
+        result.put("passToNurse", false);
+        result.put("beneficiaryIdentities", new ArrayList<>());
 
-        return result;
+    } catch (Exception e) {
+        logger.error("Error mapping result: {}", e.getMessage(), e);
     }
 
+    return result;
+}
     /**
      * Fetch phone numbers for a beneficiary
      */
