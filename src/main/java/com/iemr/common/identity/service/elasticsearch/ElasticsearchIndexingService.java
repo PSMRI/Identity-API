@@ -2,6 +2,7 @@ package com.iemr.common.identity.service.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.mapping.*;
+import co.elastic.clients.elasticsearch.indices.IndexSettings;
 import co.elastic.clients.elasticsearch.indices.TranslogDurability;
 
 import org.slf4j.Logger;
@@ -28,7 +29,8 @@ public class ElasticsearchIndexingService {
     private String beneficiaryIndex;
     
     /**
-     
+     * Create index optimized for BULK INDEXING
+     * Settings will be updated for search after sync completes
      */
     public void createIndexWithMapping() throws Exception {
         logger.info("Creating index optimized for bulk indexing: {}", beneficiaryIndex);
@@ -39,13 +41,15 @@ public class ElasticsearchIndexingService {
             esClient.indices().delete(d -> d.index(beneficiaryIndex));
         }
         
+        // PHASE 1 SETTINGS: Optimized for BULK INDEXING (maximum write speed)
         IndexSettings settings = IndexSettings.of(s -> s
-            .refreshInterval(t -> t.time("-1"))  // -1 = disable refresh completely
+            // CRITICAL: Disable refresh during bulk indexing
+            .refreshInterval(t -> t.time("-1"))  // -1 = disable completely for max speed
             
-            // Use 1 shard for datasets < 50GB (yours is ~784K records)
+            // Use 1 shard for datasets < 50GB (optimal for 784K records)
             .numberOfShards("1")  
             
-            // No replicas during initial indexing 
+            // No replicas during initial indexing (add later for HA)
             .numberOfReplicas("0")
             
             // Disable query cache during indexing
@@ -55,33 +59,14 @@ public class ElasticsearchIndexingService {
             
             .maxResultWindow(10000)
             
+            // CRITICAL: Async translog for maximum speed
             .translog(t -> t
                 .durability(TranslogDurability.Async)
                 .syncInterval(ts -> ts.time("120s"))  // Longer interval for bulk ops
-                .flushThresholdSize(fb -> fb.bytes("1gb"))  // Larger flush threshold
-            )
-            
-            // Disable merge throttling during bulk indexing
-            .merge(m -> m
-                .scheduler(ms -> ms
-                    .maxThreadCount(1)
-                    .maxMergeCount(6)
-                )
-            )
-            
-            // Optimize for write performance
-            .indexing(i -> i
-                .slowlog(sl -> sl
-                    .threshold(t -> t
-                        .index(idx -> idx
-                            .warn(w -> w.time("10s"))
-                            .info(inf -> inf.time("5s"))
-                        )
-                    )
-                )
             )
         );
         
+        // Field mappings (supports fast search)
         TypeMapping mapping = TypeMapping.of(tm -> tm
             .properties("benId", Property.of(p -> p.keyword(k -> k)))
             .properties("benRegId", Property.of(p -> p.long_(l -> l)))
@@ -172,96 +157,106 @@ public class ElasticsearchIndexingService {
             .mappings(mapping)
         );
         
-        logger.info("Index created successfully: {}", beneficiaryIndex);
+        logger.info("Index created with BULK INDEXING optimization");
+        logger.info("Settings: refresh=disabled, replicas=0, async_translog, 1 shard");
     }
     
     /**
-     Optimize for search after bulk indexing completes
+     * PHASE 2: Optimize for SEARCH after bulk indexing completes
+     * Call this AFTER indexAllBeneficiaries() finishes
      */
     public void optimizeForSearch() throws Exception {
-        logger.info("Optimizing index for search performance...");
+        logger.info("PHASE 2: Optimizing index for SEARCH performance");
         
         // Step 1: Force refresh to make all documents searchable
-        logger.info("Forcing refresh to make documents visible...");
+        logger.info("Step 1/3: Forcing refresh to make documents visible...");
         esClient.indices().refresh(r -> r.index(beneficiaryIndex));
+        logger.info("Documents are now searchable");
         
-        // Step 2: Update settings for search optimization
-        logger.info("Updating index settings for production search...");
+        // Step 2: Update settings for production search
+        logger.info("Step 2/3: Updating index settings for production...");
         esClient.indices().putSettings(s -> s
             .index(beneficiaryIndex)
             .settings(is -> is
-                .refreshInterval(t -> t.time("1s"))  
-                .numberOfReplicas("1")  
+                .refreshInterval(t -> t.time("1s"))  // Enable 1s refresh for near real-time search
+                .numberOfReplicas("1")  // Add replica for high availability
                 .translog(t -> t
-                    .durability(TranslogDurability.Request)  
+                    .durability(TranslogDurability.Request)  // Synchronous for data safety
                     .syncInterval(ts -> ts.time("5s"))
                 )
                 .queries(q -> q
-                    .cache(c -> c.enabled(true))  
+                    .cache(c -> c.enabled(true))  // Enable query cache for faster searches
                 )
             )
         );
+        logger.info("Settings applied: refresh=1s, replicas=1, query_cache=enabled");
         
-        // Step 3: Force merge to optimize segment count
-        logger.info("Force merging segments for optimal read performance...");
+        // Step 3: Force merge to optimize segments
+        logger.info("Step 3/3: Force merging segments for optimal read performance...");
+        logger.info("This may take 5-15 minutes depending on data size...");
         esClient.indices().forcemerge(f -> f
             .index(beneficiaryIndex)
-            .maxNumSegments(1L)  // Single segment per shard for best performance
+            .maxNumSegments(1L)  // Single segment per shard = fastest searches
             .flush(true)
         );
+        logger.info("Segments merged to 1 per shard");
         
-        logger.info("Index optimization completed");
+        logger.info("INDEX OPTIMIZATION COMPLETE!");
+        logger.info("Index is now ready for searches");
     }
     
     /**
-     * Full indexing workflow with progress tracking
+     * COMPLETE WORKFLOW: Create index + Sync data + Optimize
+     * This is your existing endpoint, now with automatic optimization
      */
-    public Map<String, Object> indexAllBeneficiaries() {
-        logger.info("STARTING FULL BENEFICIARY INDEXING");
+    public Map<String, Integer> indexAllBeneficiaries() {
+        logger.info("COMPLETE INDEXING WORKFLOW");
         
         long startTime = System.currentTimeMillis();
         
         try {
-            // Execute bulk indexing
-            logger.info("PHASE 1: Bulk indexing beneficiaries...");
+            // Execute bulk indexing (now uses optimized batch queries)
+            logger.info("PHASE 1: Bulk indexing beneficiaries with batch queries...");
             ElasticsearchSyncService.SyncResult result = syncService.syncAllBeneficiaries();
             
             long indexingTime = System.currentTimeMillis() - startTime;
-            logger.info("Bulk indexing completed in {} seconds", indexingTime / 1000);
+            logger.info("Bulk indexing completed in {} seconds ({} minutes)", 
+                       indexingTime / 1000, indexingTime / 60000);
             logger.info("Success: {}, Failed: {}", result.getSuccessCount(), result.getFailureCount());
             
             // Optimize for search
+            logger.info("");
             logger.info("PHASE 2: Optimizing for search...");
             long optimizeStart = System.currentTimeMillis();
             optimizeForSearch();
             long optimizeTime = System.currentTimeMillis() - optimizeStart;
-            logger.info("Optimization completed in {} seconds", optimizeTime / 1000);
+            logger.info("Optimization completed in {} seconds ({} minutes)", 
+                       optimizeTime / 1000, optimizeTime / 60000);
             
-            // Prepare response
-            Map<String, Object> response = new HashMap<>();
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            logger.info("COMPLETE WORKFLOW FINISHED!");
+            logger.info("Total time: {} seconds ({} minutes)", totalTime / 1000, totalTime / 60000);
+            logger.info("Indexing: {}m | Optimization: {}m", indexingTime / 60000, optimizeTime / 60000);
+            
+            // Return response in your existing format
+            Map<String, Integer> response = new HashMap<>();
             response.put("success", result.getSuccessCount());
             response.put("failed", result.getFailureCount());
-            response.put("indexingTimeSeconds", indexingTime / 1000);
-            response.put("optimizationTimeSeconds", optimizeTime / 1000);
-            response.put("totalTimeSeconds", (System.currentTimeMillis() - startTime) / 1000);
-            
-            logger.info("INDEXING COMPLETE - Total time: {} seconds", 
-                       (System.currentTimeMillis() - startTime) / 1000);
             
             return response;
             
         } catch (Exception e) {
-            logger.error("Error during indexing", e);
-            Map<String, Object> response = new HashMap<>();
+            logger.error("Error during indexing workflow", e);
+            Map<String, Integer> response = new HashMap<>();
             response.put("success", 0);
             response.put("failed", 0);
-            response.put("error", e.getMessage());
             return response;
         }
     }
     
     /**
-     * Check index health and statistics
+     * Get index statistics (unchanged)
      */
     public Map<String, Object> getIndexStats() throws Exception {
         var stats = esClient.indices().stats(s -> s.index(beneficiaryIndex));

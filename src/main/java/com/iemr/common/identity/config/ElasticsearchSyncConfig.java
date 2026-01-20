@@ -25,11 +25,13 @@ public class ElasticsearchSyncConfig {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         
         // Only 1-2 sync jobs should run at a time to avoid overwhelming DB/ES
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("es-sync-");
         executor.setKeepAliveSeconds(60);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
         
         // Handle rejected tasks
         executor.setRejectedExecutionHandler((r, executor1) -> {
