@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import co.elastic.clients.elasticsearch._types.SortOrder;
@@ -166,13 +169,15 @@ public class ElasticsearchService {
                             .filter(f -> f
                                     .includes("benRegId", "beneficiaryID", "firstName", "lastName",
                                             "genderID", "genderName", "dOB", "phoneNum",
-                                            "stateID", "districtID", "blockID", "villageID", "healthID", "abhaID",  "familyID",  
-                "fatherName", "spouseName", "age", "createdBy", "createdDate",
-                "lastModDate", "benAccountID", "districtName", "blockName",
-                "villageName", "pinCode", "servicePointID", "servicePointName",
-                "parkingPlaceID", "permStateID", "permStateName", "permDistrictID",
-                "permDistrictName", "permBlockID", "permBlockName", "permVillageID",
-                "permVillageName")))
+                                            "stateID", "districtID", "blockID", "villageID", "healthID", "abhaID",
+                                            "abhaCreatedDate",
+                                            "familyID",
+                                            "fatherName", "spouseName", "age", "createdBy", "createdDate",
+                                            "lastModDate", "benAccountID", "districtName", "blockName",
+                                            "villageName", "pinCode", "servicePointID", "servicePointName",
+                                            "parkingPlaceID", "permStateID", "permStateName", "permDistrictID",
+                                            "permDistrictName", "permBlockID", "permBlockName", "permVillageID",
+                                            "permVillageName")))
 
                     , BeneficiariesESDTO.class);
 
@@ -182,12 +187,12 @@ public class ElasticsearchService {
                     query);
 
             if (!response.hits().hits().isEmpty()) {
-    BeneficiariesESDTO firstResult = response.hits().hits().get(0).source();
-    logger.info("First result - benRegId: {}, healthID: {}, abhaID: {}", 
-        firstResult.getBenRegId(), 
-        firstResult.getHealthID(), 
-        firstResult.getAbhaID());
-}
+                BeneficiariesESDTO firstResult = response.hits().hits().get(0).source();
+                logger.info("First result - benRegId: {}, healthID: {}, abhaID: {}",
+                        firstResult.getBenRegId(),
+                        firstResult.getHealthID(),
+                        firstResult.getAbhaID());
+            }
 
             if (response.hits().hits().isEmpty()) {
                 logger.info("No results in ES, using database fallback");
@@ -500,7 +505,7 @@ public class ElasticsearchService {
             return null;
         }
 
-        logger.info("ESDATA="+esData.getAbhaID());
+        logger.info("ESDATA=" + esData.getAbhaID());
 
         Map<String, Object> result = new HashMap<>();
 
@@ -522,9 +527,30 @@ public class ElasticsearchService {
             result.put("lastModDate", esData.getLastModDate());
             result.put("benAccountID", esData.getBenAccountID());
 
-            result.put("healthID", esData.getHealthID());
-            result.put("abhaID", esData.getAbhaID());
             result.put("familyID", esData.getFamilyID());
+
+            List<Map<String, Object>> abhaDetails = new ArrayList<>();
+            if (esData.getHealthID() != null || esData.getAbhaID() != null) {
+                Map<String, Object> abhaDetail = new HashMap<>();
+                abhaDetail.put("healthIDNumber", esData.getAbhaID());
+                abhaDetail.put("healthID", esData.getAbhaID());
+                if (esData.getAbhaCreatedDate() != null) {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+
+                    LocalDateTime localDateTime = LocalDateTime.parse(esData.getAbhaCreatedDate(), formatter);
+
+                    long createdDateMillis = localDateTime
+                            .atZone(ZoneId.of("Asia/Kolkata"))
+                            .toInstant()
+                            .toEpochMilli();
+
+                    abhaDetail.put("createdDate", createdDateMillis);
+                }
+
+                abhaDetail.put("beneficiaryRegID", esData.getBenRegId());
+                abhaDetails.add(abhaDetail);
+            }
+            result.put("abhaDetails", abhaDetails);
 
             Map<String, Object> mGender = new HashMap<>();
             mGender.put("genderID", esData.getGenderID());

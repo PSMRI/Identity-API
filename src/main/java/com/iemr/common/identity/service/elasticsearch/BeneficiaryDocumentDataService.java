@@ -65,6 +65,7 @@ public class BeneficiaryDocumentDataService {
                         if (abhaData != null) {
                             doc.setHealthID(abhaData.getHealthID());
                             doc.setAbhaID(abhaData.getHealthIDNumber());
+                            doc.setAbhaCreatedDate(abhaData.getAbhaCreatedDate());
                             logger.info("Enriched benRegId={} with healthID={}, abhaID={}",
                                     doc.getBenRegId(), doc.getHealthID(), doc.getAbhaID());
                         } else {
@@ -148,7 +149,8 @@ public class BeneficiaryDocumentDataService {
                         abhaData.setHealthID(record[1] != null ? record[1].toString() : null);
                         abhaData.setHealthIDNumber(record[2] != null ? record[2].toString() : null);
                         abhaData.setAuthenticationMode(record[3] != null ? record[3].toString() : null);
-
+                        abhaData.setAbhaCreatedDate(record[4] !=null ? record[4].toString() : null);
+                        
                         abhaMap.put(benRegId, abhaData);
                     }
                 } catch (Exception e) {
@@ -343,6 +345,7 @@ public class BeneficiaryDocumentDataService {
         private String healthID;
         private String healthIDNumber;
         private String authenticationMode;
+        private String abhaCreatedDate;
 
         public String getHealthID() {
             return healthID;
@@ -366,6 +369,14 @@ public class BeneficiaryDocumentDataService {
 
         public void setAuthenticationMode(String authenticationMode) {
             this.authenticationMode = authenticationMode;
+        }
+        
+        public String getAbhaCreatedDate() { 
+            return abhaCreatedDate;
+        }
+
+        public void setAbhaCreatedDate(String abhaCreatedDate) {
+            this.abhaCreatedDate = abhaCreatedDate;
         }
     }
 

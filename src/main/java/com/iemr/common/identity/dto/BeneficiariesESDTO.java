@@ -77,6 +77,9 @@ public class BeneficiariesESDTO {
     @JsonProperty("abhaID")
     private String abhaID;
     
+    @JsonProperty("abhaCreatedDate")
+    private String abhaCreatedDate;
+    
     @JsonProperty("familyID")
     private String familyID;
     

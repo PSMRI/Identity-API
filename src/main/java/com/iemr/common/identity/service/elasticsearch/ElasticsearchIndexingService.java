@@ -120,6 +120,7 @@ public class ElasticsearchIndexingService {
             
             .properties("healthID", Property.of(p -> p.keyword(k -> k)))
             .properties("abhaID", Property.of(p -> p.keyword(k -> k)))
+            .properties("abhaCreatedDate", Property.of(p -> p.keyword(k -> k)))
             .properties("familyID", Property.of(p -> p.keyword(k -> k)))
             
             // Geographic fields
