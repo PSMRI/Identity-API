@@ -1,6 +1,7 @@
 package com.iemr.common.identity.service.elasticsearch;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,9 +9,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.iemr.common.identity.domain.MBeneficiarymapping;
+import com.iemr.common.identity.dto.AbhaAddressDTO;
 import com.iemr.common.identity.dto.BenDetailDTO;
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.repo.BenMappingRepo;
+import com.iemr.common.identity.repo.V_BenAdvanceSearchRepo;
 
 /**
  * Service to fetch beneficiary data directly from database
@@ -23,6 +26,10 @@ public class BeneficiaryDataService {
 
     @Autowired
     private BenMappingRepo mappingRepo;
+
+    @Autowired
+    private V_BenAdvanceSearchRepo v_BenAdvanceSearchRepo;
+
 
     /**
      * Fetch beneficiary data directly from database by benRegId
@@ -108,7 +115,51 @@ public class BeneficiaryDataService {
                 
                 dto.setBeneficiaryDetails(detailDTO);
             }
-            
+             try {
+            logger.info("Fetching ABHA details for benRegId={}", dto.getBenRegId());
+            if (dto.getBenRegId() != null) {
+                List<Object[]> abhaList = v_BenAdvanceSearchRepo.getBenAbhaDetailsByBenRegID(dto.getBenRegId());
+
+                if (abhaList != null && !abhaList.isEmpty()) {
+                    List<AbhaAddressDTO> abhaDTOList = new java.util.ArrayList<>();
+
+                    for (Object[] objArr : abhaList) {
+                        AbhaAddressDTO abhaDTO = new AbhaAddressDTO();
+                        abhaDTO.setBeneficiaryRegID(dto.getBenRegId());
+
+                        // objArr[1] -> HealthID (ABHA Address)
+                        if (objArr[1] != null) {
+                            abhaDTO.setHealthID(objArr[1].toString());
+                        }
+
+                        // objArr[2] -> HealthIDNumber (ABHA Number)
+                        if (objArr[2] != null) {
+                            abhaDTO.setHealthIDNumber(objArr[2].toString());
+                        }
+
+                        // objArr[3] -> Authentication Mode
+                        if (objArr[3] != null) {
+                            abhaDTO.setAuthenticationMode(objArr[3].toString());
+                        }
+
+                        // objArr[4] -> Created Date
+                        if (objArr[4] != null) {
+                            abhaDTO.setCreatedDate((java.sql.Timestamp) objArr[4]);
+                        }
+
+                        abhaDTOList.add(abhaDTO);
+                    }
+
+                    dto.setAbhaDetails(abhaDTOList);
+                    logger.info("ABHA details fetched: count={}", abhaDTOList.size());
+                }
+            }
+} catch (Exception e) {
+    logger.error("Error while fetching ABHA details for benRegId={}",
+            dto.getBenRegId(), e);
+}
+
+
             logger.debug("Successfully converted mapping to DTO: benRegId={}", mapping.getBenRegId());
             
         } catch (Exception e) {

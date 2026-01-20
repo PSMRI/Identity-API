@@ -17,10 +17,10 @@ import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 
 import com.iemr.common.identity.data.elasticsearch.BeneficiaryDocument;
+import com.iemr.common.identity.dto.AbhaAddressDTO;
 import com.iemr.common.identity.dto.BenDetailDTO;
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.repo.BenMappingRepo;
-import com.iemr.common.identity.service.elasticsearch.BeneficiaryDataService;
 
 /**
  * Service to synchronize beneficiary data from database to Elasticsearch
@@ -336,7 +336,20 @@ public class ElasticsearchSyncService {
                 doc.setAge(benDetails.getBeneficiaryAge());
                 doc.setGender(benDetails.getGender());
             }
+            // ===== EXTRACT ABHA DETAILS =====
+            if (dto.getAbhaDetails() != null && !dto.getAbhaDetails().isEmpty()) {
+                AbhaAddressDTO abhaDTO = dto.getAbhaDetails().get(0);
 
+                if (abhaDTO.getHealthID() != null) {
+                    doc.setHealthID(abhaDTO.getHealthID());
+                    logger.debug("Set healthID={} for benRegId={}", abhaDTO.getHealthID(), doc.getBenRegId());
+                }
+
+                if (abhaDTO.getHealthIDNumber() != null) {
+                    doc.setAbhaID(abhaDTO.getHealthIDNumber());
+                    logger.debug("Set abhaID={} for benRegId={}", abhaDTO.getHealthIDNumber(), doc.getBenRegId());
+                }
+            }
             logger.debug("Successfully converted DTO to document: benId={}", doc.getBenId());
             return doc;
 

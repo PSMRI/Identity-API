@@ -166,7 +166,13 @@ public class ElasticsearchService {
                             .filter(f -> f
                                     .includes("benRegId", "beneficiaryID", "firstName", "lastName",
                                             "genderID", "genderName", "dOB", "phoneNum",
-                                            "stateID", "districtID", "blockID", "villageID")))
+                                            "stateID", "districtID", "blockID", "villageID", "healthID", "abhaID",  "familyID",  
+                "fatherName", "spouseName", "age", "createdBy", "createdDate",
+                "lastModDate", "benAccountID", "districtName", "blockName",
+                "villageName", "pinCode", "servicePointID", "servicePointName",
+                "parkingPlaceID", "permStateID", "permStateName", "permDistrictID",
+                "permDistrictName", "permBlockID", "permBlockName", "permVillageID",
+                "permVillageName")))
 
                     , BeneficiariesESDTO.class);
 
@@ -174,6 +180,14 @@ public class ElasticsearchService {
                     response.hits().hits().size(),
                     response.took(),
                     query);
+
+            if (!response.hits().hits().isEmpty()) {
+    BeneficiariesESDTO firstResult = response.hits().hits().get(0).source();
+    logger.info("First result - benRegId: {}, healthID: {}, abhaID: {}", 
+        firstResult.getBenRegId(), 
+        firstResult.getHealthID(), 
+        firstResult.getAbhaID());
+}
 
             if (response.hits().hits().isEmpty()) {
                 logger.info("No results in ES, using database fallback");
@@ -485,6 +499,8 @@ public class ElasticsearchService {
         if (esData == null) {
             return null;
         }
+
+        logger.info("ESDATA="+esData.getAbhaID());
 
         Map<String, Object> result = new HashMap<>();
 
