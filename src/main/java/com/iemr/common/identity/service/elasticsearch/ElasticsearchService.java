@@ -169,7 +169,7 @@ public class ElasticsearchService {
                             .filter(f -> f
                                     .includes("benRegId", "beneficiaryID", "firstName", "lastName",
                                             "genderID", "genderName", "dOB", "phoneNum",
-                                            "stateID", "districtID", "blockID", "villageID", "healthID", "abhaID",
+                                            "stateID", "stateName", "districtID", "blockID", "villageID", "healthID", "abhaID",
                                             "abhaCreatedDate",
                                             "familyID",
                                             "fatherName", "spouseName", "age", "createdBy", "createdDate",
