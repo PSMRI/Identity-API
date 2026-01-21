@@ -122,7 +122,7 @@ public class BeneficiaryElasticsearchIndexUpdater {
         esClient.index(i -> i
                 .index(beneficiaryIndex)
                 .id(String.valueOf(benRegId))
-                .document(document).refresh(Refresh.WaitFor));
+                .document(document).refresh(Refresh.True));
 
         logger.info("Successfully synced benRegId: {} to ES", benRegId);
          } catch (Exception e) {

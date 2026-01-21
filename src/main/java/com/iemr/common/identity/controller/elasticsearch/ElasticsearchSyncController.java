@@ -45,7 +45,7 @@ public class ElasticsearchSyncController {
      * Start async full sync (RECOMMENDED for millions of records)
      * Returns immediately with job ID for tracking
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/start
+     * Usage: POST http://localhost:8080/elasticsearch/start
      */
     @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> startAsyncFullSync(
@@ -83,7 +83,7 @@ public class ElasticsearchSyncController {
     /**
      * Get job status by ID
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/status/1
+     * Usage: GET http://localhost:8080/elasticsearch/status/1
      */
     @GetMapping("/status/{jobId}")
     public ResponseEntity<Map<String, Object>> getAsyncJobStatus(@PathVariable Long jobId) {
@@ -120,7 +120,7 @@ public class ElasticsearchSyncController {
     /**
      * Get all active jobs
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/active
+     * Usage: GET http://localhost:8080/elasticsearch/active
      */
     @GetMapping("/active")
     public ResponseEntity<List<ElasticsearchSyncJob>> getActiveJobs() {
@@ -131,7 +131,7 @@ public class ElasticsearchSyncController {
     /**
      * Get recent jobs
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/recent
+     * Usage: GET http://localhost:8080/elasticsearch/recent
      */
     @GetMapping("/recent")
     public ResponseEntity<List<ElasticsearchSyncJob>> getRecentJobs() {
@@ -142,7 +142,7 @@ public class ElasticsearchSyncController {
     /**
      * Resume a failed job
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/resume/1
+     * Usage: POST http://localhost:8080/elasticsearch/resume/1
      */
     @PostMapping("/resume/{jobId}")
     public ResponseEntity<Map<String, Object>> resumeJob(
@@ -173,7 +173,7 @@ public class ElasticsearchSyncController {
     /**
      * Cancel a running job
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/cancel/1
+     * Usage: POST http://localhost:8080/elasticsearch/cancel/1
      */
     @PostMapping("/cancel/{jobId}")
     public ResponseEntity<Map<String, Object>> cancelJob(@PathVariable Long jobId) {
@@ -194,10 +194,10 @@ public class ElasticsearchSyncController {
     }
 
     /**
-     * LEGACY: Synchronous full sync (NOT recommended for large datasets)
+     * LEGACY: Synchronous full sync(NOT recommended for large datasets)
      * Use /start instead
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/all
+     * Usage: POST http://localhost:8080/elasticsearch/all
      */
     @PostMapping("/all")
     public ResponseEntity<Map<String, Object>> syncAllBeneficiaries() {
@@ -232,7 +232,7 @@ public class ElasticsearchSyncController {
     /**
      * Sync a single beneficiary by BenRegId
      * 
-     * Usage: POST http://localhost:8080/elasticsearch/sync/single/123456
+     * Usage: POST http://localhost:8080/elasticsearch/single/123456
      */
     @PostMapping("/single/{benRegId}")
     public ResponseEntity<Map<String, Object>> syncSingleBeneficiary(
@@ -268,7 +268,7 @@ public class ElasticsearchSyncController {
     /**
      * Check sync status - compare DB count vs ES count
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/status
+     * Usage: GET http://localhost:8080/elasticsearch/status
      */
     @GetMapping("/status")
     public ResponseEntity<SyncStatus> checkSyncStatus() {
@@ -289,7 +289,7 @@ public class ElasticsearchSyncController {
     /**
      * Health check endpoint
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/health
+     * Usage: GET http://localhost:8080/elasticsearch/health
      */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
@@ -304,7 +304,7 @@ public class ElasticsearchSyncController {
     /**
      * Debug endpoint to check if a beneficiary exists in database
      * 
-     * Usage: GET http://localhost:8080/elasticsearch/sync/debug/check/123456
+     * Usage: GET http://localhost:8080/elasticsearch/debug/check/123456
      */
     @GetMapping("/debug/check/{benRegId}")
     public ResponseEntity<Map<String, Object>> checkBeneficiaryExists(

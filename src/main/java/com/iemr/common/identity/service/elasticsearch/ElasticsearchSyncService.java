@@ -299,7 +299,7 @@ public class ElasticsearchSyncService {
             esClient.index(i -> i
                     .index(beneficiaryIndex)
                     .id(doc.getBenId())
-                    .document(doc).refresh(Refresh.WaitFor));
+                    .document(doc).refresh(Refresh.True));
 
             logger.info("SUCCESS! Beneficiary {} synced to Elasticsearch with ABHA", benRegId);
             return true;
