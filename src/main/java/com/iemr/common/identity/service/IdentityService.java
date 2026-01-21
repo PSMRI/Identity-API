@@ -95,7 +95,7 @@ import com.iemr.common.identity.repo.rmnch.RMNCHBeneficiaryDetailsRmnchRepo;
 import com.iemr.common.identity.service.elasticsearch.ElasticsearchService;
 import com.iemr.common.identity.utils.mapper.OutputMapper;
 import com.iemr.common.identity.utils.response.OutputResponse;
-
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Value;
 
 import com.iemr.common.identity.service.elasticsearch.BeneficiaryElasticsearchIndexUpdater;
@@ -998,6 +998,9 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
         MBeneficiarymapping benMapping = mappingRepo.findByBenRegIdOrderByBenMapIdAsc(identity.getBeneficiaryRegId());
 
+        // Track if ANY change happened (determines if ES sync is needed)
+        boolean isDataUpdate = false;
+
         // change in self details is implement here and other details here
         logger.debug("identity.getChangeInSelfDetails = " + identity.getChangeInSelfDetails());
         logger.debug("identity.getChangeInOtherDetails = " + identity.getChangeInOtherDetails());
@@ -1066,6 +1069,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                     mbDetl.setEmergencyRegistration(false);
                 }
                 detailRepo.save(mbDetl);
+                isDataUpdate = true;
             }
         }
         // edition in current emergency and permanent is implement below
@@ -1092,6 +1096,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
              */
             logger.debug("Beneficiary address to update = " + OutputMapper.gson().toJson(mbAddr));
             addressRepo.save(mbAddr);
+            isDataUpdate = true;
         }
 
         // edition in beneficiary contacts is updated here
@@ -1118,6 +1123,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
              */
             logger.debug("Beneficiary contact to update = " + OutputMapper.gson().toJson(benCon));
             contactRepo.save(benCon);
+            isDataUpdate = true;
+
         }
 
         // change in identities are added here
@@ -1160,6 +1167,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 }
 
                 index++;
+                isDataUpdate = true;
+
             }
         }
 
@@ -1204,6 +1213,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 }
 
                 index++;
+                isDataUpdate = true;
+
             }
         }
 
@@ -1230,6 +1241,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
              */
             logger.debug("Account to upsert = " + OutputMapper.gson().toJson(beneficiaryAccount));
             accountRepo.save(beneficiaryAccount);
+            isDataUpdate = true;
+
         }
 
         if (Boolean.TRUE.equals(identity.getChangeInBenImage())) {
@@ -1254,6 +1267,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             logger.debug("Image to upsert = " + OutputMapper.gson().toJson(beneficiaryImage));
             beneficiaryImage.setProcessed("N");
             imageRepo.save(beneficiaryImage);
+            isDataUpdate = true;
+
         }
 
         // Trigger async sync to Elasticsearch
@@ -1261,8 +1276,29 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             logger.info("Triggering Elasticsearch sync for benRegId: {}", identity.getBeneficiaryRegId());
             syncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
         }
-        logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
+
+       // ***ABHA details changes ***
+        logger.debug("identity.getChangeInAbhaDetails = " + identity.getChangeInOtherDetails());
+        if (Boolean.TRUE.equals(identity.getChangeInOtherDetails())) {
+        logger.info("ABHA details changed for benRegId: {}", identity.getBeneficiaryRegId());
+    
+        isDataUpdate = true;
+        logger.info("ABHA details saved successfully");
     }
+
+     if (isDataUpdate && identity.getBeneficiaryRegId() != null) {
+        logger.info("Changes detected - Triggering Elasticsearch sync for benRegId: {}", 
+                   identity.getBeneficiaryRegId());
+        syncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
+    } else if (identity.getBeneficiaryRegId() != null) {
+        logger.info("No changes detected - Skipping ES sync for benRegId: {}", 
+                   identity.getBeneficiaryRegId());
+    }
+    
+    logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
+}
+
+      
 
     private MBeneficiarydetail convertIdentityEditDTOToMBeneficiarydetail(IdentityEditDTO dto) {
         MBeneficiarydetail beneficiarydetail = new MBeneficiarydetail();
@@ -2142,5 +2178,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         return regIdRepo.countByProvisioned(false);
 
     }
+
+
 }
 
