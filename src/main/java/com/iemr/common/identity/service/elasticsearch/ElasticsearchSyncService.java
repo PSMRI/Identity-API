@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
@@ -298,7 +299,7 @@ public class ElasticsearchSyncService {
             esClient.index(i -> i
                     .index(beneficiaryIndex)
                     .id(doc.getBenId())
-                    .document(doc));
+                    .document(doc).refresh(Refresh.WaitFor));
 
             logger.info("SUCCESS! Beneficiary {} synced to Elasticsearch with ABHA", benRegId);
             return true;

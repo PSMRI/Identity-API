@@ -1,6 +1,7 @@
 package com.iemr.common.identity.service.elasticsearch;
 
 import java.math.BigInteger;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.DeleteRequest;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 
@@ -41,7 +43,7 @@ public class BeneficiaryElasticsearchIndexUpdater {
      * Called after beneficiary is created/updated in database
      */
     @Async("elasticsearchSyncExecutor")
-    public void syncBeneficiaryAsync(BigInteger benRegId) {
+    public void syncBeneficiaryAsyncOld(BigInteger benRegId) {
         if (!esEnabled) {
             logger.debug("Elasticsearch is disabled, skipping sync");
             return;
@@ -63,15 +65,14 @@ public class BeneficiaryElasticsearchIndexUpdater {
             }
 
             IndexRequest<BeneficiaryDocument> request = IndexRequest.of(i -> i
-                .index(beneficiaryIndex)
-                .id(doc.getBenId())
-                .document(doc)
-            );
+                    .index(beneficiaryIndex)
+                    .id(doc.getBenId())
+                    .document(doc));
 
             esClient.index(request);
 
-            logger.info("Successfully synced beneficiary to Elasticsearch: benRegId={}, benId={}", 
-                benRegId, doc.getBenId());
+            logger.info("Successfully synced beneficiary to Elasticsearch: benRegId={}, benId={}",
+                    benRegId, doc.getBenId());
 
         } catch (Exception e) {
             logger.error("Error syncing beneficiary {} to Elasticsearch: {}", benRegId, e.getMessage(), e);
@@ -92,9 +93,8 @@ public class BeneficiaryElasticsearchIndexUpdater {
             logger.info("Starting async delete for benId: {}", benId);
 
             DeleteRequest request = DeleteRequest.of(d -> d
-                .index(beneficiaryIndex)
-                .id(benId)
-            );
+                    .index(beneficiaryIndex)
+                    .id(benId));
 
             esClient.delete(request);
 
@@ -103,5 +103,32 @@ public class BeneficiaryElasticsearchIndexUpdater {
         } catch (Exception e) {
             logger.error("Error deleting beneficiary {} from Elasticsearch: {}", benId, e.getMessage(), e);
         }
+    }
+
+    @Async
+    public CompletableFuture<Void> syncBeneficiaryAsync(BigInteger benRegId) {
+        BeneficiaryDocument document = dataService.getBeneficiaryWithAbhaDetails(benRegId);
+        if (document == null) {
+            logger.warn("No data found for benRegId: {}", benRegId);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // Log ABHA for verification
+        logger.info("Syncing benRegId={} with ABHA: healthID={}, abhaID={}",
+                benRegId, document.getHealthID(), document.getAbhaID());
+
+        try{
+        // Index to ES
+        esClient.index(i -> i
+                .index(beneficiaryIndex)
+                .id(String.valueOf(benRegId))
+                .document(document).refresh(Refresh.WaitFor));
+
+        logger.info("Successfully synced benRegId: {} to ES", benRegId);
+         } catch (Exception e) {
+            logger.error("Error syncing beneficiary {} to Elasticsearch: {}", benRegId, e.getMessage(), e);
+        }
+        return CompletableFuture.completedFuture(null);
+
     }
 }

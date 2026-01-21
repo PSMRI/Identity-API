@@ -1272,28 +1272,10 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         }
 
         // Trigger async sync to Elasticsearch
-        if (identity.getBeneficiaryRegId() != null) {
+        if (isDataUpdate && identity.getBeneficiaryRegId() != null) {
             logger.info("Triggering Elasticsearch sync for benRegId: {}", identity.getBeneficiaryRegId());
             syncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
         }
-
-       // ***ABHA details changes ***
-        logger.debug("identity.getChangeInAbhaDetails = " + identity.getChangeInOtherDetails());
-        if (Boolean.TRUE.equals(identity.getChangeInOtherDetails())) {
-        logger.info("ABHA details changed for benRegId: {}", identity.getBeneficiaryRegId());
-    
-        isDataUpdate = true;
-        logger.info("ABHA details saved successfully");
-    }
-
-     if (isDataUpdate && identity.getBeneficiaryRegId() != null) {
-        logger.info("Changes detected - Triggering Elasticsearch sync for benRegId: {}", 
-                   identity.getBeneficiaryRegId());
-        syncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
-    } else if (identity.getBeneficiaryRegId() != null) {
-        logger.info("No changes detected - Skipping ES sync for benRegId: {}", 
-                   identity.getBeneficiaryRegId());
-    }
     
     logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
 }

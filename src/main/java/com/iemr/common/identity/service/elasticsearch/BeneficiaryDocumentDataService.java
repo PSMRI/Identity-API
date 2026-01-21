@@ -48,7 +48,6 @@ public class BeneficiaryDocumentDataService {
             List<Object[]> results = mappingRepo.findCompleteDataByBenRegIds(benRegIds);
 
             logger.info("Fetched {} complete beneficiary records", results.size());
-
             // Batch fetch ABHA details for ALL beneficiaries at once
             Map<Long, AbhaData> abhaMap = batchFetchAbhaData(benRegIds);
 
@@ -149,13 +148,12 @@ public class BeneficiaryDocumentDataService {
                         abhaData.setHealthID(record[1] != null ? record[1].toString() : null);
                         abhaData.setHealthIDNumber(record[2] != null ? record[2].toString() : null);
                         abhaData.setAuthenticationMode(record[3] != null ? record[3].toString() : null);
-                        abhaData.setAbhaCreatedDate(record[4] !=null ? record[4].toString() : null);
-                        
+                        abhaData.setAbhaCreatedDate(record[4] != null ? record[4].toString() : null);
+
                         abhaMap.put(benRegId, abhaData);
                     }
                 } catch (Exception e) {
                     logger.error("Error processing ABHA record: {}", e.getMessage());
-                    // Continue processing other records
                 }
             }
 
@@ -181,38 +179,34 @@ public class BeneficiaryDocumentDataService {
     }
 
     /**
-     * Enrich document with ABHA details from m_benhealthidmapping table
+     * Fetch single beneficiary WITH fresh ABHA data
+     * Use this for real-time sync (create/update operations)
      */
-    private void enrichWithAbhaDetails(BeneficiaryDocument doc) {
-        try {
-            if (doc.getBenRegId() == null) {
-                return;
-            }
-
-            BigInteger benRegId = BigInteger.valueOf(doc.getBenRegId());
-            List<Object[]> abhaList = v_BenAdvanceSearchRepo.getBenAbhaDetailsByBenRegID(benRegId);
-
-            if (abhaList != null && !abhaList.isEmpty()) {
-                // Get the first (most recent) ABHA record
-                Object[] abhaRecord = abhaList.get(0);
-
-                // objArr[1] -> HealthID (ABHA Address)
-                if (abhaRecord[1] != null) {
-                    doc.setHealthID(abhaRecord[1].toString());
-                }
-
-                // objArr[2] -> HealthIDNumber (ABHA Number)
-                if (abhaRecord[2] != null) {
-                    doc.setAbhaID(abhaRecord[2].toString());
-                }
-
-                logger.info("ABHA details enriched for benRegId={}, healthID={}, abhaID={}",
-                        benRegId, doc.getHealthID(), doc.getAbhaID());
-            }
-        } catch (Exception e) {
-            logger.error("Error enriching ABHA details for benRegId={}: {}",
-                    doc.getBenRegId(), e.getMessage());
+    @Transactional(readOnly = true, timeout = 10)
+    public BeneficiaryDocument getBeneficiaryWithAbhaDetails(BigInteger benRegId) {
+        if (benRegId == null) {
+            return null;
         }
+        // Fetch beneficiary + ABHA in one call
+        List<BigInteger> ids = List.of(benRegId);
+        List<BeneficiaryDocument> results = getBeneficiariesBatch(ids);
+
+        if (results.isEmpty()) {
+            logger.warn("No beneficiary found for benRegId={}", benRegId);
+            return null;
+        }
+
+        BeneficiaryDocument doc = results.get(0);
+
+        // Log for debugging
+        if (doc.getHealthID() != null || doc.getAbhaID() != null) {
+            logger.info("Beneficiary has ABHA: benRegId={}, healthID={}, abhaID={}",
+                    benRegId, doc.getHealthID(), doc.getAbhaID());
+        } else {
+            logger.debug("No ABHA details for benRegId={}", benRegId);
+        }
+
+        return doc;
     }
 
     /**
@@ -370,8 +364,8 @@ public class BeneficiaryDocumentDataService {
         public void setAuthenticationMode(String authenticationMode) {
             this.authenticationMode = authenticationMode;
         }
-        
-        public String getAbhaCreatedDate() { 
+
+        public String getAbhaCreatedDate() {
             return abhaCreatedDate;
         }
 
