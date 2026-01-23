@@ -77,30 +77,45 @@ public class ElasticsearchService {
                                                             .value(query)
                                                             .boost(20.0f)));
                                                     b.should(s2 -> s2.term(t -> t
+                                                            .field("middleName.keyword")
+                                                            .value(query)
+                                                            .boost(20.0f)));
+                                                    b.should(s3 -> s3.term(t -> t
                                                             .field("lastName.keyword")
                                                             .value(query)
                                                             .boost(20.0f)));
 
                                                     // 2. PREFIX MATCH (high priority for "sur" → "suraj")
-                                                    b.should(s3 -> s3.prefix(p -> p
+                                                    b.should(s4 -> s4.prefix(p -> p
                                                             .field("firstName.keyword")
                                                             .value(query)
                                                             .boost(10.0f)));
-                                                    b.should(s4 -> s4.prefix(p -> p
+                                                    b.should(s5 -> s5.prefix(p -> p
+                                                            .field("middleName.keyword")
+                                                            .value(query)
+                                                            .boost(10.0f)));
+                                                    b.should(s6 -> s6.prefix(p -> p
                                                             .field("lastName.keyword")
                                                             .value(query)
                                                             .boost(10.0f)));
 
                                                     // 3. FUZZY MATCH (for typos: "vanit" → "vanitha")
                                                     // AUTO fuzziness: 1 edit for 3-5 chars, 2 edits for 6+ chars
-                                                    b.should(s5 -> s5.match(m -> m
+                                                    b.should(s7 -> s7.match(m -> m
                                                             .field("firstName")
                                                             .query(query)
                                                             .fuzziness("AUTO")
                                                             .prefixLength(1) // First char must match exactly
                                                             .maxExpansions(50)
                                                             .boost(5.0f)));
-                                                    b.should(s6 -> s6.match(m -> m
+                                                    b.should(s8 -> s8.match(m -> m
+                                                            .field("middleName")
+                                                            .query(query)
+                                                            .fuzziness("AUTO")
+                                                            .prefixLength(1) // First char must match exactly
+                                                            .maxExpansions(50)
+                                                            .boost(5.0f)));
+                                                    b.should(s9 -> s9.match(m -> m
                                                             .field("lastName")
                                                             .query(query)
                                                             .fuzziness("AUTO")
@@ -110,11 +125,15 @@ public class ElasticsearchService {
 
                                                     // 4. WILDCARD MATCH (for "sur*" → "suraj", "surya")
                                                     if (query.length() >= 2) {
-                                                        b.should(s7 -> s7.wildcard(w -> w
+                                                        b.should(s10 -> s10.wildcard(w -> w
                                                                 .field("firstName.keyword")
                                                                 .value(query + "*")
                                                                 .boost(8.0f)));
-                                                        b.should(s8 -> s8.wildcard(w -> w
+                                                        b.should(s11 -> s11.wildcard(w -> w
+                                                                .field("middleName.keyword")
+                                                                .value(query + "*")
+                                                                .boost(8.0f)));
+                                                        b.should(s12 -> s12.wildcard(w -> w
                                                                 .field("lastName.keyword")
                                                                 .value(query + "*")
                                                                 .boost(8.0f)));
@@ -122,11 +141,15 @@ public class ElasticsearchService {
 
                                                     // 5. CONTAINS MATCH (for partial matches anywhere)
                                                     if (query.length() >= 3) {
-                                                        b.should(s9 -> s9.wildcard(w -> w
+                                                        b.should(s13 -> s13.wildcard(w -> w
                                                                 .field("firstName.keyword")
                                                                 .value("*" + query + "*")
                                                                 .boost(3.0f)));
-                                                        b.should(s10 -> s10.wildcard(w -> w
+                                                        b.should(s14 -> s14.wildcard(w -> w
+                                                                .field("middleName.keyword")
+                                                                .value("*" + query + "*")
+                                                                .boost(3.0f)));
+                                                        b.should(s15 -> s15.wildcard(w -> w
                                                                 .field("lastName.keyword")
                                                                 .value("*" + query + "*")
                                                                 .boost(3.0f)));
@@ -134,31 +157,31 @@ public class ElasticsearchService {
                                                 }
 
                                                 // ID SEARCHES
-                                                b.should(s11 -> s11
+                                                b.should(s16 -> s16
                                                         .term(t -> t.field("healthID").value(query).boost(25.0f)));
-                                                b.should(s12 -> s12
+                                                b.should(s17 -> s17
                                                         .term(t -> t.field("abhaID").value(query).boost(25.0f)));
-                                                b.should(s13 -> s13
+                                                b.should(s18 -> s18
                                                         .term(t -> t.field("beneficiaryID").value(query).boost(25.0f)));
-                                                b.should(s14 -> s14
+                                                b.should(s19 -> s19
                                                         .term(t -> t.field("benId").value(query).boost(25.0f)));
-                                                b.should(s15 -> s15
+                                                b.should(s20 -> s20
                                                         .term(t -> t.field("aadharNo").value(query).boost(20.0f)));
 
                                                 if (isNumeric) {
                                                     // PREFIX for phone/IDs
-                                                    b.should(s16 -> s16
+                                                    b.should(s21 -> s21
                                                             .prefix(p -> p.field("phoneNum").value(query).boost(8.0f)));
-                                                    b.should(s17 -> s17
+                                                    b.should(s22 -> s22
                                                             .prefix(p -> p.field("healthID").value(query).boost(6.0f)));
-                                                    b.should(s18 -> s18
+                                                    b.should(s23 -> s23
                                                             .prefix(p -> p.field("abhaID").value(query).boost(6.0f)));
-                                                    b.should(s19 -> s19.prefix(
+                                                    b.should(s24 -> s24.prefix(
                                                             p -> p.field("beneficiaryID").value(query).boost(6.0f)));
 
                                                     // WILDCARD for phone contains
                                                     if (query.length() >= 4) {
-                                                        b.should(s20 -> s20.wildcard(w -> w
+                                                        b.should(s25 -> s25.wildcard(w -> w
                                                                 .field("phoneNum")
                                                                 .value("*" + query + "*")
                                                                 .boost(3.0f)));
@@ -167,9 +190,9 @@ public class ElasticsearchService {
                                                     // Numeric ID matches
                                                     try {
                                                         Long numericValue = Long.parseLong(query);
-                                                        b.should(s21 -> s21.term(t -> t.field("benRegId")
+                                                        b.should(s26 -> s26.term(t -> t.field("benRegId")
                                                                 .value(numericValue).boost(25.0f)));
-                                                        b.should(s22 -> s22.term(t -> t.field("benAccountID")
+                                                        b.should(s27 -> s27.term(t -> t.field("benAccountID")
                                                                 .value(numericValue).boost(15.0f)));
 
                                                         // Location matching (if user location available)
@@ -179,11 +202,11 @@ public class ElasticsearchService {
                                                             Integer userBlockId = userLocation.get("blockId");
 
                                                             if (userVillageId != null && userVillageId == intValue) {
-                                                                b.should(s23 -> s23.term(t -> t.field("villageID")
+                                                                b.should(s28 -> s28.term(t -> t.field("villageID")
                                                                         .value(intValue).boost(5.0f)));
                                                             }
                                                             if (userBlockId != null && userBlockId == intValue) {
-                                                                b.should(s24 -> s24.term(t -> t.field("blockID")
+                                                                b.should(s29 -> s29.term(t -> t.field("blockID")
                                                                         .value(intValue).boost(3.0f)));
                                                             }
                                                         }
@@ -206,13 +229,13 @@ public class ElasticsearchService {
 
                     .source(src -> src
                             .filter(f -> f
-                                    .includes("benRegId", "beneficiaryID", "firstName", "lastName",
+                                    .includes("benRegId", "beneficiaryID", "firstName", "middleName", "lastName",
                                             "genderID", "genderName", "dOB", "phoneNum",
                                             "stateID", "stateName", "districtID", "blockID", "villageID", "healthID",
                                             "abhaID",
                                             "abhaCreatedDate",
                                             "familyID",
-                                            "fatherName", "spouseName", "age", "createdBy", "createdDate",
+                                            "fatherName", "spouseName","maritalStatusID", "maritalStatusName", "age", "createdBy", "createdDate",
                                             "lastModDate", "benAccountID", "districtName", "blockName",
                                             "villageName", "pinCode", "servicePointID", "servicePointName",
                                             "parkingPlaceID", "permStateID", "permStateName", "permDistrictID",
@@ -295,6 +318,7 @@ public class ElasticsearchService {
      */
     public List<Map<String, Object>> advancedSearch(
             String firstName,
+            String middleName,
             String lastName,
             Integer genderId,
             Date dob,
@@ -304,6 +328,7 @@ public class ElasticsearchService {
             Integer villageId,
             String fatherName,
             String spouseName,
+            String maritalStatus,
             String phoneNumber,
             String beneficiaryId,
             String healthId,
@@ -346,6 +371,14 @@ public class ElasticsearchService {
                                                     .match(mm -> mm.field("firstName").query(firstName).boost(2.0f)))
                                             .minimumShouldMatch("1")));
                                 }
+                                if (middleName != null && !middleName.trim().isEmpty()) {
+                                    b.must(m -> m.bool(bb -> bb
+                                            .should(s1 -> s1.term(
+                                                    t -> t.field("middleName.keyword").value(middleName).boost(5.0f)))
+                                            .should(s2 -> s2
+                                                    .match(mm -> mm.field("middleName").query(middleName).boost(2.0f)))
+                                            .minimumShouldMatch("1")));
+                                }
 
                                 if (lastName != null && !lastName.trim().isEmpty()) {
                                     b.must(m -> m.bool(bb -> bb
@@ -386,8 +419,8 @@ public class ElasticsearchService {
                     , BeneficiariesESDTO.class);
 
             if (response.hits().hits().isEmpty()) {
-                return searchInDatabaseForAdvanced(firstName, lastName, genderId, dob,
-                        stateId, districtId, blockId, villageId, fatherName, spouseName,
+                return searchInDatabaseForAdvanced(firstName, middleName, lastName, genderId, dob,
+                        stateId, districtId, blockId, villageId, fatherName, spouseName, maritalStatus,
                         phoneNumber, beneficiaryId, healthId, aadharNo);
             }
 
@@ -398,8 +431,8 @@ public class ElasticsearchService {
 
         } catch (Exception e) {
             logger.error("ES advanced search failed: {}", e.getMessage());
-            return searchInDatabaseForAdvanced(firstName, lastName, genderId, dob,
-                    stateId, districtId, blockId, villageId, fatherName, spouseName,
+            return searchInDatabaseForAdvanced(firstName, middleName, lastName, genderId, dob,
+                    stateId, districtId, blockId, villageId, fatherName, spouseName, maritalStatus,
                     phoneNumber, beneficiaryId, healthId, aadharNo);
         }
     }
@@ -408,15 +441,15 @@ public class ElasticsearchService {
      * Database fallback for advanced search
      */
     private List<Map<String, Object>> searchInDatabaseForAdvanced(
-            String firstName, String lastName, Integer genderId, Date dob,
+            String firstName, String middleName, String lastName, Integer genderId, Date dob,
             Integer stateId, Integer districtId, Integer blockId, Integer villageId,
-            String fatherName, String spouseName, String phoneNumber,
-            String beneficiaryId, String healthId, String aadharNo) {
+            String fatherName, String spouseName, String maritalStatus,
+            String phoneNumber, String beneficiaryId, String healthId, String aadharNo) {
 
         try {
             List<Object[]> results = benDetailRepo.advancedSearchBeneficiaries(
-                    firstName, lastName, genderId, dob, stateId, districtId,
-                    blockId, fatherName, spouseName, phoneNumber,
+                    firstName, middleName, lastName, genderId, dob, stateId, districtId,
+                    blockId, fatherName, spouseName, maritalStatus, phoneNumber,
                     beneficiaryId);
 
             return results.stream()
@@ -555,17 +588,20 @@ public class ElasticsearchService {
             result.put("beneficiaryRegID", esData.getBenRegId());
             result.put("beneficiaryID", esData.getBeneficiaryID());
             result.put("firstName", esData.getFirstName());
+            result.put("middleName", esData.getMiddleName() != null ? esData.getMiddleName() : "");
             result.put("lastName", esData.getLastName() != null ? esData.getLastName() : "");
             result.put("genderID", esData.getGenderID());
             result.put("genderName", esData.getGenderName());
             result.put("dob", esData.getDOB());
             result.put("dOB", esData.getDOB());
             result.put("age", esData.getAge());
-            result.put("actualAge", esData.getAge()); // NEW
-            result.put("ageUnits", "Years"); // NEW
+            result.put("actualAge", esData.getAge()); 
+            result.put("ageUnits", "Years"); 
 
             result.put("fatherName", esData.getFatherName() != null ? esData.getFatherName() : "");
             result.put("spouseName", esData.getSpouseName() != null ? esData.getSpouseName() : "");
+            result.put("maritalStatusID", esData.getMaritalStatusID() != null ? esData.getMaritalStatusID() : "");
+            result.put("maritalStatusName", esData.getMaritalStatusName() != null ? esData.getMaritalStatusName() : "");
             result.put("isHIVPos", esData.getIsHIVPos() != null ? esData.getIsHIVPos() : "");
 
             result.put("createdBy", esData.getCreatedBy());
@@ -575,11 +611,7 @@ public class ElasticsearchService {
 
             // Family ID - use both formats
             result.put("familyID", esData.getFamilyID());
-            result.put("familyId", esData.getFamilyID()); // NEW - alternate key
-
-            // Marital status - NEW
-            result.put("maritalStatusName", null); // TODO: Add to ES if available
-            result.put("maritalStatus", new HashMap<>());
+            result.put("familyId", esData.getFamilyID()); 
 
             // Head of family - NEW (add these fields to BeneficiariesESDTO if available)
             result.put("headOfFamily_RelationID", null);
@@ -754,57 +786,59 @@ public class ElasticsearchService {
             Long beneficiaryRegID = getLong(row[0]);
             String beneficiaryID = getString(row[1]);
             String firstName = getString(row[2]);
-            String lastName = getString(row[3]);
-            Integer genderID = getInteger(row[4]);
-            String genderName = getString(row[5]);
-            Date dob = getDate(row[6]);
-            Integer age = getInteger(row[7]);
-            String fatherName = getString(row[8]);
-            String spouseName = getString(row[9]);
-            String isHIVPos = getString(row[10]);
-            String createdBy = getString(row[11]);
-            Date createdDate = getDate(row[12]);
-            Long lastModDate = getLong(row[13]);
-            Long benAccountID = getLong(row[14]);
+            String middleName = getString(row[3]);
+            String lastName = getString(row[4]);
+            Integer genderID = getInteger(row[5]);
+            String genderName = getString(row[6]);
+            Date dob = getDate(row[7]);
+            Integer age = getInteger(row[8]);
+            String fatherName = getString(row[9]);
+            String spouseName = getString(row[10]);
+            String maritalStatusID = getString(row[11]);
+            String maritalStatusName = getString(row[12]);
+            String isHIVPos = getString(row[13]);
+            String createdBy = getString(row[14]);
+            Date createdDate = getDate(row[15]);
+            Long lastModDate = getLong(row[16]);
+            Long benAccountID = getLong(row[17]);
 
-            Integer stateID = getInteger(row[15]);
-            String stateName = getString(row[16]);
-            Integer districtID = getInteger(row[17]);
-            String districtName = getString(row[18]);
-            Integer blockID = getInteger(row[19]);
-            String blockName = getString(row[20]);
-            String pinCode = getString(row[21]);
-            Integer servicePointID = getInteger(row[22]);
-            String servicePointName = getString(row[23]);
-            Integer parkingPlaceID = getInteger(row[24]);
-            String phoneNum = getString(row[25]);
+            Integer stateID = getInteger(row[18]);
+            String stateName = getString(row[19]);
+            Integer districtID = getInteger(row[20]);
+            String districtName = getString(row[21]);
+            Integer blockID = getInteger(row[22]);
+            String blockName = getString(row[23]);
+            String pinCode = getString(row[24]);
+            Integer servicePointID = getInteger(row[25]);
+            String servicePointName = getString(row[26]);
+            Integer parkingPlaceID = getInteger(row[27]);
+            String phoneNum = getString(row[28]);
 
-            Integer villageID = getInteger(row[26]);
-            String villageName = getString(row[27]);
+            Integer villageID = getInteger(row[29]);
+            String villageName = getString(row[30]);
 
             result.put("beneficiaryRegID", beneficiaryRegID);
             result.put("beneficiaryID", beneficiaryID);
             result.put("firstName", firstName);
+            result.put("middleName", middleName != null ? middleName : "");
             result.put("lastName", lastName != null ? lastName : "");
             result.put("genderID", genderID);
             result.put("genderName", genderName);
             result.put("dOB", dob);
             result.put("dob", dob);
             result.put("age", age);
-            result.put("actualAge", age); // NEW
-            result.put("ageUnits", "Years"); // NEW
+            result.put("actualAge", age); 
+            result.put("ageUnits", "Years"); 
             result.put("fatherName", fatherName != null ? fatherName : "");
             result.put("spouseName", spouseName != null ? spouseName : "");
+            result.put("maritalStatusID", maritalStatusID != null ? maritalStatusID : "");
+            result.put("maritalStatusName", maritalStatusName != null ? maritalStatusName : "");
             result.put("isHIVPos", isHIVPos != null ? isHIVPos : "");
             result.put("createdBy", createdBy);
             result.put("createdDate", createdDate);
             result.put("lastModDate", lastModDate);
             result.put("benAccountID", benAccountID);
-
-            // NEW fields
-            result.put("maritalStatusName", null);
-            result.put("maritalStatus", new HashMap<>());
-
+            
             Map<String, Object> mGender = new HashMap<>();
             mGender.put("genderID", genderID);
             mGender.put("genderName", genderName);

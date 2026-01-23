@@ -19,6 +19,9 @@ public class BeneficiaryDocument {
     @JsonProperty("firstName")
     private String firstName;
     
+    @JsonProperty("middleName")
+    private String middleName;
+
     @JsonProperty("lastName")
     private String lastName;
     
@@ -27,6 +30,12 @@ public class BeneficiaryDocument {
     
     @JsonProperty("spouseName")
     private String spouseName;
+    
+    @JsonProperty("maritalStatusID")
+    private Integer maritalStatusID;    
+
+    @JsonProperty("maritalStatusName")
+    private String maritalStatusName;
     
     @JsonProperty("age")
     private Integer age;

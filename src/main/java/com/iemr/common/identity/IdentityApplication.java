@@ -26,10 +26,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 
 import com.iemr.common.identity.utils.IEMRApplBeans;
 
 @SpringBootApplication
+@ComponentScan(basePackages = {"com.iemr.common.identity"})
 public class IdentityApplication extends SpringBootServletInitializer {
 
 	public static void main(String[] args) {

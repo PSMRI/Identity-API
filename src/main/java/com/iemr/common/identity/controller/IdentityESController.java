@@ -89,6 +89,8 @@ public ResponseEntity<Map<String, Object>> advanceSearchBeneficiariesES(
         logger.info("Search params = {}", searchParams);
 
         String firstName = getString(searchParams, "firstName");
+        String middleName = getString(searchParams, "middleName");
+        String maritalStatus = getString(searchParams, "maritalStatus");
         String lastName = getString(searchParams, "lastName");
         Integer genderId = getInteger(searchParams, "genderId");
         Date dob = getDate(searchParams, "dob");
@@ -115,9 +117,9 @@ public ResponseEntity<Map<String, Object>> advanceSearchBeneficiariesES(
 
         Map<String, Object> searchResults =
                 idService.advancedSearchBeneficiariesES(
-                        firstName, lastName, genderId, dob,
+                        firstName, middleName, lastName, genderId, dob,
                         stateId, districtId, blockId, villageId,
-                        fatherName, spouseName, phoneNumber,
+                        fatherName, spouseName, maritalStatus, phoneNumber,
                         beneficiaryId, healthId, aadharNo,
                         userID, null, is1097
                 );

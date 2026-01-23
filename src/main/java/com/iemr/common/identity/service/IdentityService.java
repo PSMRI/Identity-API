@@ -585,9 +585,9 @@ public class IdentityService {
  * Advanced search using Elasticsearch with fallback to database
  */
 public Map<String, Object> advancedSearchBeneficiariesES(
-        String firstName, String lastName, Integer genderId, java.util.Date dob,
+        String firstName, String middleName, String lastName, Integer genderId, java.util.Date dob,
         Integer stateId, Integer districtId, Integer blockId, Integer villageId,
-        String fatherName, String spouseName, String phoneNumber,
+        String fatherName, String spouseName, String maritalStatus, String phoneNumber,
         String beneficiaryId, String healthId, String aadharNo,
         Integer userId, String auth, Boolean is1097) throws Exception {
     
@@ -602,8 +602,8 @@ public Map<String, Object> advancedSearchBeneficiariesES(
             
             // Call Elasticsearch service
             List<Map<String, Object>> esResults = elasticsearchService.advancedSearch(
-                firstName, lastName, genderId, dob, stateId, districtId, 
-                blockId, villageId, fatherName, spouseName, phoneNumber, 
+                firstName, middleName, lastName, genderId, dob, stateId, districtId, 
+                blockId, villageId, fatherName, spouseName, maritalStatus, phoneNumber, 
                 beneficiaryId, healthId, aadharNo, userId
             );
             

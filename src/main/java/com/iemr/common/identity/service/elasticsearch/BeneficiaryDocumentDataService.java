@@ -229,6 +229,7 @@ public class BeneficiaryDocumentDataService {
             doc.setBeneficiaryID(beneficiaryID);
 
             doc.setFirstName(getString(row[idx++]));
+            doc.setMiddleName(getString(row[idx++]));   
             doc.setLastName(getString(row[idx++]));
             doc.setGenderID(getInteger(row[idx++]));
             doc.setGenderName(getString(row[idx++]));
@@ -237,6 +238,9 @@ public class BeneficiaryDocumentDataService {
             doc.setAge(getInteger(row[idx++]));
             doc.setFatherName(getString(row[idx++]));
             doc.setSpouseName(getString(row[idx++]));
+
+            doc.setMaritalStatusID(getInteger(row[idx++])); 
+            doc.setMaritalStatusName(getString(row[idx++]));
             doc.setIsHIVPos(getString(row[idx++]));
 
             doc.setCreatedBy(getString(row[idx++]));
