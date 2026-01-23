@@ -24,6 +24,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import com.iemr.common.identity.repo.BenAddressRepo;
 
@@ -56,11 +58,10 @@ public class ElasticsearchService {
             final Map<String, Integer> userLocation = (userId != null) ? getUserLocation(userId) : null;
 
             boolean isNumeric = query.matches("\\d+");
-            double minScore = isNumeric ? 1.0 : 2.0;
+            double minScore = isNumeric ? 1.0 : 1.5;
 
             SearchResponse<BeneficiariesESDTO> response = esClient.search(s -> s
                     .index(beneficiaryIndex)
-
                     .preference("_local")
 
                     .requestCache(true)
@@ -70,83 +71,120 @@ public class ElasticsearchService {
                                     .query(qq -> qq
                                             .bool(b -> {
                                                 if (!isNumeric) {
-                                                    // OPTIMIZED NAME SEARCH
-                                                    // Use match_phrase_prefix for faster prefix matching
-                                                    b.should(s1 -> s1.multiMatch(mm -> mm
-                                                            .query(query)
-                                                            .fields("firstName^3", "lastName^3")
-                                                            .type(TextQueryType.Phrase)
-                                                            .boost(3.0f)));
-
+                                                    // 1. EXACT MATCH (highest priority)
+                                                    b.should(s1 -> s1.term(t -> t
+                                                            .field("firstName.keyword")
+                                                            .value(query)
+                                                            .boost(20.0f)));
                                                     b.should(s2 -> s2.term(t -> t
+                                                            .field("lastName.keyword")
+                                                            .value(query)
+                                                            .boost(20.0f)));
+
+                                                    // 2. PREFIX MATCH (high priority for "sur" → "suraj")
+                                                    b.should(s3 -> s3.prefix(p -> p
                                                             .field("firstName.keyword")
                                                             .value(query)
                                                             .boost(10.0f)));
-                                                    b.should(s3 -> s3.term(t -> t
+                                                    b.should(s4 -> s4.prefix(p -> p
                                                             .field("lastName.keyword")
                                                             .value(query)
                                                             .boost(10.0f)));
 
-                                                    // Prefix search using index_prefixes (FAST!)
-                                                    b.should(s4 -> s4.match(m -> m
-                                                            .field("firstName.prefix")
-                                                            .query(query)
-                                                            .boost(2.0f)));
+                                                    // 3. FUZZY MATCH (for typos: "vanit" → "vanitha")
+                                                    // AUTO fuzziness: 1 edit for 3-5 chars, 2 edits for 6+ chars
                                                     b.should(s5 -> s5.match(m -> m
-                                                            .field("lastName.prefix")
+                                                            .field("firstName")
                                                             .query(query)
-                                                            .boost(2.0f)));
-                                                }
+                                                            .fuzziness("AUTO")
+                                                            .prefixLength(1) // First char must match exactly
+                                                            .maxExpansions(50)
+                                                            .boost(5.0f)));
+                                                    b.should(s6 -> s6.match(m -> m
+                                                            .field("lastName")
+                                                            .query(query)
+                                                            .fuzziness("AUTO")
+                                                            .prefixLength(1)
+                                                            .maxExpansions(50)
+                                                            .boost(5.0f)));
 
-                                                b.should(s6 -> s6
-                                                        .term(t -> t.field("healthID").value(query).boost(15.0f)));
-                                                b.should(s7 -> s7
-                                                        .term(t -> t.field("abhaID").value(query).boost(15.0f)));
-                                                b.should(s8 -> s8
-                                                        .term(t -> t.field("beneficiaryID").value(query).boost(15.0f)));
-                                                b.should(
-                                                        s9 -> s9.term(t -> t.field("benId").value(query).boost(15.0f)));
-                                                b.should(s10 -> s10
-                                                        .term(t -> t.field("aadharNo").value(query).boost(12.0f)));
-
-                                                if (isNumeric) {
-                                                    // PREFIX QUERIES (much faster than wildcard)
-                                                    b.should(s11 -> s11
-                                                            .prefix(p -> p.field("phoneNum").value(query).boost(5.0f)));
-                                                    b.should(s12 -> s12
-                                                            .prefix(p -> p.field("healthID").value(query).boost(4.0f)));
-                                                    b.should(s13 -> s13
-                                                            .prefix(p -> p.field("abhaID").value(query).boost(4.0f)));
-                                                    b.should(s14 -> s14.prefix(
-                                                            p -> p.field("beneficiaryID").value(query).boost(4.0f)));
-
-                                                    // ONLY use wildcard if query is long enough (>= 4 digits)
-                                                    if (query.length() >= 4) {
-                                                        b.should(s15 -> s15.wildcard(w -> w
-                                                                .field("phoneNum")
-                                                                .value("*" + query + "*")
-                                                                .boost(2.0f)));
+                                                    // 4. WILDCARD MATCH (for "sur*" → "suraj", "surya")
+                                                    if (query.length() >= 2) {
+                                                        b.should(s7 -> s7.wildcard(w -> w
+                                                                .field("firstName.keyword")
+                                                                .value(query + "*")
+                                                                .boost(8.0f)));
+                                                        b.should(s8 -> s8.wildcard(w -> w
+                                                                .field("lastName.keyword")
+                                                                .value(query + "*")
+                                                                .boost(8.0f)));
                                                     }
 
+                                                    // 5. CONTAINS MATCH (for partial matches anywhere)
+                                                    if (query.length() >= 3) {
+                                                        b.should(s9 -> s9.wildcard(w -> w
+                                                                .field("firstName.keyword")
+                                                                .value("*" + query + "*")
+                                                                .boost(3.0f)));
+                                                        b.should(s10 -> s10.wildcard(w -> w
+                                                                .field("lastName.keyword")
+                                                                .value("*" + query + "*")
+                                                                .boost(3.0f)));
+                                                    }
+                                                }
+
+                                                // ID SEARCHES
+                                                b.should(s11 -> s11
+                                                        .term(t -> t.field("healthID").value(query).boost(25.0f)));
+                                                b.should(s12 -> s12
+                                                        .term(t -> t.field("abhaID").value(query).boost(25.0f)));
+                                                b.should(s13 -> s13
+                                                        .term(t -> t.field("beneficiaryID").value(query).boost(25.0f)));
+                                                b.should(s14 -> s14
+                                                        .term(t -> t.field("benId").value(query).boost(25.0f)));
+                                                b.should(s15 -> s15
+                                                        .term(t -> t.field("aadharNo").value(query).boost(20.0f)));
+
+                                                if (isNumeric) {
+                                                    // PREFIX for phone/IDs
+                                                    b.should(s16 -> s16
+                                                            .prefix(p -> p.field("phoneNum").value(query).boost(8.0f)));
+                                                    b.should(s17 -> s17
+                                                            .prefix(p -> p.field("healthID").value(query).boost(6.0f)));
+                                                    b.should(s18 -> s18
+                                                            .prefix(p -> p.field("abhaID").value(query).boost(6.0f)));
+                                                    b.should(s19 -> s19.prefix(
+                                                            p -> p.field("beneficiaryID").value(query).boost(6.0f)));
+
+                                                    // WILDCARD for phone contains
+                                                    if (query.length() >= 4) {
+                                                        b.should(s20 -> s20.wildcard(w -> w
+                                                                .field("phoneNum")
+                                                                .value("*" + query + "*")
+                                                                .boost(3.0f)));
+                                                    }
+
+                                                    // Numeric ID matches
                                                     try {
                                                         Long numericValue = Long.parseLong(query);
-                                                        b.should(s16 -> s16.term(t -> t.field("benRegId")
+                                                        b.should(s21 -> s21.term(t -> t.field("benRegId")
+                                                                .value(numericValue).boost(25.0f)));
+                                                        b.should(s22 -> s22.term(t -> t.field("benAccountID")
                                                                 .value(numericValue).boost(15.0f)));
-                                                        b.should(s17 -> s17.term(t -> t.field("benAccountID")
-                                                                .value(numericValue).boost(10.0f)));
 
+                                                        // Location matching (if user location available)
                                                         int intValue = numericValue.intValue();
                                                         if (userLocation != null) {
                                                             Integer userVillageId = userLocation.get("villageId");
                                                             Integer userBlockId = userLocation.get("blockId");
 
                                                             if (userVillageId != null && userVillageId == intValue) {
-                                                                b.should(s18 -> s18.term(t -> t.field("villageID")
-                                                                        .value(intValue).boost(3.0f)));
+                                                                b.should(s23 -> s23.term(t -> t.field("villageID")
+                                                                        .value(intValue).boost(5.0f)));
                                                             }
                                                             if (userBlockId != null && userBlockId == intValue) {
-                                                                b.should(s19 -> s19.term(t -> t.field("blockID")
-                                                                        .value(intValue).boost(2.0f)));
+                                                                b.should(s24 -> s24.term(t -> t.field("blockID")
+                                                                        .value(intValue).boost(3.0f)));
                                                             }
                                                         }
                                                     } catch (NumberFormatException e) {
@@ -190,10 +228,11 @@ public class ElasticsearchService {
 
             if (!response.hits().hits().isEmpty()) {
                 BeneficiariesESDTO firstResult = response.hits().hits().get(0).source();
-                logger.info("First result - benRegId: {}, healthID: {}, abhaID: {}",
+                logger.info("Top result - score: {}, benRegId: {}, name: {} {}",
+                        response.hits().hits().get(0).score(),
                         firstResult.getBenRegId(),
-                        firstResult.getHealthID(),
-                        firstResult.getAbhaID());
+                        firstResult.getFirstName(),
+                        firstResult.getLastName());
             }
 
             if (response.hits().hits().isEmpty()) {

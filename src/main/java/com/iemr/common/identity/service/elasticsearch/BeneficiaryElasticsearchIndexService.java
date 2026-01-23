@@ -27,9 +27,9 @@ import com.iemr.common.identity.repo.elasticsearch.SyncJobRepo;
 public class BeneficiaryElasticsearchIndexService {
 
     private static final Logger logger = LoggerFactory.getLogger(BeneficiaryElasticsearchIndexService.class);
-    private static final int BATCH_SIZE = 100;
-    private static final int ES_BULK_SIZE = 50;
-    private static final int STATUS_UPDATE_FREQUENCY = 10;
+    private static final int BATCH_SIZE = 2000;
+    private static final int ES_BULK_SIZE = 5000;
+    private static final int STATUS_UPDATE_FREQUENCY = 5;
 
     @Autowired
     private ElasticsearchClient esClient;
@@ -54,18 +54,41 @@ public class BeneficiaryElasticsearchIndexService {
         logger.info("Starting ASYNC full sync with COMPLETE data: jobId={}", jobId);
 
         ElasticsearchSyncJob job = syncJobRepository.findByJobId(jobId)
-            .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
 
         try {
-            job.setStatus("RUNNING");
-            job.setStartedAt(new Timestamp(System.currentTimeMillis()));
-            syncJobRepository.save(job);
+            boolean isResume = false;
+            int offset = 0;
+            long processedCount = 0;
+            long successCount = 0;
+            long failureCount = 0;
 
-            long totalCount = transactionalWrapper.countActiveBeneficiaries();
-            job.setTotalRecords(totalCount);
-            syncJobRepository.save(job);
+            // Check if this is a resume from a previous run
+            if (job.getStatus().equals("RUNNING") && job.getCurrentOffset() != null && job.getCurrentOffset() > 0) {
+                isResume = true;
+                offset = job.getCurrentOffset();
+                processedCount = job.getProcessedRecords() != null ? job.getProcessedRecords() : 0;
+                successCount = job.getSuccessCount() != null ? job.getSuccessCount() : 0;
+                failureCount = job.getFailureCount() != null ? job.getFailureCount() : 0;
 
-            logger.info("Total beneficiaries to sync: {}", totalCount);
+                logger.info("RESUMING SYNC from offset {} (processed: {}, success: {}, failed: {})",
+                        offset, processedCount, successCount, failureCount);
+            } else {
+                job.setStatus("RUNNING");
+                job.setStartedAt(new Timestamp(System.currentTimeMillis()));
+                syncJobRepository.save(job);
+            }
+
+            long totalCount;
+            if (job.getTotalRecords() != null && job.getTotalRecords() > 0) {
+                totalCount = job.getTotalRecords();
+                logger.info("Using cached total count: {}", totalCount);
+            } else {
+                totalCount = transactionalWrapper.countActiveBeneficiaries();
+                job.setTotalRecords(totalCount);
+                syncJobRepository.save(job);
+                logger.info("Fetched total beneficiaries to sync: {}", totalCount);
+            }
 
             if (totalCount == 0) {
                 job.setStatus("COMPLETED");
@@ -75,23 +98,22 @@ public class BeneficiaryElasticsearchIndexService {
                 return;
             }
 
-            int offset = job.getCurrentOffset() != null ? job.getCurrentOffset() : 0;
-            long processedCount = job.getProcessedRecords() != null ? job.getProcessedRecords() : 0;
-            long successCount = job.getSuccessCount() != null ? job.getSuccessCount() : 0;
-            long failureCount = job.getFailureCount() != null ? job.getFailureCount() : 0;
-            
             List<BeneficiaryDocument> esBatch = new ArrayList<>();
-            int batchCounter = 0;
-            long startTime = System.currentTimeMillis();
+            int batchCounter = offset / BATCH_SIZE;
+            long startTime = isResume ? job.getStartedAt().getTime() : System.currentTimeMillis();
+            long lastProgressUpdate = System.currentTimeMillis();
+            int consecutiveErrors = 0;
+            final int MAX_CONSECUTIVE_ERRORS = 5;
 
             // Process in batches
             while (offset < totalCount) {
                 try {
-                    logger.info("=== BATCH {} START: offset={} ===", batchCounter + 1, offset);
-                    
+                    logger.info("=== BATCH {} START: offset={}/{} ({:.1f}%) ===",
+                            batchCounter + 1, offset, totalCount, (offset * 100.0 / totalCount));
+
                     logger.debug("Calling getBeneficiaryIdsBatch(offset={}, limit={})", offset, BATCH_SIZE);
                     List<Object[]> batchIds = transactionalWrapper.getBeneficiaryIdsBatch(offset, BATCH_SIZE);
-                    
+
                     logger.info("Retrieved {} IDs from database", batchIds != null ? batchIds.size() : 0);
 
                     if (batchIds == null || batchIds.isEmpty()) {
@@ -99,17 +121,14 @@ public class BeneficiaryElasticsearchIndexService {
                         break;
                     }
 
-                    if (batchIds.size() > 0) {
-                        logger.debug("First ID type: {}, value: {}", 
-                            batchIds.get(0)[0].getClass().getName(), 
-                            batchIds.get(0)[0]);
-                    }
+                    // Reset consecutive error counter on successful fetch
+                    consecutiveErrors = 0;
 
                     logger.debug("Converting {} IDs to BigInteger", batchIds.size());
                     List<BigInteger> benRegIds = batchIds.stream()
-                        .map(arr -> toBigInteger(arr[0]))
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
+                            .map(arr -> toBigInteger(arr[0]))
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
 
                     logger.info("Converted {} valid BigInteger IDs", benRegIds.size());
 
@@ -119,26 +138,10 @@ public class BeneficiaryElasticsearchIndexService {
                         continue;
                     }
 
-                    if (benRegIds.size() > 0) {
-                        logger.debug("First converted BigInteger: {}", benRegIds.get(0));
-                    }
-
                     logger.info("Fetching complete data for {} beneficiaries...", benRegIds.size());
-
-                    // *** CRITICAL: This returns COMPLETE BeneficiaryDocument with 38+ fields ***
                     List<BeneficiaryDocument> documents = dataService.getBeneficiariesBatch(benRegIds);
-                    
+
                     logger.info("✓ Fetched {} complete documents for batch at offset {}", documents.size(), offset);
-                    
-                    if (!documents.isEmpty() && documents.get(0) != null) {
-                        BeneficiaryDocument firstDoc = documents.get(0);
-                        logger.info("Sample doc - benId: {}, name: {} {}, district: {}, state: {}", 
-                            firstDoc.getBenId(), 
-                            firstDoc.getFirstName(), 
-                            firstDoc.getLastName(),
-                            firstDoc.getDistrictName(),
-                            firstDoc.getStateName());
-                    }
 
                     int docsAddedInThisBatch = 0;
                     for (BeneficiaryDocument doc : documents) {
@@ -153,13 +156,13 @@ public class BeneficiaryElasticsearchIndexService {
                                     successCount += indexed;
                                     failureCount += (esBatch.size() - indexed);
                                     processedCount += esBatch.size();
-                                    
+
                                     logger.info("✓ Indexed {}/{} documents successfully", indexed, esBatch.size());
                                     esBatch.clear();
                                 }
                             } else {
-                                logger.warn("Skipping document - doc null: {}, benId null: {}", 
-                                    doc == null, doc != null ? (doc.getBenId() == null) : "N/A");
+                                logger.warn("Skipping document - doc null: {}, benId null: {}",
+                                        doc == null, doc != null ? (doc.getBenId() == null) : "N/A");
                                 failureCount++;
                                 processedCount++;
                             }
@@ -169,9 +172,9 @@ public class BeneficiaryElasticsearchIndexService {
                             processedCount++;
                         }
                     }
-                    
+
                     logger.info("Added {} documents to ES batch in this iteration", docsAddedInThisBatch);
-                    
+
                     int notFetched = benRegIds.size() - documents.size();
                     if (notFetched > 0) {
                         failureCount += notFetched;
@@ -181,37 +184,58 @@ public class BeneficiaryElasticsearchIndexService {
 
                     offset += BATCH_SIZE;
                     batchCounter++;
-                    
-                    logger.info("=== BATCH {} END: Processed={}, Success={}, Failed={} ===", 
-                        batchCounter, processedCount, successCount, failureCount);
 
-                    if (batchCounter % STATUS_UPDATE_FREQUENCY == 0) {
-                        logger.info("Updating job progress (every {} batches)...", STATUS_UPDATE_FREQUENCY);
-                        updateJobProgress(job, processedCount, successCount, failureCount, 
-                            offset, totalCount, startTime);
+                    logger.info("=== BATCH {} END: Processed={}, Success={}, Failed={} ===",
+                            batchCounter, processedCount, successCount, failureCount);
+
+                    // Save progress every batch for resume capability
+                    long now = System.currentTimeMillis();
+                    if (batchCounter % STATUS_UPDATE_FREQUENCY == 0 || (now - lastProgressUpdate) > 30000) {
+                        logger.info("Saving checkpoint for resume capability...");
+                        updateJobProgress(job, processedCount, successCount, failureCount,
+                                offset, totalCount, startTime);
+                        lastProgressUpdate = now;
                     }
 
+                    // Brief pause every 10 batches
                     if (batchCounter % 10 == 0) {
                         logger.debug("Pausing for 500ms after {} batches", batchCounter);
                         Thread.sleep(500);
                     }
 
                 } catch (Exception e) {
-                    logger.error("!!! ERROR in batch at offset {}: {} !!!", offset, e.getMessage(), e);
+                    consecutiveErrors++;
+                    logger.error("!!! ERROR #{} in batch at offset {}: {} !!!",
+                            consecutiveErrors, offset, e.getMessage(), e);
                     logger.error("Exception type: {}", e.getClass().getName());
-                    logger.error("Stack trace:", e);
-                    
+
+                    // Save progress before handling error
                     job.setCurrentOffset(offset);
                     job.setProcessedRecords(processedCount);
                     job.setSuccessCount(successCount);
                     job.setFailureCount(failureCount);
                     syncJobRepository.save(job);
-                    
+
+                    // If too many consecutive errors, mark job as STALLED for manual intervention
+                    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                        logger.error("TOO MANY CONSECUTIVE ERRORS ({}). Marking job as STALLED.", consecutiveErrors);
+                        job.setStatus("STALLED");
+                        job.setErrorMessage("Too many consecutive errors at offset " + offset + ": " + e.getMessage());
+                        syncJobRepository.save(job);
+                        return;
+                    }
+
+                    // Skip this batch and continue
                     offset += BATCH_SIZE;
-                    Thread.sleep(2000);
+
+                    // Exponential backoff: wait longer after each error
+                    long waitTime = Math.min(10000, 1000 * (long) Math.pow(2, consecutiveErrors));
+                    logger.info("Waiting {}ms before retry...", waitTime);
+                    Thread.sleep(waitTime);
                 }
             }
 
+            // Index remaining documents
             if (!esBatch.isEmpty()) {
                 logger.info("Indexing final batch of {} documents", esBatch.size());
                 int indexed = bulkIndexDocuments(esBatch);
@@ -220,21 +244,22 @@ public class BeneficiaryElasticsearchIndexService {
                 processedCount += esBatch.size();
             }
 
+            // Mark as COMPLETED
             job.setStatus("COMPLETED");
             job.setCompletedAt(new Timestamp(System.currentTimeMillis()));
             job.setProcessedRecords(processedCount);
             job.setSuccessCount(successCount);
             job.setFailureCount(failureCount);
             job.setCurrentOffset((int) totalCount);
-            
+
             long duration = System.currentTimeMillis() - startTime;
             job.setProcessingSpeed(processedCount / (duration / 1000.0));
-            
+
             syncJobRepository.save(job);
 
             logger.info("Async sync job COMPLETED: jobId={}", jobId);
-            logger.info("Total: {}, Processed: {}, Success: {}, Failed: {}", 
-                totalCount, processedCount, successCount, failureCount);
+            logger.info("Total: {}, Processed: {}, Success: {}, Failed: {}",
+                    totalCount, processedCount, successCount, failureCount);
             logger.info("All 38+ beneficiary fields synced to Elasticsearch!");
 
         } catch (Exception e) {
@@ -247,6 +272,22 @@ public class BeneficiaryElasticsearchIndexService {
         }
     }
 
+    // Resume a stalled job
+    public void resumeStalledJob(Long jobId) {
+        logger.info("Attempting to resume stalled job: {}", jobId);
+
+        ElasticsearchSyncJob job = syncJobRepository.findByJobId(jobId)
+                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+
+        if (!job.getStatus().equals("STALLED") && !job.getStatus().equals("RUNNING")) {
+            throw new RuntimeException("Cannot resume job with status: " + job.getStatus());
+        }
+
+        // Reset error counter and continue from last checkpoint
+        logger.info("Resuming from offset: {}", job.getCurrentOffset());
+        syncAllBeneficiariesAsync(jobId, "AUTO_RESUME");
+    }
+
     /**
      * Helper method to safely convert various numeric types to BigInteger
      * CRITICAL: Native SQL queries return Long, not BigInteger
@@ -256,7 +297,7 @@ public class BeneficiaryElasticsearchIndexService {
             logger.warn("Attempted to convert null value to BigInteger");
             return null;
         }
-        
+
         try {
             if (value instanceof BigInteger) {
                 return (BigInteger) value;
@@ -272,14 +313,14 @@ public class BeneficiaryElasticsearchIndexService {
             }
             return new BigInteger(value.toString());
         } catch (NumberFormatException e) {
-            logger.error("Cannot convert '{}' (type: {}) to BigInteger: {}", 
-                value, value.getClass().getName(), e.getMessage());
+            logger.error("Cannot convert '{}' (type: {}) to BigInteger: {}",
+                    value, value.getClass().getName(), e.getMessage());
             return null;
         }
     }
 
-    private void updateJobProgress(ElasticsearchSyncJob job, long processed, long success, 
-                                   long failure, int offset, long total, long startTime) {
+    private void updateJobProgress(ElasticsearchSyncJob job, long processed, long success,
+            long failure, int offset, long total, long startTime) {
         job.setProcessedRecords(processed);
         job.setSuccessCount(success);
         job.setFailureCount(failure);
@@ -310,12 +351,10 @@ public class BeneficiaryElasticsearchIndexService {
             for (BeneficiaryDocument doc : documents) {
                 if (doc.getBenId() != null) {
                     br.operations(op -> op
-                        .index(idx -> idx
-                            .index(beneficiaryIndex)
-                            .id(doc.getBenId())
-                            .document(doc)
-                        )
-                    );
+                            .index(idx -> idx
+                                    .index(beneficiaryIndex)
+                                    .id(doc.getBenId())
+                                    .document(doc)));
                 }
             }
 
@@ -327,8 +366,8 @@ public class BeneficiaryElasticsearchIndexService {
                     if (item.error() == null) {
                         successCount++;
                     } else {
-                        logger.error("ES indexing error for doc {}: {}", 
-                            item.id(), item.error().reason());
+                        logger.error("ES indexing error for doc {}: {}",
+                                item.id(), item.error().reason());
                     }
                 }
             } else {

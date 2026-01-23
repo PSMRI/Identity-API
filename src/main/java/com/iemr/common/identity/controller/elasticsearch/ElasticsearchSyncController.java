@@ -3,6 +3,7 @@ package com.iemr.common.identity.controller.elasticsearch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import com.iemr.common.identity.utils.response.OutputResponse;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+
 import com.iemr.common.identity.domain.MBeneficiarymapping;
 import com.iemr.common.identity.service.elasticsearch.ElasticsearchIndexingService;
 
@@ -41,6 +45,12 @@ public class ElasticsearchSyncController {
     @Autowired
     private ElasticsearchIndexingService indexingService;
 
+     @Autowired
+    private ElasticsearchClient esClient;
+
+    @Value("${elasticsearch.index.beneficiary}")
+    private String beneficiaryIndex;
+    
     /**
      * Start async full sync (RECOMMENDED for millions of records)
      * Returns immediately with job ID for tracking
@@ -427,4 +437,26 @@ public class ElasticsearchSyncController {
             return ResponseEntity.status(500).body(response);
         }
     }
+
+    @PostMapping("/refresh")
+public ResponseEntity<Map<String, Object>> refreshIndex() {
+    Map<String, Object> response = new HashMap<>();
+    
+    try {
+        logger.info("Manual refresh requested");
+        
+        esClient.indices().refresh(r -> r.index(beneficiaryIndex));
+        
+        response.put("status", "success");
+        response.put("message", "Index refreshed - all data is now searchable");
+        
+        return ResponseEntity.ok(response);
+        
+    } catch (Exception e) {
+        logger.error("Refresh failed: {}", e.getMessage(), e);
+        response.put("status", "error");
+        response.put("message", "Refresh failed: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+}
 }

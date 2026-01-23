@@ -28,8 +28,8 @@ public class ElasticsearchSyncService {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchSyncService.class);
 
     // OPTIMIZED BATCH SIZES for maximum performance
-    private static final int DB_FETCH_SIZE = 5000; // Fetch 5000 IDs at once
-    private static final int ES_BULK_SIZE = 2000; // Index 2000 documents per bulk request
+    private static final int DB_FETCH_SIZE = 10000;
+    private static final int ES_BULK_SIZE = 5000;
 
     @Autowired
     private ElasticsearchClient esClient;
@@ -244,7 +244,9 @@ public class ElasticsearchSyncService {
                 }
             }
 
-            BulkResponse result = esClient.bulk(br.build());
+           BulkResponse result = esClient.bulk(
+        br.refresh(Refresh.WaitFor).build()
+);
 
             int successCount = 0;
 

@@ -178,6 +178,8 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "addr.CurrServicePoint, " +                         // 23
         "addr.ParkingPlaceID, " +                           // 24
         "contact.PreferredPhoneNum " +                      // 25
+        "addr.CurrVillageId, " +                            // 26 
+        "addr.CurrVillage " +                               // 27 
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
 		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
@@ -218,6 +220,8 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "addr.CurrServicePoint, " +
         "addr.ParkingPlaceID, " +
         "contact.PreferredPhoneNum " +
+        "addr.CurrVillageId, " +                           
+        "addr.CurrVillage " +                               
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
@@ -307,6 +311,8 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     "addr.CurrServicePoint, " +                     // 23
     "addr.ParkingPlaceID, " +                       // 24
     "contact.PreferredPhoneNum " +                  // 25
+    "addr.CurrVillageId, " +                            
+    "addr.CurrVillage " +                               
     "FROM i_beneficiarymapping m " +
     "LEFT JOIN i_beneficiarydetails d " +
     "       ON m.BenDetailsId = d.BeneficiaryDetailsID " +
