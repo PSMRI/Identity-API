@@ -95,7 +95,7 @@ import com.iemr.common.identity.repo.rmnch.RMNCHBeneficiaryDetailsRmnchRepo;
 import com.iemr.common.identity.service.elasticsearch.ElasticsearchService;
 import com.iemr.common.identity.utils.mapper.OutputMapper;
 import com.iemr.common.identity.utils.response.OutputResponse;
-
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Value;
 
 import com.iemr.common.identity.service.elasticsearch.BeneficiaryElasticsearchIndexUpdater;
@@ -585,9 +585,9 @@ public class IdentityService {
  * Advanced search using Elasticsearch with fallback to database
  */
 public Map<String, Object> advancedSearchBeneficiariesES(
-        String firstName, String lastName, Integer genderId, java.util.Date dob,
+        String firstName, String middleName, String lastName, Integer genderId, java.util.Date dob,
         Integer stateId, Integer districtId, Integer blockId, Integer villageId,
-        String fatherName, String spouseName, String phoneNumber,
+        String fatherName, String spouseName, String maritalStatus, String phoneNumber,
         String beneficiaryId, String healthId, String aadharNo,
         Integer userId, String auth, Boolean is1097) throws Exception {
     
@@ -602,8 +602,8 @@ public Map<String, Object> advancedSearchBeneficiariesES(
             
             // Call Elasticsearch service
             List<Map<String, Object>> esResults = elasticsearchService.advancedSearch(
-                firstName, lastName, genderId, dob, stateId, districtId, 
-                blockId, villageId, fatherName, spouseName, phoneNumber, 
+                firstName, middleName, lastName, genderId, dob, stateId, districtId, 
+                blockId, villageId, fatherName, spouseName, maritalStatus, phoneNumber, 
                 beneficiaryId, healthId, aadharNo, userId
             );
             
@@ -998,6 +998,9 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
         MBeneficiarymapping benMapping = mappingRepo.findByBenRegIdOrderByBenMapIdAsc(identity.getBeneficiaryRegId());
 
+        // Track if ANY change happened (determines if ES sync is needed)
+        boolean isDataUpdate = false;
+
         // change in self details is implement here and other details here
         logger.debug("identity.getChangeInSelfDetails = " + identity.getChangeInSelfDetails());
         logger.debug("identity.getChangeInOtherDetails = " + identity.getChangeInOtherDetails());
@@ -1066,6 +1069,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                     mbDetl.setEmergencyRegistration(false);
                 }
                 detailRepo.save(mbDetl);
+                isDataUpdate = true;
             }
         }
         // edition in current emergency and permanent is implement below
@@ -1092,6 +1096,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
              */
             logger.debug("Beneficiary address to update = " + OutputMapper.gson().toJson(mbAddr));
             addressRepo.save(mbAddr);
+            isDataUpdate = true;
         }
 
         // edition in beneficiary contacts is updated here
@@ -1118,6 +1123,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
              */
             logger.debug("Beneficiary contact to update = " + OutputMapper.gson().toJson(benCon));
             contactRepo.save(benCon);
+            isDataUpdate = true;
+
         }
 
         // change in identities are added here
@@ -1160,6 +1167,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 }
 
                 index++;
+                isDataUpdate = true;
+
             }
         }
 
@@ -1204,6 +1213,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 }
 
                 index++;
+                isDataUpdate = true;
+
             }
         }
 
@@ -1230,6 +1241,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
              */
             logger.debug("Account to upsert = " + OutputMapper.gson().toJson(beneficiaryAccount));
             accountRepo.save(beneficiaryAccount);
+            isDataUpdate = true;
+
         }
 
         if (Boolean.TRUE.equals(identity.getChangeInBenImage())) {
@@ -1254,15 +1267,20 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             logger.debug("Image to upsert = " + OutputMapper.gson().toJson(beneficiaryImage));
             beneficiaryImage.setProcessed("N");
             imageRepo.save(beneficiaryImage);
+            isDataUpdate = true;
+
         }
 
         // Trigger async sync to Elasticsearch
-        if (identity.getBeneficiaryRegId() != null) {
+        if (isDataUpdate && identity.getBeneficiaryRegId() != null) {
             logger.info("Triggering Elasticsearch sync for benRegId: {}", identity.getBeneficiaryRegId());
             syncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
         }
-        logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
-    }
+    
+    logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
+}
+
+      
 
     private MBeneficiarydetail convertIdentityEditDTOToMBeneficiarydetail(IdentityEditDTO dto) {
         MBeneficiarydetail beneficiarydetail = new MBeneficiarydetail();
@@ -2142,5 +2160,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         return regIdRepo.countByProvisioned(false);
 
     }
+
+
 }
 

@@ -180,7 +180,8 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
         "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +             // 13
         "m.BenAccountID, " +                                    // 14
         "contact.PreferredPhoneNum, " +                         // 15
-		"h.HealthID, " + "h.HealthIDNumber, " + "fam.BenFamilyMapId, " +  
+		// "h.HealthID, " + "h.HealthIDNumber, " +
+		"fam.BenFamilyMapId, " +  
         "addr.CurrStateId, " +                                  // 19
         "addr.CurrState, " +                                    // 20
         "addr.CurrDistrictId, " +                               // 21

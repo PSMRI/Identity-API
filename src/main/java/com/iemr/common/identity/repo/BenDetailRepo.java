@@ -153,35 +153,41 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
      */
     @Query(value = "SELECT " +
         "m.BenRegId, " +                                    // 0
-        "brm.beneficiaryID, " +                               // 1
+        "brm.beneficiaryID, " +                             // 1
         "d.FirstName, " +                                   // 2
-        "d.LastName, " +                                    // 3
-        "d.GenderID, " +                                    // 4
-        "g.GenderName, " +                                  // 5
-        "d.DOB, " +                                         // 6
-        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " + // 7
-        "d.FatherName, " +                                  // 8
-        "d.SpouseName, " +                                  // 9
-        "d.IsHIVPositive, " +                                    // 10
-        "m.CreatedBy, " +                                   // 11
-        "m.CreatedDate, " +                                 // 12
-        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +          // 13
-        "m.BenAccountID, " +                                // 14
-        "addr.CurrStateId, " +                              // 15
-        "addr.CurrState, " +                                // 16
-        "addr.CurrDistrictId, " +                           // 17
-        "addr.CurrDistrict, " +                             // 18
-        "addr.CurrSubDistrictId, " +                        // 19
-        "addr.CurrSubDistrict, " +                          // 20
-        "addr.CurrPinCode, " +                              // 21
-        "addr.CurrServicePointId, " +                       // 22
-        "addr.CurrServicePoint, " +                         // 23
-        "addr.ParkingPlaceID, " +                           // 24
-        "contact.PreferredPhoneNum " +                      // 25
+        "d.MiddleName, " +                                  // 3 
+        "d.LastName, " +                                    // 4
+        "d.GenderID, " +                                    // 5
+        "g.GenderName, " +                                  // 6
+        "d.DOB, " +                                         // 7
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " +  // 8
+        "d.FatherName, " +                                  // 9
+        "d.SpouseName, " +                                  // 10
+        "d.MaritalStatusID, " +                             // 11 
+        "ms.Status as MaritalStatusName, " +                // 12
+        "d.IsHIVPositive, " +                               // 13
+        "m.CreatedBy, " +                                   // 14
+        "m.CreatedDate, " +                                 // 15
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +          // 16
+        "m.BenAccountID, " +                                // 17
+        "addr.CurrStateId, " +                              // 18
+        "addr.CurrState, " +                                // 19
+        "addr.CurrDistrictId, " +                           // 20
+        "addr.CurrDistrict, " +                             // 21
+        "addr.CurrSubDistrictId, " +                        // 22
+        "addr.CurrSubDistrict, " +                          // 23
+        "addr.CurrPinCode, " +                              // 24
+        "addr.CurrServicePointId, " +                       // 25
+        "addr.CurrServicePoint, " +                         // 26
+        "addr.ParkingPlaceID, " +                           // 27
+        "contact.PreferredPhoneNum " +                      // 28
+        "addr.CurrVillageId, " +                            // 29 
+        "addr.CurrVillage " +                               // 30 
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
 		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +        
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
         "WHERE m.BenRegId IN (:ids) AND m.Deleted = false", 
@@ -195,6 +201,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "m.BenRegId, " +
         "brm.beneficiaryID, " +
         "d.FirstName, " +
+        "d.MiddleName, " +  
         "d.LastName, " +
         "d.GenderID, " +
         "g.GenderName, " +
@@ -202,6 +209,8 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " +
         "d.FatherName, " +
         "d.SpouseName, " +
+        "d.MaritalStatusID, " +                             
+        "ms.Status as MaritalStatusName, " +                
         "d.IsHIVPositive, " +
         "m.CreatedBy, " +
         "m.CreatedDate, " +
@@ -218,13 +227,17 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "addr.CurrServicePoint, " +
         "addr.ParkingPlaceID, " +
         "contact.PreferredPhoneNum " +
+        "addr.CurrVillageId, " +                           
+        "addr.CurrVillage " +                               
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
 		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +  
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
         "WHERE (d.FirstName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.MiddleName LIKE CONCAT('%', :query, '%') " + 
         "   OR d.LastName LIKE CONCAT('%', :query, '%') " +
         "   OR d.FatherName LIKE CONCAT('%', :query, '%') " +
         "   OR d.BeneficiaryRegID = :query " +
@@ -281,37 +294,43 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 // Advance Search ES
 @Query(value =
     "SELECT DISTINCT " +
-    "m.BenRegId, " +                                 // 0
+    "m.BenRegId, " +                                // 0
     "brm.beneficiaryID, " +                         // 1
     "d.FirstName, " +                               // 2
-    "d.LastName, " +                                // 3
-    "d.GenderID, " +                                // 4
-    "g.GenderName, " +                              // 5
-    "d.DOB, " +                                     // 6
-    "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) AS Age, "+// 7
-    "d.FatherName, " +                              // 8
-    "d.SpouseName, " +                              // 9
-    "d.IsHIVPositive, " +                           // 10
-    "m.CreatedBy, " +                               // 11
-    "m.CreatedDate, " +                             // 12
-    "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +      // 13
-    "m.BenAccountID, " +                            // 14
-    "addr.CurrStateId, " +                          // 15
-    "addr.CurrState, " +                            // 16
-    "addr.CurrDistrictId, " +                       // 17
-    "addr.CurrDistrict, " +                         // 18
-    "addr.CurrSubDistrictId, " +                    // 19
-    "addr.CurrSubDistrict, " +                      // 20
-    "addr.CurrPinCode, " +                          // 21
-    "addr.CurrServicePointId, " +                   // 22
-    "addr.CurrServicePoint, " +                     // 23
-    "addr.ParkingPlaceID, " +                       // 24
-    "contact.PreferredPhoneNum " +                  // 25
+    "d.MiddleName, " +                              // 3
+    "d.LastName, " +                                // 4
+    "d.GenderID, " +                                // 5
+    "g.GenderName, " +                              // 6
+    "d.DOB, " +                                     // 7
+    "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) AS Age, "+
+    "d.FatherName, " +                              // 9
+    "d.SpouseName, " +                              // 10
+    "d.MaritalStatusID, " +                         // 11
+    "ms.Status AS MaritalStatusName, " +            // 12
+    "d.IsHIVPositive, " +                           // 13
+    "m.CreatedBy, " +                               // 14
+    "m.CreatedDate, " +                             // 15
+    "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +      // 16
+    "m.BenAccountID, " +                            // 17
+    "addr.CurrStateId, " +                          // 18
+    "addr.CurrState, " +                            // 19
+    "addr.CurrDistrictId, " +                       // 20
+    "addr.CurrDistrict, " +                         // 21
+    "addr.CurrSubDistrictId, " +                    // 22
+    "addr.CurrSubDistrict, " +                      // 23
+    "addr.CurrPinCode, " +                          // 24
+    "addr.CurrServicePointId, " +                   // 25
+    "addr.CurrServicePoint, " +                     // 26
+    "addr.ParkingPlaceID, " +                       // 27
+    "contact.PreferredPhoneNum " +                  // 28
+    "addr.CurrVillageId, " +                            
+    "addr.CurrVillage " +                               
     "FROM i_beneficiarymapping m " +
     "LEFT JOIN i_beneficiarydetails d " +
     "       ON m.BenDetailsId = d.BeneficiaryDetailsID " +
     "LEFT JOIN db_iemr.m_gender g " +
     "       ON d.GenderID = g.GenderID " +
+    "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +  
     "LEFT JOIN i_beneficiaryaddress addr " +
     "       ON m.BenAddressId = addr.BenAddressID " +
     "LEFT JOIN i_beneficiarycontacts contact " +
@@ -320,6 +339,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     "WHERE m.Deleted = false " +
 
     "AND (:firstName IS NULL OR d.FirstName LIKE CONCAT('%', :firstName, '%')) " +
+    "AND (:middleName IS NULL OR d.MiddleName LIKE CONCAT('%', :middleName, '%')) " + 
     "AND (:lastName IS NULL OR d.LastName LIKE CONCAT('%', :lastName, '%')) " +
     "AND (:genderId IS NULL OR d.GenderID = :genderId) " +
     "AND (:dob IS NULL OR DATE(d.DOB) = DATE(:dob)) " +
@@ -330,7 +350,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 
     "AND (:fatherName IS NULL OR d.FatherName LIKE CONCAT('%', :fatherName, '%')) " +
     "AND (:spouseName IS NULL OR d.SpouseName LIKE CONCAT('%', :spouseName, '%')) " +
-
+    "AND (:maritalStatus IS NULL OR d.MaritalStatusID = :maritalStatus) " +
     "AND (:phoneNumber IS NULL OR " +
     "     contact.PreferredPhoneNum LIKE CONCAT('%', :phoneNumber, '%') OR " +
     "     contact.PhoneNum1 LIKE CONCAT('%', :phoneNumber, '%') OR " +
@@ -346,6 +366,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     nativeQuery = true)
 List<Object[]> advancedSearchBeneficiaries(
     @Param("firstName") String firstName,
+    @Param("middleName") String middleName,
     @Param("lastName") String lastName,
     @Param("genderId") Integer genderId,
     @Param("dob") Date dob,
@@ -354,6 +375,7 @@ List<Object[]> advancedSearchBeneficiaries(
     @Param("blockId") Integer blockId,
     @Param("fatherName") String fatherName,
     @Param("spouseName") String spouseName,
+    @Param("maritalStatus") String maritalStatus,
     @Param("phoneNumber") String phoneNumber,
     @Param("beneficiaryId") String beneficiaryId
 );
