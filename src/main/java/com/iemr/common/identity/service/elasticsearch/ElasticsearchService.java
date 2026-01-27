@@ -1,14 +1,36 @@
+/*
+* AMRIT – Accessible Medical Records via Integrated Technology 
+* Integrated EHR (Electronic Health Records) Solution 
+*
+* Copyright (C) "Piramal Swasthya Management and Research Institute" 
+*
+* This file is part of AMRIT.
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see https://www.gnu.org/licenses/.
+*/
+
 package com.iemr.common.identity.service.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
 import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
 import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
-import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 
 import com.iemr.common.identity.dto.BeneficiariesESDTO;
 import com.iemr.common.identity.repo.BenDetailRepo;
+import com.iemr.common.identity.repo.V_BenAdvanceSearchRepo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +39,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,7 +48,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import com.iemr.common.identity.repo.BenAddressRepo;
 
@@ -42,6 +64,9 @@ public class ElasticsearchService {
 
     @Autowired
     private BenAddressRepo benAddressRepo;
+
+    @Autowired
+    private V_BenAdvanceSearchRepo v_BenAdvanceSearchRepo;
 
     @Value("${elasticsearch.index.beneficiary}")
     private String beneficiaryIndex;
@@ -85,7 +110,7 @@ public class ElasticsearchService {
                                                             .value(query)
                                                             .boost(20.0f)));
 
-                                                    // 2. PREFIX MATCH (high priority for "sur" → "suraj")
+                                                    // 2. PREFIX MATCH (high priority for "vani" → "vanitha")
                                                     b.should(s4 -> s4.prefix(p -> p
                                                             .field("firstName.keyword")
                                                             .value(query)
@@ -491,26 +516,6 @@ public class ElasticsearchService {
     }
 
     /**
-     * Rank results by location match priority
-     * Priority: Village > Block > District > State > No Match
-     */
-    private List<Map<String, Object>> rankByLocation(List<Map<String, Object>> results,
-            Map<String, Integer> userLocation) {
-        Integer userBlockId = userLocation.get("blockId");
-        Integer userVillageId = userLocation.get("villageId");
-
-        logger.info("Ranking by location - User Block: {}, Village: {}", userBlockId, userVillageId);
-
-        return results.stream()
-                .sorted((r1, r2) -> {
-                    int score1 = calculateLocationScore(r1, userBlockId, userVillageId);
-                    int score2 = calculateLocationScore(r2, userBlockId, userVillageId);
-                    return Integer.compare(score2, score1);
-                })
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Calculate location match score
      * Higher score = better match
      */
@@ -578,8 +583,6 @@ public class ElasticsearchService {
         if (esData == null) {
             return null;
         }
-
-        logger.info("ESDATA=" + esData.getAbhaID());
 
         Map<String, Object> result = new HashMap<>();
 
@@ -649,6 +652,23 @@ public class ElasticsearchService {
                 }
                 abhaDetail.put("beneficiaryRegID", esData.getBenRegId());
                 abhaDetails.add(abhaDetail);
+            }
+            else 
+            {
+            try {
+                List<Object[]> abhaRecords = v_BenAdvanceSearchRepo.getBenAbhaDetailsByBenRegID(BigInteger.valueOf(esData.getBenRegId()));
+                for (Object[] record : abhaRecords) {
+                    Map<String, Object> abhaDetail = new HashMap<>();
+                    abhaDetail.put("healthIDNumber", record[0] != null ? record[0].toString() : null);
+                    abhaDetail.put("healthID", record[0] != null ? record[0].toString() : null);
+                    abhaDetail.put("createdDate", record[1] != null ? ((Timestamp) record[1]).getTime() : null);
+                    abhaDetail.put("beneficiaryRegID", esData.getBenRegId());
+                    abhaDetails.add(abhaDetail);
+                }
+            } catch (Exception e) {
+                logger.warn("ABHA query returned error (likely no records): {}", e.getMessage());
+                
+            }
             }
             result.put("abhaDetails", abhaDetails);
 

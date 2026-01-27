@@ -1,3 +1,25 @@
+/*
+* AMRIT – Accessible Medical Records via Integrated Technology 
+* Integrated EHR (Electronic Health Records) Solution 
+*
+* Copyright (C) "Piramal Swasthya Management and Research Institute" 
+*
+* This file is part of AMRIT.
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see https://www.gnu.org/licenses/.
+*/
+
 package com.iemr.common.identity.service.elasticsearch;
 
 import java.math.BigInteger;
@@ -37,47 +59,6 @@ public class BeneficiaryElasticsearchIndexUpdater {
 
     @Value("${elasticsearch.enabled}")
     private boolean esEnabled;
-
-    /**
-     * Async method to sync a single beneficiary to Elasticsearch
-     * Called after beneficiary is created/updated in database
-     */
-    @Async("elasticsearchSyncExecutor")
-    public void syncBeneficiaryAsyncOld(BigInteger benRegId) {
-        if (!esEnabled) {
-            logger.debug("Elasticsearch is disabled, skipping sync");
-            return;
-        }
-
-        try {
-            logger.info("Starting async sync for benRegId: {}", benRegId);
-
-            BeneficiaryDocument doc = dataService.getBeneficiaryFromDatabase(benRegId);
-
-            if (doc == null) {
-                logger.warn("Beneficiary not found in database: {}", benRegId);
-                return;
-            }
-
-            if (doc.getBenId() == null) {
-                logger.error("BeneficiaryDocument has null benId: {}", benRegId);
-                return;
-            }
-
-            IndexRequest<BeneficiaryDocument> request = IndexRequest.of(i -> i
-                    .index(beneficiaryIndex)
-                    .id(doc.getBenId())
-                    .document(doc));
-
-            esClient.index(request);
-
-            logger.info("Successfully synced beneficiary to Elasticsearch: benRegId={}, benId={}",
-                    benRegId, doc.getBenId());
-
-        } catch (Exception e) {
-            logger.error("Error syncing beneficiary {} to Elasticsearch: {}", benRegId, e.getMessage(), e);
-        }
-    }
 
     /**
      * Delete beneficiary from Elasticsearch

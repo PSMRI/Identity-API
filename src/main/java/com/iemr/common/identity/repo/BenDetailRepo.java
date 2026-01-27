@@ -153,19 +153,19 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
      */
     @Query(value = "SELECT " +
         "m.BenRegId, " +                                    // 0
-        "brm.beneficiaryID, " +                               // 1
+        "brm.beneficiaryID, " +                             // 1
         "d.FirstName, " +                                   // 2
         "d.MiddleName, " +                                  // 3 
         "d.LastName, " +                                    // 4
         "d.GenderID, " +                                    // 5
         "g.GenderName, " +                                  // 6
         "d.DOB, " +                                         // 7
-        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " + // 8
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " +  // 8
         "d.FatherName, " +                                  // 9
         "d.SpouseName, " +                                  // 10
         "d.MaritalStatusID, " +                             // 11 
         "ms.Status as MaritalStatusName, " +                // 12
-        "d.IsHIVPositive, " +                                    // 13
+        "d.IsHIVPositive, " +                               // 13
         "m.CreatedBy, " +                                   // 14
         "m.CreatedDate, " +                                 // 15
         "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +          // 16
@@ -294,7 +294,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 // Advance Search ES
 @Query(value =
     "SELECT DISTINCT " +
-    "m.BenRegId, " +                                 // 0
+    "m.BenRegId, " +                                // 0
     "brm.beneficiaryID, " +                         // 1
     "d.FirstName, " +                               // 2
     "d.MiddleName, " +                              // 3
@@ -302,7 +302,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     "d.GenderID, " +                                // 5
     "g.GenderName, " +                              // 6
     "d.DOB, " +                                     // 7
-    "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) AS Age, "+// 8
+    "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) AS Age, "+
     "d.FatherName, " +                              // 9
     "d.SpouseName, " +                              // 10
     "d.MaritalStatusID, " +                         // 11
