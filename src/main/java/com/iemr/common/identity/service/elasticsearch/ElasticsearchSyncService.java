@@ -244,9 +244,12 @@ public class ElasticsearchSyncService {
                 }
             }
 
-           BulkResponse result = esClient.bulk(
-        br.refresh(Refresh.WaitFor).build()
-);
+//            BulkResponse result = esClient.bulk(
+//         br.refresh(Refresh.WaitFor).build()
+// );
+
+ BulkResponse result = esClient.bulk(br.build());
+
 
             int successCount = 0;
 
