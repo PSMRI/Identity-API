@@ -194,135 +194,104 @@ public class IdentityService {
      * @param searchDTO
      * @return
      */
-    public List<BeneficiariesDTO> getBeneficiaries(IdentitySearchDTO searchDTO)
-            throws NoResultException, QueryTimeoutException, Exception {
-        List<BeneficiariesDTO> list = new ArrayList<BeneficiariesDTO>();
-
-        /**
-         * if beneficiary Id present
-         */
-        if (searchDTO.getBeneficiaryId() != null) {
-            logger.info("getting beneficiaries by ID for " + searchDTO.getBeneficiaryId());
-            return this.getBeneficiariesByBenId(searchDTO.getBeneficiaryId());
+   public List<BeneficiariesDTO> getBeneficiaries(IdentitySearchDTO searchDTO)
+        throws NoResultException, QueryTimeoutException {
+    if (searchDTO.getBeneficiaryId() != null) {
+        logger.info("Getting beneficiaries by ID: {}", searchDTO.getBeneficiaryId());
+        try {
+            return getBeneficiariesByBenId(searchDTO.getBeneficiaryId());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        /**
-         * if beneficiary Reg Id present
-         */
-        if (searchDTO.getBeneficiaryRegId() != null) {
-            logger.info("getting beneficiaries by reg ID for " + searchDTO.getBeneficiaryRegId());
-            return this.getBeneficiariesByBenRegId(searchDTO.getBeneficiaryRegId());
-        }
-
-        /**
-         * if beneficiary Reg Id present
-         */
-        if (searchDTO.getContactNumber() != null) {
-            logger.info("getting beneficiaries by contact no for " + searchDTO.getContactNumber());
-            List<BeneficiariesDTO> list3 = this.getBeneficiariesByPhoneNum(searchDTO.getContactNumber());
-            if (!list3.isEmpty() && searchDTO.getIsD2D() != null && Boolean.TRUE.equals(searchDTO.getIsD2D())) {
-
-                for (int i = 0; i < list3.size(); i++) {
-                    if (searchDTO.getFirstName() != null) {
-                        if (list3.get(i) == null || list3.get(i).getBeneficiaryDetails() == null
-                                || list3.get(i).getBeneficiaryDetails().getFirstName() == null
-                                || !list3.get(i).getBeneficiaryDetails().getFirstName()
-                                        .equalsIgnoreCase(searchDTO.getFirstName())) {
-                            list3.remove(i);
-                            i--;
-
-                            continue;
-                        }
-
-                    }
-                    if (searchDTO.getLastName() != null) {
-                        if (list3.get(i) == null || list3.get(i).getBeneficiaryDetails() == null
-                                || list3.get(i).getBeneficiaryDetails().getLastName() == null
-                                || !list3.get(i).getBeneficiaryDetails().getLastName()
-                                        .equalsIgnoreCase(searchDTO.getLastName())) {
-                            list3.remove(i);
-                            i--;
-
-                            continue;
-                        }
-                    }
-
-                    if (searchDTO.getGenderId() != null) {
-                        if (list3.get(i) == null || list3.get(i).getBeneficiaryDetails() == null
-                                || list3.get(i).getBeneficiaryDetails().getGenderId() == null || !list3.get(i)
-                                .getBeneficiaryDetails().getGenderId().equals(searchDTO.getGenderId())) {
-
-                            list3.remove(i);
-                            i--;
-                            continue;
-                        }
-                    }
-                    if (searchDTO.getHouseHoldID() != null) {
-                        if (list3.get(i) == null || list3.get(i).getBeneficiaryDetails() == null
-                                || list3.get(i).getBeneficiaryDetails().getHouseHoldID() == null || !list3.get(i)
-                                .getBeneficiaryDetails().getHouseHoldID().equals(searchDTO.getHouseHoldID())) {
-
-                            list3.remove(i);
-                            i--;
-                            continue;
-                        }
-                    }
-
-                    if (searchDTO.getCurrentAddress().getStateId() != null) {
-                        if (list3.get(i) == null || list3.get(i).getCurrentAddress() == null
-                                || list3.get(i).getCurrentAddress().getStateId() == null
-                                || !list3.get(i).getCurrentAddress().getStateId()
-                                        .equals(searchDTO.getCurrentAddress().getStateId())) {
-
-                            list3.remove(i);
-                            i--;
-                            continue;
-                        }
-                    }
-
-                    if (searchDTO.getCurrentAddress().getDistrictId() != null) {
-                        if (list3.get(i) == null || list3.get(i).getCurrentAddress() == null
-                                || list3.get(i).getCurrentAddress().getDistrictId() == null
-                                || !list3.get(i).getCurrentAddress().getDistrictId()
-                                        .equals(searchDTO.getCurrentAddress().getDistrictId())) {
-
-                            list3.remove(i);
-                            i--;
-                            continue;
-                        }
-                    }
-
-                    if (searchDTO.getCurrentAddress().getVillageId() != null) {
-                        if (list3.get(i) == null || list3.get(i).getCurrentAddress() == null
-                                || list3.get(i).getCurrentAddress().getVillageId() == null
-                                || !list3.get(i).getCurrentAddress().getVillageId()
-                                        .equals(searchDTO.getCurrentAddress().getVillageId())) {
-
-                            list3.remove(i);
-                            i--;
-                            continue;
-                        }
-                    }
-
-                }
-            }
-            return list3;
-        }
-
-        /**
-         * New logic for advance search, 03-10-2018
-         */
-        List<VBenAdvanceSearch> tmpList = mappingRepo.dynamicFilterSearchNew(searchDTO);
-        for (VBenAdvanceSearch obj : tmpList) {
-            list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTONew1(obj)));
-            logger.debug("benMapId: " + obj.getBenMapID());
-        }
-        /**
-         * End
-         */
-
-        return list;
     }
+
+    if (searchDTO.getBeneficiaryRegId() != null) {
+        logger.info("Getting beneficiaries by Reg ID: {}", searchDTO.getBeneficiaryRegId());
+        try {
+            return getBeneficiariesByBenRegId(searchDTO.getBeneficiaryRegId());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    if (searchDTO.getContactNumber() != null) {
+        logger.info("Getting beneficiaries by contact no: {}", searchDTO.getContactNumber());
+
+        List<BeneficiariesDTO> phoneResults =
+                getBeneficiariesByPhoneNum(searchDTO.getContactNumber());
+
+        if (Boolean.TRUE.equals(searchDTO.getIsD2D())) {
+            return phoneResults.stream()
+                    .filter(b -> matchD2DCriteria(b, searchDTO))
+                    .toList();
+        }
+
+        return phoneResults;
+    }
+
+    List<VBenAdvanceSearch> searchResults =
+            mappingRepo.dynamicFilterSearchNew(searchDTO);
+
+    if (searchResults.isEmpty()) {
+        return List.of();
+    }
+
+    return searchResults.stream()
+            .map(this::getBeneficiariesDTONew1)  
+            .map(this::getBeneficiariesDTO)
+            .toList();
+}
+
+private boolean matchD2DCriteria(BeneficiariesDTO dto, IdentitySearchDTO searchDTO) {
+
+    if (dto == null || dto.getBeneficiaryDetails() == null) {
+        return false;
+    }
+
+    var details = dto.getBeneficiaryDetails();
+    var address = dto.getCurrentAddress();
+
+    if (searchDTO.getFirstName() != null &&
+            !searchDTO.getFirstName().equalsIgnoreCase(details.getFirstName())) {
+        return false;
+    }
+
+    if (searchDTO.getLastName() != null &&
+            !searchDTO.getLastName().equalsIgnoreCase(details.getLastName())) {
+        return false;
+    }
+
+    if (searchDTO.getGenderId() != null &&
+            !searchDTO.getGenderId().equals(details.getGenderId())) {
+        return false;
+    }
+
+    if (searchDTO.getHouseHoldID() != null &&
+            !searchDTO.getHouseHoldID().equals(details.getHouseHoldID())) {
+        return false;
+    }
+
+    if (searchDTO.getCurrentAddress() != null && address != null) {
+
+        if (searchDTO.getCurrentAddress().getStateId() != null &&
+                !searchDTO.getCurrentAddress().getStateId().equals(address.getStateId())) {
+            return false;
+        }
+
+        if (searchDTO.getCurrentAddress().getDistrictId() != null &&
+                !searchDTO.getCurrentAddress().getDistrictId().equals(address.getDistrictId())) {
+            return false;
+        }
+
+        if (searchDTO.getCurrentAddress().getVillageId() != null &&
+                !searchDTO.getCurrentAddress().getVillageId().equals(address.getVillageId())) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
     public List<BeneficiariesDTO> getBeneficiarieswithES(IdentitySearchDTO searchDTO)
             throws NoResultException, QueryTimeoutException, Exception {
