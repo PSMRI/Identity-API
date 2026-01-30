@@ -46,4 +46,9 @@ public interface V_BenAdvanceSearchRepo extends CrudRepository<VBenAdvanceSearch
 			+ "  FROM db_iemr.m_benhealthidmapping WHERE HealthIDNumber=:healthIDNo  AND BeneficiaryRegID is not null ")
 	List<BigInteger> getBenRegIDByHealthIDNoAbhaIdNo(@Param("healthIDNo") String healthIDNo);
 
+	//Batch fetch ABHA details for multiple beneficiaries
+    @Query(nativeQuery = true, value = "SELECT BeneficiaryRegID, HealthID, HealthIDNumber, AuthenticationMode, CreatedDate"
+            + " FROM db_iemr.m_benhealthidmapping WHERE BeneficiaryRegID IN :benRegIDs ORDER BY BeneficiaryRegID, CreatedDate DESC")
+    List<Object[]> getBenAbhaDetailsByBenRegIDs(@Param("benRegIDs") List<BigInteger> benRegIDs);
+    
 }
