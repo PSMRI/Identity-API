@@ -58,6 +58,7 @@ public class HealthService {
     private static final String STATUS_UP = "UP";
     private static final String STATUS_DOWN = "DOWN";
     private static final String UNKNOWN_VALUE = "unknown";
+    private static final String ELASTICSEARCH_TYPE = "Elasticsearch";
     private static final int REDIS_TIMEOUT_SECONDS = 3;
     private static final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
@@ -224,14 +225,14 @@ public class HealthService {
 
     private Map<String, Object> checkElasticsearchHealth(boolean includeDetails) {
         Map<String, Object> details = new LinkedHashMap<>();
-        details.put("type", "Elasticsearch");
+        details.put("type", ELASTICSEARCH_TYPE);
         
         if (includeDetails) {
             details.put("host", elasticsearchHost);
             details.put("port", elasticsearchPort);
         }
 
-        return performHealthCheck("Elasticsearch", details, () -> {
+        return performHealthCheck(ELASTICSEARCH_TYPE, details, () -> {
             if (!elasticsearchClientReady || elasticsearchRestClient == null) {
                 logger.debug("Elasticsearch RestClient not ready");
                 return new HealthCheckResult(false, null, "Elasticsearch client not ready");
@@ -244,18 +245,18 @@ public class HealthService {
                 
                 int statusCode = response.getStatusLine().getStatusCode();
                 if (statusCode == 200) {
-                    logger.debug("Elasticsearch health check successful");
+                    logger.debug("{} health check successful", ELASTICSEARCH_TYPE);
                     return new HealthCheckResult(true, "Elasticsearch 8.10.0", null);
                 }
                 return new HealthCheckResult(false, null, "HTTP " + statusCode);
             } catch (java.net.ConnectException e) {
-                logger.debug("Elasticsearch connection refused on {}:{}", elasticsearchHost, elasticsearchPort);
+                logger.error("{} connection refused on {}:{}", ELASTICSEARCH_TYPE, elasticsearchHost, elasticsearchPort, e);
                 return new HealthCheckResult(false, null, "Connection refused");
             } catch (java.io.IOException e) {
-                logger.debug("Elasticsearch IO error: {}", e.getMessage());
+                logger.error("{} IO error: {}", ELASTICSEARCH_TYPE, e.getMessage(), e);
                 return new HealthCheckResult(false, null, "IO Error: " + e.getMessage());
             } catch (Exception e) {
-                logger.debug("Elasticsearch error: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+                logger.error("{} error: {} - {}", ELASTICSEARCH_TYPE, e.getClass().getSimpleName(), e.getMessage(), e);
                 return new HealthCheckResult(false, null, e.getMessage());
             }
         });
@@ -356,20 +357,7 @@ public class HealthService {
         }
     }
 
-    private String getElasticsearchVersion(RestClient restClient) {
-        try {
-            Request request = new Request("GET", "/");
-            var response = restClient.performRequest(request);
-            
-            if (response.getStatusLine().getStatusCode() == 200) {
-                // The response typically contains JSON with version info
-                return "Elasticsearch"; // Simplified extraction
-            }
-        } catch (Exception e) {
-            logger.debug("Could not retrieve Elasticsearch version", e);
-        }
-        return null;
-    }
+
 
     private String extractHost(String jdbcUrl) {
         if (jdbcUrl == null || UNKNOWN_VALUE.equals(jdbcUrl)) {
