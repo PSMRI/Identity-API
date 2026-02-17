@@ -184,7 +184,6 @@ public class HealthService {
                     return new HealthCheckResult(false, null, "Connection validation failed");
                 }
             } catch (Exception e) {
-                logger.error("MySQL health check exception: {}", e.getMessage(), e);
                 throw new IllegalStateException("MySQL connection failed: " + e.getMessage(), e);
             }
         });
