@@ -46,7 +46,7 @@ public class JwtUserIdValidationFilter implements Filter {
 		logger.info("JwtUserIdValidationFilter invoked for path: {}", path);
 
 		// Skip JWT validation for public endpoints
-		if (path.endsWith("/health") || path.endsWith("/version")) {
+		if (path.equals("/health") || path.equals("/version")) {
 			logger.info("Public endpoint accessed: {} - skipping JWT validation", path);
 			filterChain.doFilter(servletRequest, servletResponse);
 			return;
@@ -86,7 +86,7 @@ public class JwtUserIdValidationFilter implements Filter {
 				logger.info("User-Agent: {}", userAgent);
 				if (userAgent != null && isMobileClient(userAgent) && authHeader != null) {
 					try {
-						logger.info("Common-API incoming userAget: {}", userAgent);
+						logger.info("Common-API incoming userAgent: {}", userAgent);
 						UserAgentContext.setUserAgent(userAgent);
 						filterChain.doFilter(servletRequest, servletResponse);
 					} finally {

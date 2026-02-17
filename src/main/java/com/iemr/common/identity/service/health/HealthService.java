@@ -287,19 +287,9 @@ public class HealthService {
             details.put("responseTimeMs", responseTime);
 
             if (result.isHealthy) {
-                logger.debug("{} health check: UP ({}ms)", componentName, responseTime);
-                status.put(STATUS_KEY, STATUS_UP);
-                if (result.version != null) {
-                    details.put("version", result.version);
-                }
+                buildHealthyStatus(status, details, componentName, responseTime, result);
             } else {
-                String safeError = result.error != null ? result.error : "Health check failed";
-                logger.warn("{} health check failed: {}", componentName, safeError);
-                status.put(STATUS_KEY, STATUS_DOWN);
-                if (includeDetails) {
-                    details.put("error", safeError);
-                }
-                details.put("errorType", "CheckFailed");
+                buildUnhealthyStatus(status, details, componentName, result, includeDetails);
             }
             
             status.put("details", details);
@@ -307,23 +297,45 @@ public class HealthService {
             
         } catch (Exception e) {
             long responseTime = System.currentTimeMillis() - startTime;
-            
-            logger.error("{} health check failed with exception: {}", componentName, e.getMessage(), e);
-            
-            String errorMessage = e.getCause() != null 
-                ? e.getCause().getMessage() 
-                : e.getMessage();
-            
-            status.put(STATUS_KEY, STATUS_DOWN);
-            details.put("responseTimeMs", responseTime);
-            if (includeDetails) {
-                details.put("error", errorMessage != null ? errorMessage : "Health check failed");
-            }
-            details.put("errorType", "InternalError");
-            status.put("details", details);
-            
-            return status;
+            return buildExceptionStatus(status, details, componentName, e, includeDetails, responseTime);
         }
+    }
+
+    private void buildHealthyStatus(Map<String, Object> status, Map<String, Object> details,
+                                    String componentName, long responseTime, HealthCheckResult result) {
+        logger.debug("{} health check: UP ({}ms)", componentName, responseTime);
+        status.put(STATUS_KEY, STATUS_UP);
+        if (result.version != null) {
+            details.put("version", result.version);
+        }
+    }
+
+    private void buildUnhealthyStatus(Map<String, Object> status, Map<String, Object> details,
+                                      String componentName, HealthCheckResult result, boolean includeDetails) {
+        String safeError = result.error != null ? result.error : "Health check failed";
+        logger.warn("{} health check failed: {}", componentName, safeError);
+        status.put(STATUS_KEY, STATUS_DOWN);
+        if (includeDetails) {
+            details.put("error", safeError);
+        }
+        details.put("errorType", "CheckFailed");
+    }
+
+    private Map<String, Object> buildExceptionStatus(Map<String, Object> status, Map<String, Object> details,
+                                                      String componentName, Exception e, boolean includeDetails, long responseTime) {
+        logger.error("{} health check failed with exception: {}", componentName, e.getMessage(), e);
+        
+        String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+        
+        status.put(STATUS_KEY, STATUS_DOWN);
+        details.put("responseTimeMs", responseTime);
+        if (includeDetails) {
+            details.put("error", errorMessage != null ? errorMessage : "Health check failed");
+        }
+        details.put("errorType", "InternalError");
+        status.put("details", details);
+        
+        return status;
     }
 
     private boolean isHealthy(Map<String, Object> componentStatus) {
