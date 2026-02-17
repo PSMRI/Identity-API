@@ -60,9 +60,9 @@ public class HealthService {
     private static final String UNKNOWN_VALUE = "unknown";
     private static final String ELASTICSEARCH_TYPE = "Elasticsearch";
     private static final int REDIS_TIMEOUT_SECONDS = 3;
-    private static final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     private final DataSource dataSource;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(4);
     private final RedisTemplate<String, Object> redisTemplate;
     private final String dbUrl;
     private final String redisHost;
@@ -96,6 +96,18 @@ public class HealthService {
         // Initialize Elasticsearch RestClient if enabled
         if (elasticsearchEnabled) {
             initializeElasticsearchClient();
+        }
+    }
+    
+    @jakarta.annotation.PreDestroy
+    public void cleanup() {
+        executorService.shutdownNow();
+        if (elasticsearchRestClient != null) {
+            try {
+                elasticsearchRestClient.close();
+            } catch (IOException e) {
+                logger.warn("Error closing Elasticsearch client", e);
+            }
         }
     }
     
@@ -186,7 +198,7 @@ public class HealthService {
             } catch (Exception e) {
                 throw new IllegalStateException("MySQL connection failed: " + e.getMessage(), e);
             }
-        });
+        }, includeDetails);
     }
 
     private Map<String, Object> checkRedisHealth(boolean includeDetails) {
@@ -219,7 +231,7 @@ public class HealthService {
             } catch (Exception e) {
                 throw new IllegalStateException("Redis health check failed", e);
             }
-        });
+        }, includeDetails);
     }
 
     private Map<String, Object> checkElasticsearchHealth(boolean includeDetails) {
@@ -245,7 +257,7 @@ public class HealthService {
                 int statusCode = response.getStatusLine().getStatusCode();
                 if (statusCode == 200) {
                     logger.debug("{} health check successful", ELASTICSEARCH_TYPE);
-                    return new HealthCheckResult(true, "Elasticsearch 8.10.0", null);
+                    return new HealthCheckResult(true, null, null);
                 }
                 return new HealthCheckResult(false, null, "HTTP " + statusCode);
             } catch (java.net.ConnectException e) {
@@ -258,12 +270,13 @@ public class HealthService {
                 logger.error("{} error: {} - {}", ELASTICSEARCH_TYPE, e.getClass().getSimpleName(), e.getMessage(), e);
                 return new HealthCheckResult(false, null, e.getMessage());
             }
-        });
+        }, includeDetails);
     }
 
     private Map<String, Object> performHealthCheck(String componentName,
                                                     Map<String, Object> details,
-                                                    Supplier<HealthCheckResult> checker) {
+                                                    Supplier<HealthCheckResult> checker,
+                                                    boolean includeDetails) {
         Map<String, Object> status = new LinkedHashMap<>();
         long startTime = System.currentTimeMillis();
         
@@ -283,7 +296,9 @@ public class HealthService {
                 String safeError = result.error != null ? result.error : "Health check failed";
                 logger.warn("{} health check failed: {}", componentName, safeError);
                 status.put(STATUS_KEY, STATUS_DOWN);
-                details.put("error", safeError);
+                if (includeDetails) {
+                    details.put("error", safeError);
+                }
                 details.put("errorType", "CheckFailed");
             }
             
@@ -301,7 +316,9 @@ public class HealthService {
             
             status.put(STATUS_KEY, STATUS_DOWN);
             details.put("responseTimeMs", responseTime);
-            details.put("error", errorMessage != null ? errorMessage : "Health check failed");
+            if (includeDetails) {
+                details.put("error", errorMessage != null ? errorMessage : "Health check failed");
+            }
             details.put("errorType", "InternalError");
             status.put("details", details);
             
