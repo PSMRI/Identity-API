@@ -45,6 +45,13 @@ public class JwtUserIdValidationFilter implements Filter {
 		String path = request.getRequestURI();
 		logger.info("JwtUserIdValidationFilter invoked for path: " + path);
 
+		// Skip JWT validation for public endpoints
+		if (path.endsWith("/health") || path.endsWith("/version")) {
+			logger.info("Public endpoint accessed: " + path + " - skipping JWT validation");
+			filterChain.doFilter(servletRequest, servletResponse);
+			return;
+		}
+
 		// Log cookies for debugging
 		Cookie[] cookies = request.getCookies();
 		if (cookies != null) {
