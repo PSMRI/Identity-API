@@ -66,9 +66,8 @@ public class HealthController {
         logger.info("Health check endpoint called");
         
         try {
-            // Check if user is authenticated by verifying Authorization header
-            boolean isAuthenticated = isUserAuthenticated(request);
-            Map<String, Object> healthStatus = healthService.checkHealth(isAuthenticated);
+            // Always include detailed metrics in health response
+            Map<String, Object> healthStatus = healthService.checkHealth(true);
             String overallStatus = (String) healthStatus.get("status");
             
             // Return 200 if overall status is UP, 503 if DOWN

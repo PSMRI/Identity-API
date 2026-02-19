@@ -22,6 +22,7 @@
 
 package com.iemr.common.identity.service.health;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -172,12 +173,6 @@ public class HealthService {
     private Map<String, Object> checkMySQLHealth(boolean includeDetails) {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", "MySQL");
-        
-        if (includeDetails) {
-            details.put("host", extractHost(dbUrl));
-            details.put("port", extractPort(dbUrl));
-            details.put("database", extractDatabaseName(dbUrl));
-        }
 
         return performHealthCheck("MySQL", details, () -> {
             try {
@@ -187,8 +182,7 @@ public class HealthService {
                             stmt.setQueryTimeout(3);
                             try (ResultSet rs = stmt.executeQuery()) {
                                 if (rs.next() && rs.getInt(1) == 1) {
-                                    String version = includeDetails ? getMySQLVersion(connection) : null;
-                                    return new HealthCheckResult(true, version, null);
+                                    return new HealthCheckResult(true, null, null);
                                 }
                             }
                         }
@@ -200,15 +194,275 @@ public class HealthService {
             }
         }, includeDetails);
     }
+    
+    private void addAdvancedMySQLMetrics(Connection connection, Map<String, Object> details) {
+        try {
+            // Only add advanced metrics for MySQL, not for H2 or other databases
+            if (!isMySQLDatabase(connection)) {
+                logger.debug("Advanced metrics only supported for MySQL, skipping for this database");
+                return;
+            }
+            
+            Map<String, Object> metrics = new LinkedHashMap<>();
+            
+            // Get server status variables (uptime, connections, etc.)
+            Map<String, String> statusVars = getMySQLStatusVariables(connection);
+            
+            if (!statusVars.isEmpty()) {
+                // Connections
+                Map<String, Object> connections = new LinkedHashMap<>();
+                String threads = statusVars.get("Threads_connected");
+                String maxConnections = statusVars.get("max_connections");
+                if (threads != null && maxConnections != null) {
+                    connections.put("active", Integer.parseInt(threads));
+                    connections.put("max", Integer.parseInt(maxConnections));
+                    try {
+                        int active = Integer.parseInt(threads);
+                        int max = Integer.parseInt(maxConnections);
+                        connections.put("usage_percent", (active * 100) / max);
+                    } catch (NumberFormatException e) {
+                        logger.debug("Could not calculate connection usage percent");
+                    }
+                }
+                if (!connections.isEmpty()) {
+                    metrics.put("connections", connections);
+                }
+                
+                // Uptime
+                String uptime = statusVars.get("Uptime");
+                if (uptime != null) {
+                    try {
+                        long uptimeSeconds = Long.parseLong(uptime);
+                        metrics.put("uptime_seconds", uptimeSeconds);
+                        metrics.put("uptime_hours", uptimeSeconds / 3600);
+                    } catch (NumberFormatException e) {
+                        logger.debug("Could not parse uptime");
+                    }
+                }
+                
+                // Slow queries
+                String slowQueries = statusVars.get("Slow_queries");
+                if (slowQueries != null) {
+                    metrics.put("slow_queries", Integer.parseInt(slowQueries));
+                }
+                
+                // Questions (total queries)
+                String questions = statusVars.get("Questions");
+                if (questions != null) {
+                    metrics.put("total_queries", Long.parseLong(questions));
+                }
+            }
+            
+            // Database size
+            Map<String, Object> database = new LinkedHashMap<>();
+            try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT table_schema, ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) as size_mb " +
+                "FROM information_schema.tables WHERE table_schema = database() GROUP BY table_schema")) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        double sizeMb = rs.getDouble("size_mb");
+                        database.put("size_mb", sizeMb);
+                    }
+                }
+            } catch (Exception e) {
+                logger.debug("Could not retrieve database size", e);
+            }
+            
+            // Table count
+            try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = database()")) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        database.put("tables_count", rs.getInt("table_count"));
+                    }
+                }
+            } catch (Exception e) {
+                logger.debug("Could not retrieve table count", e);
+            }
+            
+            if (!database.isEmpty()) {
+                metrics.put("database", database);
+            }
+            
+            // Add deep health checks (locks, stuck processes, deadlocks)
+            addDeepMySQLHealthChecks(connection, metrics);
+            
+            if (!metrics.isEmpty()) {
+                details.put("metrics", metrics);
+            }
+            
+        } catch (Exception e) {
+            logger.debug("Error retrieving advanced MySQL metrics", e);
+        }
+    }
+    
+    private boolean isMySQLDatabase(Connection connection) {
+        try {
+            String databaseProductName = connection.getMetaData().getDatabaseProductName();
+            return databaseProductName != null && databaseProductName.toLowerCase().contains("mysql");
+        } catch (Exception e) {
+            logger.debug("Could not determine database type", e);
+            return false;
+        }
+    }
+    
+    private void addDeepMySQLHealthChecks(Connection connection, Map<String, Object> metrics) {
+        // Check for table locks
+        checkTableLocks(connection, metrics);
+        
+        // Check for stuck/long-running queries
+        checkStuckProcesses(connection, metrics);
+        
+        // Check for InnoDB deadlocks
+        checkInnoDBStatus(connection, metrics);
+    }
+    
+    private void checkTableLocks(Connection connection, Map<String, Object> metrics) {
+        try (PreparedStatement stmt = connection.prepareStatement(
+            "SELECT OBJECT_SCHEMA, OBJECT_NAME, COUNT(*) as lock_count " +
+            "FROM INFORMATION_SCHEMA.METADATA_LOCKS " +
+            "WHERE OBJECT_SCHEMA != 'mysql' AND OBJECT_SCHEMA != 'information_schema' " +
+            "GROUP BY OBJECT_SCHEMA, OBJECT_NAME")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<String, Object> locks = new LinkedHashMap<>();
+                int totalLocks = 0;
+                java.util.List<String> lockedTables = new java.util.ArrayList<>();
+                
+                while (rs.next()) {
+                    totalLocks += rs.getInt("lock_count");
+                    String tableName = rs.getString("OBJECT_SCHEMA") + "." + rs.getString("OBJECT_NAME");
+                    lockedTables.add(tableName);
+                }
+                
+                if (totalLocks > 0) {
+                    locks.put("is_locked", true);
+                    locks.put("locked_tables_count", lockedTables.size());
+                    locks.put("locked_tables", lockedTables);
+                    locks.put("total_locks", totalLocks);
+                    locks.put("severity", totalLocks > 5 ? "CRITICAL" : "WARNING");
+                    metrics.put("table_locks", locks);
+                    logger.warn("MySQL: {} table locks detected on {} tables", totalLocks, lockedTables.size());
+                } else {
+                    locks.put("is_locked", false);
+                    locks.put("locked_tables_count", 0);
+                    metrics.put("table_locks", locks);
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not check table locks (might not support METADATA_LOCKS)", e);
+        }
+    }
+    
+    private void checkStuckProcesses(Connection connection, Map<String, Object> metrics) {
+        try (PreparedStatement stmt = connection.prepareStatement(
+            "SELECT ID, USER, HOST, DB, TIME, COMMAND, STATE, INFO " +
+            "FROM INFORMATION_SCHEMA.PROCESSLIST " +
+            "WHERE COMMAND != 'Sleep' AND TIME > 300")) {  // Processes running > 5 minutes
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<String, Object> processes = new LinkedHashMap<>();
+                java.util.List<Map<String, Object>> stuckQueries = new java.util.ArrayList<>();
+                int totalRunning = 0;
+                long longestQuerySeconds = 0;
+                
+                while (rs.next()) {
+                    long queryTime = rs.getLong("TIME");
+                    longestQuerySeconds = Math.max(longestQuerySeconds, queryTime);
+                    
+                    Map<String, Object> query = new LinkedHashMap<>();
+                    query.put("id", rs.getInt("ID"));
+                    query.put("user", rs.getString("USER"));
+                    query.put("command", rs.getString("COMMAND"));
+                    query.put("time_seconds", queryTime);
+                    query.put("state", rs.getString("STATE"));
+                    
+                    stuckQueries.add(query);
+                    totalRunning++;
+                }
+                
+                if (totalRunning > 0) {
+                    processes.put("stuck_query_count", totalRunning);
+                    processes.put("longest_query_seconds", longestQuerySeconds);
+                    processes.put("severity", totalRunning > 3 ? "CRITICAL" : "WARNING");
+                    processes.put("queries", stuckQueries);
+                    metrics.put("stuck_processes", processes);
+                    logger.warn("MySQL: {} stuck processes detected, longest running for {} seconds", totalRunning, longestQuerySeconds);
+                } else {
+                    processes.put("stuck_query_count", 0);
+                    processes.put("longest_query_seconds", 0);
+                    metrics.put("stuck_processes", processes);
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not check stuck processes (might not support PROCESSLIST)", e);
+        }
+    }
+    
+    private void checkInnoDBStatus(Connection connection, Map<String, Object> metrics) {
+        try (PreparedStatement stmt = connection.prepareStatement(
+            "SELECT OBJECT_SCHEMA, OBJECT_NAME, ENGINE_LOCK_ID, ENGINE_TRANSACTION_ID, THREAD_ID, EVENT_ID, OBJECT_INSTANCE_BEGIN, LOCK_TYPE, LOCK_MODE, LOCK_STATUS, SOURCE, OWNER_THREAD_ID, OWNER_EVENT_ID " +
+            "FROM INFORMATION_SCHEMA.INNODB_LOCKS")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<String, Object> innodb = new LinkedHashMap<>();
+                int waitingLocks = 0;
+                int grantedLocks = 0;
+                
+                while (rs.next()) {
+                    String lockStatus = rs.getString("LOCK_STATUS");
+                    if ("WAITING".equals(lockStatus)) {
+                        waitingLocks++;
+                    } else {
+                        grantedLocks++;
+                    }
+                }
+                
+                // Check for deadlocks
+                try (PreparedStatement deadlockStmt = connection.prepareStatement(
+                    "SHOW ENGINE INNODB STATUS")) {
+                    try (ResultSet dlRs = deadlockStmt.executeQuery()) {
+                        if (dlRs.next()) {
+                            String status = dlRs.getString(3);
+                            int deadlockCount = (status != null && status.contains("DEADLOCK")) ? 1 : 0;
+                            innodb.put("deadlocks_detected", deadlockCount);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.debug("Could not check InnoDB deadlocks", e);
+                }
+                
+                innodb.put("active_transactions", grantedLocks);
+                innodb.put("waiting_on_locks", waitingLocks);
+                if (waitingLocks > 0) {
+                    innodb.put("severity", waitingLocks > 2 ? "CRITICAL" : "WARNING");
+                }
+                
+                metrics.put("innodb", innodb);
+                
+                if (waitingLocks > 0) {
+                    logger.warn("MySQL: {} transactions waiting on InnoDB locks", waitingLocks);
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not check InnoDB status (might not support INNODB_LOCKS or not using InnoDB)", e);
+        }
+    }
+    
+    private Map<String, String> getMySQLStatusVariables(Connection connection) {
+        Map<String, String> statusVars = new LinkedHashMap<>();
+        try (PreparedStatement stmt = connection.prepareStatement("SHOW STATUS")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    statusVars.put(rs.getString("Variable_name"), rs.getString("Value"));
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not retrieve MySQL status variables", e);
+        }
+        return statusVars;
+    }
 
     private Map<String, Object> checkRedisHealth(boolean includeDetails) {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", "Redis");
-        
-        if (includeDetails) {
-            details.put("host", redisHost);
-            details.put("port", redisPort);
-        }
 
         return performHealthCheck("Redis", details, () -> {
             try {
@@ -219,8 +473,7 @@ public class HealthService {
                 ).get(REDIS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 
                 if ("PONG".equals(pong)) {
-                    String version = includeDetails ? getRedisVersionWithTimeout() : null;
-                    return new HealthCheckResult(true, version, null);
+                    return new HealthCheckResult(true, null, null);
                 }
                 return new HealthCheckResult(false, null, "Ping returned unexpected response");
             } catch (TimeoutException e) {
@@ -237,11 +490,6 @@ public class HealthService {
     private Map<String, Object> checkElasticsearchHealth(boolean includeDetails) {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", ELASTICSEARCH_TYPE);
-        
-        if (includeDetails) {
-            details.put("host", elasticsearchHost);
-            details.put("port", elasticsearchPort);
-        }
 
         return performHealthCheck(ELASTICSEARCH_TYPE, details, () -> {
             if (!elasticsearchClientReady || elasticsearchRestClient == null) {
@@ -305,9 +553,6 @@ public class HealthService {
                                     String componentName, long responseTime, HealthCheckResult result) {
         logger.debug("{} health check: UP ({}ms)", componentName, responseTime);
         status.put(STATUS_KEY, STATUS_UP);
-        if (result.version != null) {
-            details.put("version", result.version);
-        }
     }
 
     private void buildUnhealthyStatus(Map<String, Object> status, Map<String, Object> details,
@@ -315,9 +560,7 @@ public class HealthService {
         String safeError = result.error != null ? result.error : "Health check failed";
         logger.warn("{} health check failed: {}", componentName, safeError);
         status.put(STATUS_KEY, STATUS_DOWN);
-        if (includeDetails) {
-            details.put("error", safeError);
-        }
+        details.put("error", safeError);
         details.put("errorType", "CheckFailed");
     }
 
@@ -329,10 +572,7 @@ public class HealthService {
         
         status.put(STATUS_KEY, STATUS_DOWN);
         details.put("responseTimeMs", responseTime);
-        if (includeDetails) {
-            details.put("error", errorMessage != null ? errorMessage : "Health check failed");
-        }
-        details.put("errorType", "InternalError");
+        details.put("error", errorMessage != null ? errorMessage : "Health check failed");
         status.put("details", details);
         
         return status;
