@@ -29,7 +29,6 @@ import java.sql.ResultSet;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -263,8 +262,6 @@ public class HealthService {
         } catch (Exception e) {
             long responseTime = System.currentTimeMillis() - startTime;
             logger.error("{} health check failed with exception: {}", componentName, e.getMessage(), e);
-            
-            String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
             
             status.put(STATUS_KEY, STATUS_DOWN);
             status.put("responseTimeMs", responseTime);
