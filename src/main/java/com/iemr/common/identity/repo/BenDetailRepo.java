@@ -322,7 +322,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     "addr.CurrServicePointId, " +                   // 25
     "addr.CurrServicePoint, " +                     // 26
     "addr.ParkingPlaceID, " +                       // 27
-    "contact.PreferredPhoneNum " +                  // 28
+    "contact.PreferredPhoneNum, " +                  // 28
     "addr.CurrVillageId, " +                            
     "addr.CurrVillage " +                               
     "FROM i_beneficiarymapping m " +
