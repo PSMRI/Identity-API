@@ -180,7 +180,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "addr.CurrServicePointId, " +                       // 25
         "addr.CurrServicePoint, " +                         // 26
         "addr.ParkingPlaceID, " +                           // 27
-        "contact.PreferredPhoneNum " +                      // 28
+        "contact.PreferredPhoneNum, " +                      // 28
         "addr.CurrVillageId, " +                            // 29 
         "addr.CurrVillage " +                               // 30 
         "FROM i_beneficiarymapping m " +
@@ -226,7 +226,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
         "addr.CurrServicePointId, " +
         "addr.CurrServicePoint, " +
         "addr.ParkingPlaceID, " +
-        "contact.PreferredPhoneNum " +
+        "contact.PreferredPhoneNum, " +
         "addr.CurrVillageId, " +                           
         "addr.CurrVillage " +                               
         "FROM i_beneficiarymapping m " +
@@ -322,7 +322,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
     "addr.CurrServicePointId, " +                   // 25
     "addr.CurrServicePoint, " +                     // 26
     "addr.ParkingPlaceID, " +                       // 27
-    "contact.PreferredPhoneNum " +                  // 28
+    "contact.PreferredPhoneNum, " +                  // 28
     "addr.CurrVillageId, " +                            
     "addr.CurrVillage " +                               
     "FROM i_beneficiarymapping m " +
