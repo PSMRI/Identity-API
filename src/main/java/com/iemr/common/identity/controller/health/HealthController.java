@@ -66,8 +66,7 @@ public class HealthController {
         logger.info("Health check endpoint called");
         
         try {
-            // Always include detailed metrics in health response
-            Map<String, Object> healthStatus = healthService.checkHealth(true);
+            Map<String, Object> healthStatus = healthService.checkHealth();
             String overallStatus = (String) healthStatus.get("status");
             
             // Return 200 if overall status is UP, 503 if DOWN
@@ -82,58 +81,10 @@ public class HealthController {
             // Return sanitized error response
             Map<String, Object> errorResponse = Map.of(
                 "status", "DOWN",
-                "error", "Health check service unavailable",
                 "timestamp", Instant.now().toString()
             );
             
             return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
         }
-    }
-
-    private boolean isUserAuthenticated(HttpServletRequest request) {
-        String token = null;
-        
-        // First, try to get token from JwtToken header
-        token = request.getHeader("JwtToken");
-        
-        // If not found, try Authorization header
-        if (token == null || token.trim().isEmpty()) {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && !authHeader.trim().isEmpty()) {
-                // Extract token from "Bearer <token>" format
-                token = authHeader.startsWith("Bearer ") 
-                    ? authHeader.substring(7) 
-                    : authHeader;
-            }
-        }
-        
-        // If still not found, try to get from cookies
-        if (token == null || token.trim().isEmpty()) {
-            token = getJwtTokenFromCookies(request);
-        }
-        
-        // Validate the token if found
-        if (token != null && !token.trim().isEmpty()) {
-            try {
-                return jwtAuthenticationUtil.validateUserIdAndJwtToken(token);
-            } catch (Exception e) {
-                logger.debug("JWT token validation failed: {}", e.getMessage());
-                return false;
-            }
-        }
-        
-        return false;
-    }
-    
-    private String getJwtTokenFromCookies(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (cookie.getName().equalsIgnoreCase("Jwttoken")) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
     }
 }
