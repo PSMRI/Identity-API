@@ -64,6 +64,7 @@ public class HealthService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final String elasticsearchHost;
     private final int elasticsearchPort;
+    private final String elasticsearchScheme;
     private final boolean elasticsearchEnabled;
     private RestClient elasticsearchRestClient;
     private boolean elasticsearchClientReady = false;
@@ -72,11 +73,13 @@ public class HealthService {
                         @Autowired(required = false) RedisTemplate<String, Object> redisTemplate,
                         @Value("${elasticsearch.host:localhost}") String elasticsearchHost,
                         @Value("${elasticsearch.port:9200}") int elasticsearchPort,
+                        @Value("${elasticsearch.scheme:http}") String elasticsearchScheme,
                         @Value("${elasticsearch.enabled:false}") boolean elasticsearchEnabled) {
         this.dataSource = dataSource;
         this.redisTemplate = redisTemplate;
         this.elasticsearchHost = elasticsearchHost;
         this.elasticsearchPort = elasticsearchPort;
+        this.elasticsearchScheme = elasticsearchScheme;
         this.elasticsearchEnabled = elasticsearchEnabled;
     }
     
@@ -90,7 +93,19 @@ public class HealthService {
     
     @jakarta.annotation.PreDestroy
     public void cleanup() {
-        executorService.shutdownNow();
+        // Gracefully shutdown executor service
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                logger.warn("Executor service did not terminate within 5 seconds, forcing shutdown");
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            logger.warn("Interrupted while waiting for executor service termination");
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
         if (elasticsearchRestClient != null) {
             try {
                 elasticsearchRestClient.close();
@@ -103,7 +118,7 @@ public class HealthService {
     private void initializeElasticsearchClient() {
         try {
             this.elasticsearchRestClient = RestClient.builder(
-                new HttpHost(elasticsearchHost, elasticsearchPort, "http")
+                new HttpHost(elasticsearchHost, elasticsearchPort, elasticsearchScheme)
             )
             .setRequestConfigCallback(requestConfigBuilder ->
                 requestConfigBuilder
@@ -149,7 +164,7 @@ public class HealthService {
         healthStatus.put(STATUS_KEY, overallHealth ? STATUS_UP : STATUS_DOWN);
         healthStatus.put("timestamp", Instant.now().toString());
         healthStatus.put("components", components);
-        logger.info("Health check completed - Overall status: {}", overallHealth ? STATUS_UP : STATUS_DOWN);
+        logger.debug("Health check completed - Overall status: {}", overallHealth ? STATUS_UP : STATUS_DOWN);
 
         return healthStatus;
     }
@@ -248,11 +263,11 @@ public class HealthService {
             
             status.put("responseTimeMs", responseTime);
 
-            if (result.isHealthy) {
+            if (result.isHealthy()) {
                 logger.debug("{} health check: UP ({}ms)", componentName, responseTime);
                 status.put(STATUS_KEY, STATUS_UP);
             } else {
-                String safeError = result.error != null ? result.error : "Health check failed";
+                String safeError = result.error() != null ? result.error() : "Health check failed";
                 logger.warn("{} health check failed: {}", componentName, safeError);
                 status.put(STATUS_KEY, STATUS_DOWN);
             }
@@ -274,13 +289,5 @@ public class HealthService {
         return STATUS_UP.equals(componentStatus.get(STATUS_KEY));
     }
 
-    private static class HealthCheckResult {
-        final boolean isHealthy;
-        final String error;
-
-        HealthCheckResult(boolean isHealthy, String error) {
-            this.isHealthy = isHealthy;
-            this.error = error;
-        }
-    }
+    private static record HealthCheckResult(boolean isHealthy, String error) {}
 }
