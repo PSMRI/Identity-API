@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -75,13 +74,8 @@ public class HealthService {
     private static final String SEVERITY_OK = "OK";
     private static final String SEVERITY_WARNING = "WARNING";
     private static final String SEVERITY_CRITICAL = "CRITICAL";
-    
-    // Performance threshold (milliseconds) - response time > 2000ms = DEGRADED
     private static final long RESPONSE_TIME_THRESHOLD_MS = 2000;
-    
-    // Advanced checks configuration
-    private static final long ADVANCED_CHECKS_TIMEOUT_MS = 500; // Strict timeout for advanced checks
-    private static final long ADVANCED_CHECKS_THROTTLE_SECONDS = 30; // Run at most once per 30 seconds
+    private static final long ADVANCED_CHECKS_THROTTLE_SECONDS = 30; 
     
     // Response keys
     private static final String ERROR_KEY = "error";
@@ -177,14 +171,14 @@ public class HealthService {
         Map<String, Object> components = new LinkedHashMap<>();
         boolean overallHealth = true;
 
-        Map<String, Object> mysqlStatus = checkMySQLHealth(includeDetails);
+        Map<String, Object> mysqlStatus = checkMySQLHealth();
         components.put("mysql", mysqlStatus);
         if (!isHealthy(mysqlStatus)) {
             overallHealth = false;
         }
 
         if (redisTemplate != null) {
-            Map<String, Object> redisStatus = checkRedisHealth(includeDetails);
+            Map<String, Object> redisStatus = checkRedisHealth();
             components.put("redis", redisStatus);
             if (!isHealthy(redisStatus)) {
                 overallHealth = false;
@@ -192,7 +186,7 @@ public class HealthService {
         }
 
         if (elasticsearchEnabled && elasticsearchClientReady) {
-            Map<String, Object> elasticsearchStatus = checkElasticsearchHealth(includeDetails);
+            Map<String, Object> elasticsearchStatus = checkElasticsearchHealth();
             components.put("elasticsearch", elasticsearchStatus);
             if (!isHealthy(elasticsearchStatus)) {
                 overallHealth = false;
@@ -211,7 +205,7 @@ public class HealthService {
         return checkHealth(true);
     }
 
-    private Map<String, Object> checkMySQLHealth(boolean includeDetails) {
+    private Map<String, Object> checkMySQLHealth() {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", "MySQL");
 
@@ -235,12 +229,12 @@ public class HealthService {
             } catch (Exception e) {
                 throw new IllegalStateException("MySQL connection failed: " + e.getMessage(), e);
             }
-        }, includeDetails);
+        });
     }
     
 
 
-    private Map<String, Object> checkRedisHealth(boolean includeDetails) {
+    private Map<String, Object> checkRedisHealth() {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", "Redis");
 
@@ -256,10 +250,10 @@ public class HealthService {
             } catch (Exception e) {
                 throw new IllegalStateException("Redis health check failed", e);
             }
-        }, includeDetails);
+        });
     }
 
-    private Map<String, Object> checkElasticsearchHealth(boolean includeDetails) {
+    private Map<String, Object> checkElasticsearchHealth() {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", ELASTICSEARCH_TYPE);
 
@@ -290,13 +284,12 @@ public class HealthService {
                 logger.error("{} error: {} - {}", ELASTICSEARCH_TYPE, e.getClass().getSimpleName(), e.getMessage(), e);
                 return new HealthCheckResult(false, e.getMessage(), false);
             }
-        }, includeDetails);
+        });
     }
 
     private Map<String, Object> performHealthCheck(String componentName,
                                                     Map<String, Object> details,
-                                                    Supplier<HealthCheckResult> checker,
-                                                    boolean includeDetails) {
+                                                    Supplier<HealthCheckResult> checker) {
         Map<String, Object> status = new LinkedHashMap<>();
         long startTime = System.currentTimeMillis();
         
@@ -304,12 +297,12 @@ public class HealthService {
             HealthCheckResult result = checker.get();
             long responseTime = System.currentTimeMillis() - startTime;
             
-            details.put("responseTimeMs", responseTime);
+            details.put(RESPONSE_TIME_KEY, responseTime);
 
             if (result.isHealthy) {
                 buildHealthyStatus(status, details, componentName, responseTime, result);
             } else {
-                buildUnhealthyStatus(status, details, componentName, result, includeDetails);
+                buildUnhealthyStatus(status, details, componentName, result);
             }
             
             status.put("details", details);
@@ -317,7 +310,7 @@ public class HealthService {
             
         } catch (Exception e) {
             long responseTime = System.currentTimeMillis() - startTime;
-            return buildExceptionStatus(status, details, componentName, e, includeDetails, responseTime);
+            return buildExceptionStatus(status, details, componentName, e, responseTime);
         }
     }
 
@@ -339,25 +332,25 @@ public class HealthService {
     }
 
     private void buildUnhealthyStatus(Map<String, Object> status, Map<String, Object> details,
-                                      String componentName, HealthCheckResult result, boolean includeDetails) {
+                                      String componentName, HealthCheckResult result) {
         String safeError = result.error != null ? result.error : "Health check failed";
         logger.warn("{} health check failed: {}", componentName, safeError);
         status.put(STATUS_KEY, STATUS_DOWN);
         status.put(SEVERITY_KEY, SEVERITY_CRITICAL);
-        details.put("error", safeError);
+        details.put(ERROR_KEY, safeError);
         details.put("errorType", "CheckFailed");
     }
 
     private Map<String, Object> buildExceptionStatus(Map<String, Object> status, Map<String, Object> details,
-                                                      String componentName, Exception e, boolean includeDetails, long responseTime) {
+                                                      String componentName, Exception e, long responseTime) {
         logger.error("{} health check failed with exception: {}", componentName, e.getMessage(), e);
         
         String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
         
         status.put(STATUS_KEY, STATUS_DOWN);
         status.put(SEVERITY_KEY, SEVERITY_CRITICAL);
-        details.put("responseTimeMs", responseTime);
-        details.put("error", errorMessage != null ? errorMessage : "Health check failed");
+        details.put(RESPONSE_TIME_KEY, responseTime);
+        details.put(ERROR_KEY, errorMessage != null ? errorMessage : "Health check failed");
         status.put("details", details);
         
         return status;
@@ -382,18 +375,6 @@ public class HealthService {
         return STATUS_UP.equals(componentStatus.get(STATUS_KEY));
     }
 
-    private String getMySQLVersion(Connection connection) {
-        try (PreparedStatement stmt = connection.prepareStatement(DB_VERSION_QUERY);
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                return rs.getString(1);
-            }
-        } catch (Exception e) {
-            logger.debug("Could not retrieve MySQL version", e);
-        }
-        return null;
-    }
-
     private String getRedisVersion() {
         try {
             Properties info = redisTemplate.execute((RedisCallback<Properties>) connection ->
@@ -408,22 +389,6 @@ public class HealthService {
         return null;
     }
 
-    private String getRedisVersionWithTimeout() {
-        try {
-            return CompletableFuture.supplyAsync(this::getRedisVersion, executorService)
-                .get(REDIS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            logger.debug("Redis version retrieval timed out");
-            return null;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.debug("Redis version retrieval was interrupted");
-            return null;
-        } catch (Exception e) {
-            logger.debug("Could not retrieve Redis version with timeout", e);
-            return null;
-        }
-    }
     
     private boolean performAdvancedMySQLChecksWithThrottle(Connection connection) {
         long currentTime = System.currentTimeMillis();
