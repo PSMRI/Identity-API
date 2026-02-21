@@ -30,11 +30,8 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -166,7 +163,7 @@ public class HealthService {
         }
     }
 
-    public Map<String, Object> checkHealth(boolean includeDetails) {
+    public Map<String, Object> checkHealth() {
         Map<String, Object> healthStatus = new LinkedHashMap<>();
         Map<String, Object> components = new LinkedHashMap<>();
         boolean overallHealth = true;
@@ -199,10 +196,6 @@ public class HealthService {
         logger.info("Health check completed - Overall status: {}", overallHealth ? STATUS_UP : STATUS_DOWN);
 
         return healthStatus;
-    }
-
-    public Map<String, Object> checkHealth() {
-        return checkHealth(true);
     }
 
     private Map<String, Object> checkMySQLHealth() {
@@ -300,7 +293,7 @@ public class HealthService {
             details.put(RESPONSE_TIME_KEY, responseTime);
 
             if (result.isHealthy) {
-                buildHealthyStatus(status, details, componentName, responseTime, result);
+                buildHealthyStatus(status, componentName, responseTime, result);
             } else {
                 buildUnhealthyStatus(status, details, componentName, result);
             }
@@ -314,7 +307,7 @@ public class HealthService {
         }
     }
 
-    private void buildHealthyStatus(Map<String, Object> status, Map<String, Object> details,
+    private void buildHealthyStatus(Map<String, Object> status,
                                     String componentName, long responseTime, HealthCheckResult result) {
         logger.debug("{} health check: UP ({}ms)", componentName, responseTime);
         
@@ -373,20 +366,6 @@ public class HealthService {
 
     private boolean isHealthy(Map<String, Object> componentStatus) {
         return STATUS_UP.equals(componentStatus.get(STATUS_KEY));
-    }
-
-    private String getRedisVersion() {
-        try {
-            Properties info = redisTemplate.execute((RedisCallback<Properties>) connection ->
-                connection.serverCommands().info("server")
-            );
-            if (info != null && info.containsKey("redis_version")) {
-                return info.getProperty("redis_version");
-            }
-        } catch (Exception e) {
-            logger.debug("Could not retrieve Redis version", e);
-        }
-        return null;
     }
 
     
