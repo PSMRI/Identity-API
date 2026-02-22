@@ -31,6 +31,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -90,7 +92,7 @@ public class HealthService {
     private static final String DIAGNOSTIC_LOG_TEMPLATE = "Diagnostic: {}";
 
     private final DataSource dataSource;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(4);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(6);
     private final ExecutorService advancedCheckExecutor;
     private final RedisTemplate<String, Object> redisTemplate;
     private final String elasticsearchHost;
@@ -103,6 +105,9 @@ public class HealthService {
     private volatile long lastAdvancedCheckTime = 0;
     private volatile AdvancedCheckResult cachedAdvancedCheckResult = null;
     private final ReentrantReadWriteLock advancedCheckLock = new ReentrantReadWriteLock();
+    
+    // Advanced checks always enabled
+    private static final boolean ADVANCED_HEALTH_CHECKS_ENABLED = true;
 
     public HealthService(DataSource dataSource,
                         @Autowired(required = false) RedisTemplate<String, Object> redisTemplate,
@@ -368,6 +373,10 @@ public class HealthService {
 
     
     private boolean performAdvancedMySQLChecksWithThrottle() {
+        if (!ADVANCED_HEALTH_CHECKS_ENABLED) {
+            return false; // Advanced checks disabled
+        }
+        
         long currentTime = System.currentTimeMillis();
         
         advancedCheckLock.readLock().lock();
@@ -414,17 +423,16 @@ public class HealthService {
     
     private AdvancedCheckResult executeAdvancedCheckAsync(Connection connection) {
         try {
-            java.util.concurrent.CompletableFuture<AdvancedCheckResult> future = 
-                java.util.concurrent.CompletableFuture.supplyAsync(
-                    () -> performAdvancedCheckLogic(connection), 
-                    advancedCheckExecutor
+            Future<AdvancedCheckResult> future = 
+                advancedCheckExecutor.submit(
+                    () -> performAdvancedCheckLogic(connection)
                 );
             
             return future.get(ADVANCED_CHECKS_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             logger.debug("Advanced checks timeout, marking degraded");
             return new AdvancedCheckResult(true);
-        } catch (java.util.concurrent.ExecutionException e) {
+        } catch (ExecutionException e) {
             if (e.getCause() instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -488,7 +496,7 @@ public class HealthService {
     private boolean hasSlowQueries(Connection connection) {
         try (PreparedStatement stmt = connection.prepareStatement(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.PROCESSLIST " +
-                "WHERE command != 'Sleep' AND time > ? AND user NOT IN ('event_scheduler', 'system user')")) {
+                "WHERE command != 'Sleep' AND time > ? AND user = SUBSTRING_INDEX(USER(), '@', 1)")) {
             stmt.setQueryTimeout(2);
             stmt.setInt(1, 10); // Queries running longer than 10 seconds
             try (ResultSet rs = stmt.executeQuery()) {
