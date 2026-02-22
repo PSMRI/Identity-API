@@ -227,9 +227,9 @@ public class HealthService {
 
     private Map<String, Object> checkRedisHealth() {
         Map<String, Object> details = new LinkedHashMap<>();
-        details.put("type", "Redis");
+        details.put("type", REDIS_COMPONENT);
 
-        return performHealthCheck("Redis", details, () -> {
+        return performHealthCheck(REDIS_COMPONENT, details, () -> {
             try {
                 // Run Redis PING synchronously - avoid nested CompletableFuture on same executor
                 String pong = redisTemplate.execute((RedisCallback<String>) connection -> connection.ping());
@@ -404,32 +404,38 @@ public class HealthService {
     private AdvancedCheckResult performAdvancedMySQLChecks() {
         try {
             try (Connection connection = dataSource.getConnection()) {
-                java.util.concurrent.CompletableFuture<AdvancedCheckResult> future = 
-                    java.util.concurrent.CompletableFuture.supplyAsync(
-                        () -> performAdvancedCheckLogic(connection), 
-                        advancedCheckExecutor
-                    );
-                
-                return future.get(ADVANCED_CHECKS_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
-            } catch (java.util.concurrent.TimeoutException e) {
-                logger.debug("Advanced checks timeout, marking degraded");
-                return new AdvancedCheckResult(true);
-            } catch (java.util.concurrent.ExecutionException e) {
-                if (e.getCause() instanceof InterruptedException) {
-                    Thread.currentThread().interrupt();
-                }
-                logger.debug("Advanced checks execution failed, marking degraded");
-                return new AdvancedCheckResult(true);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.debug("Advanced checks interrupted, marking degraded");
-                return new AdvancedCheckResult(true);
-            } catch (Exception e) {
-                logger.debug("Advanced checks encountered exception, marking degraded");
-                return new AdvancedCheckResult(true);
+                return executeAdvancedCheckAsync(connection);
             }
         } catch (Exception e) {
             logger.debug("Failed to get connection for advanced checks: {}", e.getMessage());
+            return new AdvancedCheckResult(true);
+        }
+    }
+    
+    private AdvancedCheckResult executeAdvancedCheckAsync(Connection connection) {
+        try {
+            java.util.concurrent.CompletableFuture<AdvancedCheckResult> future = 
+                java.util.concurrent.CompletableFuture.supplyAsync(
+                    () -> performAdvancedCheckLogic(connection), 
+                    advancedCheckExecutor
+                );
+            
+            return future.get(ADVANCED_CHECKS_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            logger.debug("Advanced checks timeout, marking degraded");
+            return new AdvancedCheckResult(true);
+        } catch (java.util.concurrent.ExecutionException e) {
+            if (e.getCause() instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            logger.debug("Advanced checks execution failed, marking degraded");
+            return new AdvancedCheckResult(true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.debug("Advanced checks interrupted, marking degraded");
+            return new AdvancedCheckResult(true);
+        } catch (Exception e) {
+            logger.debug("Advanced checks encountered exception, marking degraded");
             return new AdvancedCheckResult(true);
         }
     }
