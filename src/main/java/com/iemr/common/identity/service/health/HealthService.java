@@ -57,11 +57,9 @@ public class HealthService {
     private static final Logger logger = LoggerFactory.getLogger(HealthService.class);
     private static final String STATUS_KEY = "status";
     private static final String DB_HEALTH_CHECK_QUERY = "SELECT 1 as health_check";
-    private static final String DB_VERSION_QUERY = "SELECT VERSION()";
     private static final String STATUS_UP = "UP";
     private static final String STATUS_DOWN = "DOWN";
     private static final String STATUS_DEGRADED = "DEGRADED";
-    private static final String UNKNOWN_VALUE = "unknown";
     private static final String ELASTICSEARCH_TYPE = "Elasticsearch";
     private static final int REDIS_TIMEOUT_SECONDS = 3;
     
@@ -78,19 +76,23 @@ public class HealthService {
     private static final String MESSAGE_KEY = "message";
     private static final String RESPONSE_TIME_KEY = "responseTimeMs";
     
+    // Component name constants
+    private static final String MYSQL_COMPONENT = "MySQL";
+    private static final String REDIS_COMPONENT = "Redis";
+    
+    // Advanced checks timeout
+    private static final long ADVANCED_CHECKS_TIMEOUT_MS = 500L;
+    
     // Diagnostic event codes for concise logging
     private static final String DIAGNOSTIC_LOCK_WAIT = "MYSQL_LOCK_WAIT";
-    private static final String DIAGNOSTIC_DEADLOCK = "MYSQL_DEADLOCK";
     private static final String DIAGNOSTIC_SLOW_QUERIES = "MYSQL_SLOW_QUERIES";
     private static final String DIAGNOSTIC_POOL_EXHAUSTED = "MYSQL_POOL_EXHAUSTED";
     private static final String DIAGNOSTIC_LOG_TEMPLATE = "Diagnostic: {}";
 
     private final DataSource dataSource;
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
+    private final ExecutorService advancedCheckExecutor;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final String dbUrl;
-    private final String redisHost;
-    private final int redisPort;
     private final String elasticsearchHost;
     private final int elasticsearchPort;
     private final boolean elasticsearchEnabled;
@@ -101,23 +103,19 @@ public class HealthService {
     private volatile long lastAdvancedCheckTime = 0;
     private volatile AdvancedCheckResult cachedAdvancedCheckResult = null;
     private final ReentrantReadWriteLock advancedCheckLock = new ReentrantReadWriteLock();
-    
-    // Deadlock check resilience - disable after first permission error
-    private volatile boolean deadlockCheckDisabled = false;
 
     public HealthService(DataSource dataSource,
                         @Autowired(required = false) RedisTemplate<String, Object> redisTemplate,
-                        @Value("${spring.datasource.url:unknown}") String dbUrl,
-                        @Value("${spring.data.redis.host:localhost}") String redisHost,
-                        @Value("${spring.data.redis.port:6379}") int redisPort,
                         @Value("${elasticsearch.host:localhost}") String elasticsearchHost,
                         @Value("${elasticsearch.port:9200}") int elasticsearchPort,
                         @Value("${elasticsearch.enabled:false}") boolean elasticsearchEnabled) {
         this.dataSource = dataSource;
+        this.advancedCheckExecutor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "health-advanced-check");
+            t.setDaemon(true);
+            return t;
+        });
         this.redisTemplate = redisTemplate;
-        this.dbUrl = dbUrl;
-        this.redisHost = redisHost;
-        this.redisPort = redisPort;
         this.elasticsearchHost = elasticsearchHost;
         this.elasticsearchPort = elasticsearchPort;
         this.elasticsearchEnabled = elasticsearchEnabled;
@@ -134,6 +132,7 @@ public class HealthService {
     @jakarta.annotation.PreDestroy
     public void cleanup() {
         executorService.shutdownNow();
+        advancedCheckExecutor.shutdownNow();
         if (elasticsearchRestClient != null) {
             try {
                 elasticsearchRestClient.close();
@@ -199,9 +198,9 @@ public class HealthService {
 
     private Map<String, Object> checkMySQLHealth() {
         Map<String, Object> details = new LinkedHashMap<>();
-        details.put("type", "MySQL");
+        details.put("type", MYSQL_COMPONENT);
 
-        return performHealthCheck("MySQL", details, () -> {
+        return performHealthCheck(MYSQL_COMPONENT, details, () -> {
             try {
                 try (Connection connection = dataSource.getConnection()) {
                     if (connection.isValid(2)) {
@@ -210,7 +209,7 @@ public class HealthService {
                             try (ResultSet rs = stmt.executeQuery()) {
                                 if (rs.next() && rs.getInt(1) == 1) {
                                     // Basic check passed - run advanced checks with throttling
-                                    boolean isDegraded = performAdvancedMySQLChecksWithThrottle(connection);
+                                    boolean isDegraded = performAdvancedMySQLChecksWithThrottle();
                                     return new HealthCheckResult(true, null, isDegraded);
                                 }
                             }
@@ -219,7 +218,7 @@ public class HealthService {
                     return new HealthCheckResult(false, "Connection validation failed", false);
                 }
             } catch (Exception e) {
-                throw new IllegalStateException("MySQL connection failed: " + e.getMessage(), e);
+                throw new IllegalStateException(MYSQL_COMPONENT + " connection failed: " + e.getMessage(), e);
             }
         });
     }
@@ -368,7 +367,7 @@ public class HealthService {
     }
 
     
-    private boolean performAdvancedMySQLChecksWithThrottle(Connection connection) {
+    private boolean performAdvancedMySQLChecksWithThrottle() {
         long currentTime = System.currentTimeMillis();
         
         advancedCheckLock.readLock().lock();
@@ -390,7 +389,7 @@ public class HealthService {
                 return cachedAdvancedCheckResult.isDegraded;
             }
             
-            AdvancedCheckResult result = performAdvancedMySQLChecks(connection);
+            AdvancedCheckResult result = performAdvancedMySQLChecks();
             
             // Cache the result
             lastAdvancedCheckTime = currentTime;
@@ -402,17 +401,45 @@ public class HealthService {
         }
     }
 
-    private AdvancedCheckResult performAdvancedMySQLChecks(Connection connection) {
+    private AdvancedCheckResult performAdvancedMySQLChecks() {
+        try {
+            try (Connection connection = dataSource.getConnection()) {
+                java.util.concurrent.CompletableFuture<AdvancedCheckResult> future = 
+                    java.util.concurrent.CompletableFuture.supplyAsync(
+                        () -> performAdvancedCheckLogic(connection), 
+                        advancedCheckExecutor
+                    );
+                
+                return future.get(ADVANCED_CHECKS_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                logger.debug("Advanced checks timeout, marking degraded");
+                return new AdvancedCheckResult(true);
+            } catch (java.util.concurrent.ExecutionException e) {
+                if (e.getCause() instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                logger.debug("Advanced checks execution failed, marking degraded");
+                return new AdvancedCheckResult(true);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.debug("Advanced checks interrupted, marking degraded");
+                return new AdvancedCheckResult(true);
+            } catch (Exception e) {
+                logger.debug("Advanced checks encountered exception, marking degraded");
+                return new AdvancedCheckResult(true);
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to get connection for advanced checks: {}", e.getMessage());
+            return new AdvancedCheckResult(true);
+        }
+    }
+    
+    private AdvancedCheckResult performAdvancedCheckLogic(Connection connection) {
         try {
             boolean hasIssues = false;
             
             if (hasLockWaits(connection)) {
                 logger.warn(DIAGNOSTIC_LOG_TEMPLATE, DIAGNOSTIC_LOCK_WAIT);
-                hasIssues = true;
-            }
-            
-            if (hasDeadlocks(connection)) {
-                logger.warn(DIAGNOSTIC_LOG_TEMPLATE, DIAGNOSTIC_DEADLOCK);
                 hasIssues = true;
             }
             
@@ -428,7 +455,7 @@ public class HealthService {
             
             return new AdvancedCheckResult(hasIssues);
         } catch (Exception e) {
-            logger.debug("Advanced MySQL checks encountered exception, marking degraded");
+            logger.debug("Advanced check logic encountered exception");
             return new AdvancedCheckResult(true);
         }
     }
@@ -452,38 +479,6 @@ public class HealthService {
         }
         return false;
     }
-
-    private boolean hasDeadlocks(Connection connection) {
-        // Skip deadlock check if already disabled due to permissions
-        if (deadlockCheckDisabled) {
-            return false;
-        }
-        
-        try (PreparedStatement stmt = connection.prepareStatement("SHOW ENGINE INNODB STATUS")) {
-            stmt.setQueryTimeout(2);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    String innodbStatus = rs.getString(3);
-                    return innodbStatus != null && innodbStatus.contains("LATEST DETECTED DEADLOCK");
-                }
-            }
-        } catch (java.sql.SQLException e) {
-            // Check if this is a permission error
-            if (e.getMessage() != null && 
-                (e.getMessage().contains("Access denied") || 
-                 e.getMessage().contains("permission"))) {
-                // Disable this check permanently after first permission error
-                deadlockCheckDisabled = true;
-                logger.warn("Deadlock check disabled: Insufficient privileges");
-            } else {
-                logger.debug("Could not check for deadlocks");
-            }
-        } catch (Exception e) {
-            logger.debug("Could not check for deadlocks");
-        }
-        return false;
-    }
-
     private boolean hasSlowQueries(Connection connection) {
         try (PreparedStatement stmt = connection.prepareStatement(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.PROCESSLIST " +
