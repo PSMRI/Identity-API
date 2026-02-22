@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -105,6 +106,7 @@ public class HealthService {
     private volatile long lastAdvancedCheckTime = 0;
     private volatile AdvancedCheckResult cachedAdvancedCheckResult = null;
     private final ReentrantReadWriteLock advancedCheckLock = new ReentrantReadWriteLock();
+    private final AtomicBoolean advancedCheckInProgress = new AtomicBoolean(false);
     
     // Advanced checks always enabled
     private static final boolean ADVANCED_HEALTH_CHECKS_ENABLED = true;
@@ -387,24 +389,31 @@ public class HealthService {
             }
         } finally {
             advancedCheckLock.readLock().unlock();
+        // Only one thread may submit; others fall back to the (stale) cache
+        if (!advancedCheckInProgress.compareAndSet(false, true)) {
+            advancedCheckLock.readLock().lock();
+            try {
+                return cachedAdvancedCheckResult != null && cachedAdvancedCheckResult.isDegraded;
+            } finally {
+                advancedCheckLock.readLock().unlock();
+            }
         }
         
-        advancedCheckLock.writeLock().lock();
         try {
-            currentTime = System.currentTimeMillis();
-            // Double-check after acquiring write lock
-            if (cachedAdvancedCheckResult != null && 
-                (currentTime - lastAdvancedCheckTime) < ADVANCED_CHECKS_THROTTLE_SECONDS * 1000) {
-                return cachedAdvancedCheckResult.isDegraded;
-            }
-            
+            // DB I/O outside the lock to prevent lock contention
             AdvancedCheckResult result = performAdvancedMySQLChecks();
             
-            // Cache the result
-            lastAdvancedCheckTime = currentTime;
-            cachedAdvancedCheckResult = result;
-            
-            return result.isDegraded;
+            // Re-acquire write lock only for atomic cache update
+            advancedCheckLock.writeLock().lock();
+            try {
+                lastAdvancedCheckTime = System.currentTimeMillis();
+                cachedAdvancedCheckResult = result;
+                return result.isDegraded;
+            } finally {
+                advancedCheckLock.writeLock().unlock();
+            }
+        } finally {
+            advancedCheckInProgress.set(false
         } finally {
             advancedCheckLock.writeLock().unlock();
         }
