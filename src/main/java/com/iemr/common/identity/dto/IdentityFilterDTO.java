@@ -24,7 +24,7 @@ package com.iemr.common.identity.dto;
 import java.math.BigInteger;
 import java.util.Optional;
 
-import com.iemr.common.identity.domain.Address;
+import com.iemr.common.identity.domain.identity.Address;
 
 public class IdentityFilterDTO {
 	private Optional<BigInteger> beneficiaryId;

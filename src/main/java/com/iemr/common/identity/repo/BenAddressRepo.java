@@ -32,7 +32,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiaryaddress;
+import com.iemr.common.identity.domain.identity.MBeneficiaryaddress;
 
 @Repository
 public interface BenAddressRepo extends CrudRepository<MBeneficiaryaddress, BigInteger> {

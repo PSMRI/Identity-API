@@ -34,7 +34,7 @@ import jakarta.persistence.criteria.Root;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.iemr.common.identity.domain.MBeneficiarydetail;
+import com.iemr.common.identity.domain.identity.MBeneficiarydetail;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
 
 public class BenDetailRepoImpl implements BenDetailRepoCustom {

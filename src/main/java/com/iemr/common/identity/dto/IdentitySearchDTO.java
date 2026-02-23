@@ -25,7 +25,7 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.iemr.common.identity.domain.Address;
+import com.iemr.common.identity.domain.identity.Address;
 
 import lombok.Data;
 

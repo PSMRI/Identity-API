@@ -25,7 +25,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
-import com.iemr.common.identity.domain.MBeneficiarymapping;
+import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
 import com.iemr.common.identity.dto.BeneficiariesPartialDTO;
 import com.iemr.common.identity.dto.BeneficiaryCreateResp;
 

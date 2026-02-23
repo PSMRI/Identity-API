@@ -29,7 +29,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiaryAccount;
+import com.iemr.common.identity.domain.identity.MBeneficiaryAccount;
 
 public interface MBeneficiaryAccountRepo extends CrudRepository<MBeneficiaryAccount, BigInteger> {
 	@Transactional

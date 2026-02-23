@@ -32,7 +32,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiaryconsent;
+import com.iemr.common.identity.domain.identity.MBeneficiaryconsent;
 
 @Repository
 public interface BenConsentRepo extends CrudRepository<MBeneficiaryconsent, BigInteger> {

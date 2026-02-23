@@ -32,7 +32,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiaryidentity;
+import com.iemr.common.identity.domain.identity.MBeneficiaryidentity;
 
 @Repository
 public interface BenIdentityRepo extends CrudRepository<MBeneficiaryidentity, BigInteger> {

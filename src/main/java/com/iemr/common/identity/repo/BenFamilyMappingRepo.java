@@ -32,7 +32,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiaryfamilymapping;
+import com.iemr.common.identity.domain.identity.MBeneficiaryfamilymapping;
 
 @Repository
 public interface BenFamilyMappingRepo extends CrudRepository<MBeneficiaryfamilymapping, BigInteger> {

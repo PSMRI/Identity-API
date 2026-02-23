@@ -25,9 +25,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
-import com.iemr.common.identity.domain.MBeneficiaryaddress;
-import com.iemr.common.identity.domain.MBeneficiarycontact;
-import com.iemr.common.identity.domain.MBeneficiarydetail;
+import com.iemr.common.identity.domain.identity.MBeneficiaryaddress;
+import com.iemr.common.identity.domain.identity.MBeneficiarycontact;
+import com.iemr.common.identity.domain.identity.MBeneficiarydetail;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
 
 @Mapper(componentModel = "spring")

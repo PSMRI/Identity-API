@@ -29,7 +29,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.iemr.common.identity.domain.VBenAdvanceSearch;
+import com.iemr.common.identity.domain.identity.VBenAdvanceSearch;
 
 @Repository
 public interface V_BenAdvanceSearchRepo extends CrudRepository<VBenAdvanceSearch, BigInteger> {

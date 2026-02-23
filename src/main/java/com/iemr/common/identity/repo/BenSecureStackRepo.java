@@ -23,7 +23,7 @@ package com.iemr.common.identity.repo;
 
 import org.springframework.stereotype.Repository;
 
-import com.iemr.common.identity.domain.MBensecurestack;
+import com.iemr.common.identity.domain.identity.MBensecurestack;
 
 @Repository
 public interface BenSecureStackRepo {

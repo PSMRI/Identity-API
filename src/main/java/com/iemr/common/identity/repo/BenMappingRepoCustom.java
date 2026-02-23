@@ -23,8 +23,8 @@ package com.iemr.common.identity.repo;
 
 import java.util.List;
 
-import com.iemr.common.identity.domain.MBeneficiarymapping;
-import com.iemr.common.identity.domain.VBenAdvanceSearch;
+import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
+import com.iemr.common.identity.domain.identity.VBenAdvanceSearch;
 import com.iemr.common.identity.dto.IdentityDTO;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
 

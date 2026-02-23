@@ -25,7 +25,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Repository;
 
-import com.iemr.common.identity.domain.MBeneficiarydetail;
+import com.iemr.common.identity.domain.identity.MBeneficiarydetail;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
 
 @Repository

@@ -42,7 +42,7 @@ import com.iemr.common.identity.utils.response.OutputResponse;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 
-import com.iemr.common.identity.domain.MBeneficiarymapping;
+import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
 import com.iemr.common.identity.service.elasticsearch.ElasticsearchIndexingService;
 
 /**
