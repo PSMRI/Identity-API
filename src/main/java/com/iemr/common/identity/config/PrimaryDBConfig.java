@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(entityManagerFactoryRef = "entityManagerFactory", basePackages = {"com.iemr.common.identity.domain.identity",
-        "com.iemr.common.identity.repo","com.iemr.common.identity.repo.rmnch","com.iemr.common.identity.data",})
+        "com.iemr.common.identity.repo","com.iemr.common.identity.repo.rmnch","com.iemr.common.identity.data.rmnch",})
 public class PrimaryDBConfig {
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
