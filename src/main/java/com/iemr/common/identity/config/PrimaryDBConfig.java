@@ -42,8 +42,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
 @EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "entityManagerFactory", basePackages = {"com.iemr.flw.domain.iemr",
-        "com.iemr.flw.repo.iemr", "com.iemr.flw.dto.iemr"})
+@EnableJpaRepositories(entityManagerFactoryRef = "entityManagerFactory", basePackages = {"com.iemr.common.identity.domain",
+        "com.iemr.common.identity.repo"})
 public class PrimaryDBConfig {
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
@@ -77,7 +77,7 @@ public class PrimaryDBConfig {
     @Bean(name = "entityManagerFactory")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(EntityManagerFactoryBuilder builder,
                                                                        @Qualifier("dataSource") DataSource dataSource) {
-        return builder.dataSource(dataSource).packages("com.iemr.flw.domain.iemr").persistenceUnit("db_iemr").build();
+        return builder.dataSource(dataSource).packages("com.iemr.common.identity.domain").persistenceUnit("db_identity").build();
     }
 
     @Primary

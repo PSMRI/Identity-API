@@ -1,4 +1,4 @@
-package com.iemr.common.identity.domain;
+package com.iemr.common.identity.domain.iemr;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;

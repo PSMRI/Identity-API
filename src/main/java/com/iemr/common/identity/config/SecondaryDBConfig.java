@@ -42,8 +42,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(entityManagerFactoryRef = "secondaryEntityManagerFactory",
-        transactionManagerRef = "secondaryTransactionManager", basePackages = {"com.iemr.flw.domain.identity",
-        "com.iemr.flw.repo.identity"})
+        transactionManagerRef = "secondaryTransactionManager", basePackages = {"com.iemr.common.identity.domain.iemr",
+        "com.iemr.common.identity.repo.iemr"})
 public class SecondaryDBConfig {
 
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
@@ -76,7 +76,7 @@ public class SecondaryDBConfig {
     @Bean(name = "secondaryEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean barEntityManagerFactory(EntityManagerFactoryBuilder builder,
                                                                           @Qualifier("secondaryDataSource") DataSource dataSource) {
-        return builder.dataSource(dataSource).packages("com.iemr.flw.domain.identity").persistenceUnit("db_identity").build();
+        return builder.dataSource(dataSource).packages("com.iemr.common.identity.domain.iemr").persistenceUnit("db_iemr").build();
     }
 
     @Bean(name = "secondaryTransactionManager")
