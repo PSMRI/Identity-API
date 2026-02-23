@@ -100,13 +100,13 @@ public class ElasticsearchService {
                                                     boolean isMultiWord = queryWords.length > 1;
 
                                                     if (isMultiWord) {
-                                                        // MULTI-WORD SEARCH: Each word must match at least one name field
-                                                        // e.g., "Ravi Kumar" → "Ravi" must match firstName/middleName/lastName
-                                                        //                   AND "Kumar" must match firstName/middleName/lastName
+                                                        // MULTI-WORD SEARCH: Each word should match at least one name field
+                                                        // Using should instead of must so that partial matches still return results
+                                                        // e.g., "Ravi Kumar XYZ" → if only "Ravi" and "Kumar" match, results are still returned
                                                         for (String word : queryWords) {
                                                             final String w = word;
                                                             final String wLower = word.toLowerCase();
-                                                            b.must(m -> m.bool(wb -> {
+                                                            b.should(m -> m.bool(wb -> {
                                                                 // Exact match (case-insensitive via lowercase)
                                                                 wb.should(s1 -> s1.term(t -> t.field("firstName.keyword").value(wLower).boost(20.0f)));
                                                                 wb.should(s2 -> s2.term(t -> t.field("middleName.keyword").value(wLower).boost(20.0f)));
@@ -298,11 +298,8 @@ public class ElasticsearchService {
                                                     }
                                                 }
 
-                                                // For multi-word name queries, must clauses handle the AND logic
-                                                // For single-word or numeric queries, at least one should must match
-                                                if (isNumeric || !query.trim().contains(" ")) {
-                                                    b.minimumShouldMatch("1");
-                                                }
+                                                // At least one should clause must match for all query types
+                                                b.minimumShouldMatch("1");
                                                 return b;
                                             }))
                                     .functions(getFunctionScores(userLocation))
