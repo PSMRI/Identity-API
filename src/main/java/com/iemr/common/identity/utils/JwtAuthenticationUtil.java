@@ -14,7 +14,7 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import com.iemr.common.identity.domain.User;
+import com.iemr.common.identity.domain.iemr.User;
 import com.iemr.common.identity.exception.IEMRException;
 
 import io.jsonwebtoken.Claims;

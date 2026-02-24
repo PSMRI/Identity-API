@@ -22,31 +22,25 @@
 package com.iemr.common.identity.mapper;
 
 import java.sql.Timestamp;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
-import org.mapstruct.Named;
 import org.mapstruct.factory.Mappers;
 
-import com.iemr.common.identity.domain.Identity;
-import com.iemr.common.identity.domain.MBeneficiaryAccount;
-import com.iemr.common.identity.domain.MBeneficiaryImage;
-import com.iemr.common.identity.domain.MBeneficiaryaddress;
-import com.iemr.common.identity.domain.MBeneficiaryconsent;
-import com.iemr.common.identity.domain.MBeneficiarycontact;
-import com.iemr.common.identity.domain.MBeneficiarydetail;
-import com.iemr.common.identity.domain.MBeneficiaryfamilymapping;
-import com.iemr.common.identity.domain.MBeneficiaryidentity;
-import com.iemr.common.identity.domain.MBeneficiarymapping;
-import com.iemr.common.identity.domain.MBeneficiaryservicemapping;
-import com.iemr.common.identity.domain.Phone;
+import com.iemr.common.identity.domain.identity.Identity;
+import com.iemr.common.identity.domain.identity.MBeneficiaryAccount;
+import com.iemr.common.identity.domain.identity.MBeneficiaryImage;
+import com.iemr.common.identity.domain.identity.MBeneficiaryconsent;
+import com.iemr.common.identity.domain.identity.MBeneficiarydetail;
+import com.iemr.common.identity.domain.identity.MBeneficiaryfamilymapping;
+import com.iemr.common.identity.domain.identity.MBeneficiaryidentity;
+import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
+import com.iemr.common.identity.domain.identity.MBeneficiaryservicemapping;
+import com.iemr.common.identity.domain.identity.Phone;
 import com.iemr.common.identity.dto.BenDetailDTO;
 import com.iemr.common.identity.dto.BenFamilyDTO;
 import com.iemr.common.identity.dto.BenIdentityDTO;

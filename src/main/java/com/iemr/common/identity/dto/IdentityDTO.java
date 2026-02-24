@@ -24,14 +24,10 @@ package com.iemr.common.identity.dto;
 import java.sql.Timestamp;
 import java.util.List;
 
-import org.json.JSONObject;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.annotations.Expose;
-import com.iemr.common.identity.domain.Address;
-import com.iemr.common.identity.domain.Contact;
-import com.iemr.common.identity.domain.Identity;
+import com.iemr.common.identity.domain.identity.Address;
+import com.iemr.common.identity.domain.identity.Contact;
+import com.iemr.common.identity.domain.identity.Identity;
 
 import lombok.Data;
 

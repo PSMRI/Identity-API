@@ -19,15 +19,13 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
-package com.iemr.common.identity.domain;
+package com.iemr.common.identity.domain.identity;
 
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
-
-import org.json.JSONObject;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,8 +37,6 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.annotations.Expose;
 
 import lombok.AllArgsConstructor;

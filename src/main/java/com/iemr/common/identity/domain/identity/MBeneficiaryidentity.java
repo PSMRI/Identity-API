@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
-package com.iemr.common.identity.domain;
+package com.iemr.common.identity.domain.identity;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -38,31 +38,51 @@ import com.google.gson.annotations.Expose;
 import lombok.Data;
 
 /**
- * The persistent class for the m_beneficiaryservicemapping database table.
+ * The persistent class for the m_beneficiaryidentity database table.
  * 
  */
 @Entity
-@Table(name = "i_beneficiaryservicemapping")
-@NamedQuery(name = "MBeneficiaryservicemapping.findAll", query = "SELECT m FROM MBeneficiaryservicemapping m")
+@Table(name = "i_beneficiaryidentity")
+@NamedQuery(name = "MBeneficiaryidentity.findAll", query = "SELECT m FROM MBeneficiaryidentity m order by benIdentityId asc")
 @Data
-public class MBeneficiaryservicemapping implements Serializable {
+public class MBeneficiaryidentity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(unique = true, nullable = false)
-	private BigInteger benServiceMapID;
+	private BigInteger benIdentityId;
 
-	@Column(nullable = false, length = 50)
+	@Column(nullable = false, length = 50, insertable = true, updatable = false)
 	private String createdBy;
 
 	@Column(name = "CreatedDate", insertable = false, updatable = false)
 	private Timestamp createdDate;
 
-	@Column(nullable = false)
+	@Column(name = "Deleted", insertable = false, updatable = true)
 	private Boolean deleted = false;
 
-	private Timestamp firstAvailedOn;
+	private Timestamp expiryDate;
+
+	@Column(length = 100)
+	private String identityFilePath;
+
+	private Integer identityNameId;
+
+	@Column(length = 20)
+	private String identityName;
+
+	@Column(length = 30)
+	private String identityNo;
+
+	private Integer identityTypeId;
+
+	@Column(length = 20)
+	private String identityType;
+
+	private Timestamp issueDate;
+
+	private Boolean isVerified;
 
 	private Timestamp lastModDate;
 
@@ -71,15 +91,6 @@ public class MBeneficiaryservicemapping implements Serializable {
 
 	@Column(nullable = false, length = 4)
 	private String processed = "N";
-
-	@Column(length = 45)
-	private String registeredByName;
-
-	private Integer registeredById;
-
-	private Timestamp registeredDate;
-
-	private Integer providerServiceMapId;
 
 	private Boolean reserved;
 
@@ -90,24 +101,11 @@ public class MBeneficiaryservicemapping implements Serializable {
 
 	private Timestamp reservedOn;
 
-	private Integer serviceId;
-
-	@Column(length = 45)
-	private String serviceName;
-
-	private Integer serviceProviderId;
-
-	@Column(length = 45)
-	private String serviceProviderName;
-
-	private Integer stateId;
-
-	@Column(length = 45)
-	private String stateName;
-
 	@Column(name = "BenMapId", insertable = true, updatable = true)
 	private BigInteger benMapId;
 
+	// new column added for data sync
+	// 17-06-2018
 	// new column added for data sync
 	// 17-06-2018
 	@Expose
@@ -122,4 +120,5 @@ public class MBeneficiaryservicemapping implements Serializable {
 	private BigInteger vanSerialNo;
 
 	// END OF new column added for data sync
+
 }

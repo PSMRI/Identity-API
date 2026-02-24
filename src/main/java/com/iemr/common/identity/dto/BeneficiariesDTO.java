@@ -25,16 +25,11 @@ package com.iemr.common.identity.dto;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.iemr.common.identity.domain.Address;
-import com.iemr.common.identity.domain.Phone;
+import com.iemr.common.identity.domain.identity.Address;
+import com.iemr.common.identity.domain.identity.Phone;
 
 import lombok.Data;
 

@@ -29,7 +29,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiaryImage;
+import com.iemr.common.identity.domain.identity.MBeneficiaryImage;
 
 public interface MBeneficiaryImageRepo extends CrudRepository<MBeneficiaryImage, BigInteger> {
 	@Query("select t from MBeneficiaryImage t where t.vanSerialNo = :benImageID AND t.vanID = :vanID ")

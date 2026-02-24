@@ -28,7 +28,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
-import com.iemr.common.identity.domain.MBeneficiaryregidmapping;
+import com.iemr.common.identity.domain.identity.MBeneficiaryregidmapping;
 import com.iemr.common.identity.dto.BenIdImportDTO;
 
 @Mapper(componentModel = "spring")

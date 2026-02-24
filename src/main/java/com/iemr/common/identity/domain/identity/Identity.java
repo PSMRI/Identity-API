@@ -19,27 +19,26 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
-package com.iemr.common.identity.domain;
+package com.iemr.common.identity.domain.identity;
+
+import java.math.BigInteger;
+import java.sql.Timestamp;
 
 import lombok.Data;
 
 @Data
-public class Contact {
-
-	private String preferredPhoneNum;
-	private String preferredPhoneTyp;
-	private String preferredSMSPhoneNum;
-	private String preferredSMSPhoneTyp;
-	private String emergencyContactNum;
-	private String emergencyContactTyp;
-	private String phoneNum1;
-	private String phoneTyp1;
-	private String phoneNum2;
-	private String phoneTyp2;
-	private String phoneNum3;
-	private String phoneTyp3;
-	private String phoneNum4;
-	private String phoneTyp4;
-	private String phoneNum5;
-	private String phoneTyp5;
+public class Identity
+{
+	private String identityNo;
+	private Integer identityNameId;
+	private String identityName;
+	private Integer identityTypeId;
+	private String identityType;
+	private Timestamp issueDate;
+	private Timestamp expiryDate;
+	private Boolean isVerified;
+	private String identityFilePath;
+	private String createdBy;
+	private BigInteger benIdentityId;
+	private Boolean deleted;
 }

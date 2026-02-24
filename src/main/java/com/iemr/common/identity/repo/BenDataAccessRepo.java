@@ -28,7 +28,7 @@ import java.util.List;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
-import com.iemr.common.identity.domain.TBendataaccess;
+import com.iemr.common.identity.domain.identity.TBendataaccess;
 
 @Repository
 public interface BenDataAccessRepo extends CrudRepository<TBendataaccess, BigInteger>

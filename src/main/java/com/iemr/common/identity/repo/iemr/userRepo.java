@@ -19,27 +19,13 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
-package com.iemr.common.identity.repo;
+package com.iemr.common.identity.repo.iemr;
 
-import java.util.List;
+import com.iemr.common.identity.domain.iemr.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
-import com.iemr.common.identity.domain.identity.VBenAdvanceSearch;
-import com.iemr.common.identity.dto.IdentityDTO;
-import com.iemr.common.identity.dto.IdentitySearchDTO;
+@Repository
+public interface userRepo extends JpaRepository<User,Integer>{
 
-public interface BenMappingRepoCustom {
-
-	List<MBeneficiarymapping> dynamicFilterSearch(IdentitySearchDTO searchDTO);
-
-	/**
-	 * This method is to search finite beneficiary for MCTS before in order to
-	 * generate iemr ID and can be use to finite search generally
-	 * 
-	 * @param identityDTO
-	 * @return mBeneficiarymappingList
-	 */
-	List<MBeneficiarymapping> finiteSearch(IdentityDTO identityDTO);
-
-	List<VBenAdvanceSearch> dynamicFilterSearchNew(IdentitySearchDTO searchDTO);
 }

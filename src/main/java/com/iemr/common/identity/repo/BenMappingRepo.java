@@ -32,11 +32,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.iemr.common.identity.domain.MBeneficiarymapping;
-import com.iemr.common.identity.domain.MBeneficiaryservicemapping;
-import com.iemr.common.identity.domain.VBenAdvanceSearch;
-import com.iemr.common.identity.dto.IdentityDTO;
-import com.iemr.common.identity.dto.IdentitySearchDTO;
+import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
 
 @Repository
 public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigInteger>, BenMappingRepoCustom {

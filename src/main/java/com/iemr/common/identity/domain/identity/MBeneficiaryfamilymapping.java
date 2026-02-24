@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
-package com.iemr.common.identity.domain;
+package com.iemr.common.identity.domain.identity;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -38,52 +38,37 @@ import com.google.gson.annotations.Expose;
 import lombok.Data;
 
 /**
- * The persistent class for the m_beneficiaryidentity database table.
+ * The persistent class for the m_beneficiaryfamilymapping database table.
  * 
  */
 @Entity
-@Table(name = "i_beneficiaryidentity")
-@NamedQuery(name = "MBeneficiaryidentity.findAll", query = "SELECT m FROM MBeneficiaryidentity m order by benIdentityId asc")
+@Table(name = "i_beneficiaryfamilymapping")
+@NamedQuery(name = "MBeneficiaryfamilymapping.findAll", query = "SELECT m FROM MBeneficiaryfamilymapping m")
 @Data
-public class MBeneficiaryidentity implements Serializable {
+// @SelectBeforeUpdate(value=true)
+// @DynamicUpdate(value=true)
+public class MBeneficiaryfamilymapping implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(unique = true, nullable = false)
-	private BigInteger benIdentityId;
+	private BigInteger benFamilyMapId;
 
-	@Column(nullable = false, length = 50, insertable = true, updatable = false)
+	private BigInteger associatedBenRegId;
+
+	@Column(nullable = false, updatable = false, insertable = true, length = 50)
 	private String createdBy;
 
 	@Column(name = "CreatedDate", insertable = false, updatable = false)
 	private Timestamp createdDate;
 
 	@Column(name = "Deleted", insertable = false, updatable = true)
-	private Boolean deleted = false;
+	private Boolean deleted;
 
-	private Timestamp expiryDate;
+	private Boolean isEmergencyContact;
 
-	@Column(length = 100)
-	private String identityFilePath;
-
-	private Integer identityNameId;
-
-	@Column(length = 20)
-	private String identityName;
-
-	@Column(length = 30)
-	private String identityNo;
-
-	private Integer identityTypeId;
-
-	@Column(length = 20)
-	private String identityType;
-
-	private Timestamp issueDate;
-
-	private Boolean isVerified;
-
+	@Column(name = "LastModDate", insertable = false, updatable = false)
 	private Timestamp lastModDate;
 
 	@Column(length = 50)
@@ -91,6 +76,12 @@ public class MBeneficiaryidentity implements Serializable {
 
 	@Column(nullable = false, length = 4)
 	private String processed = "N";
+
+	@Column(length = 15)
+	private String relationshipToSelf;
+
+	@Column
+	private Integer relationshipID;
 
 	private Boolean reserved;
 
@@ -101,15 +92,14 @@ public class MBeneficiaryidentity implements Serializable {
 
 	private Timestamp reservedOn;
 
+
 	@Column(name = "BenMapId", insertable = true, updatable = true)
 	private BigInteger benMapId;
 
 	// new column added for data sync
 	// 17-06-2018
-	// new column added for data sync
-	// 17-06-2018
 	@Expose
-	@Column(name = "vanID", updatable = false)
+	@Column(name = "VanID", updatable = false)
 	private Integer vanID;
 	@Expose
 	@Column(name = "parkingPlaceID", updatable = false)

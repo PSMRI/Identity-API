@@ -39,12 +39,12 @@ import jakarta.persistence.criteria.Root;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.iemr.common.identity.domain.Address;
-import com.iemr.common.identity.domain.MBeneficiaryaddress;
-import com.iemr.common.identity.domain.MBeneficiarycontact;
-import com.iemr.common.identity.domain.MBeneficiarydetail;
-import com.iemr.common.identity.domain.MBeneficiarymapping;
-import com.iemr.common.identity.domain.VBenAdvanceSearch;
+import com.iemr.common.identity.domain.identity.Address;
+import com.iemr.common.identity.domain.identity.MBeneficiaryaddress;
+import com.iemr.common.identity.domain.identity.MBeneficiarycontact;
+import com.iemr.common.identity.domain.identity.MBeneficiarydetail;
+import com.iemr.common.identity.domain.identity.MBeneficiarymapping;
+import com.iemr.common.identity.domain.identity.VBenAdvanceSearch;
 import com.iemr.common.identity.dto.IdentityDTO;
 import com.iemr.common.identity.dto.IdentitySearchDTO;
 import com.iemr.common.identity.mapper.IdentitySearchMapper;
