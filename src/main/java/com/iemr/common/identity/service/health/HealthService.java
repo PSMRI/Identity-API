@@ -271,50 +271,61 @@ public class HealthService {
     private Map<String, Object> checkElasticsearchHealth() {
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("type", ELASTICSEARCH_TYPE);
-
-        return performHealthCheck(ELASTICSEARCH_TYPE, details, () -> {
-            if (!elasticsearchClientReady || elasticsearchRestClient == null) {
-                return new HealthCheckResult(false, "Service unavailable", false);
-            }
-
-            long now = System.currentTimeMillis();
-
-            // Return fresh cache if still valid
-            ElasticsearchCacheEntry cached = elasticsearchCache.get();
-            if (cached != null && !cached.isExpired(now)) {
-                logger.debug("Returning cached ES health (age: {}ms, status: {})",
-                        now - cached.timestamp, cached.result.isHealthy ? STATUS_UP : STATUS_DOWN);
-                return cached.result;
-            }
-
-            // Single-flight: only one thread probes ES; others use stale cache
-            if (!elasticsearchCheckInProgress.compareAndSet(false, true)) {
-                ElasticsearchCacheEntry fallback = elasticsearchCache.get();
-                if (fallback != null) {
-                    logger.debug("ES check already in progress – using stale cache");
-                    return fallback.result;
-                }
-                // On cold start with concurrent requests, return DEGRADED (not DOWN) until first result
-                logger.debug("ES check already in progress with no cache – returning DEGRADED");
-                return new HealthCheckResult(true, null, true);
-            }
-
-            try {
-                HealthCheckResult result = performElasticsearchHealthCheck();
-                elasticsearchCache.set(new ElasticsearchCacheEntry(result, now));
-                return result;
-            } catch (Exception e) {
-                logger.debug("Elasticsearch health check exception: {}", e.getClass().getSimpleName());
-                HealthCheckResult errorResult = new HealthCheckResult(false, "Service unavailable", false);
-                elasticsearchCache.set(new ElasticsearchCacheEntry(errorResult, now));
-                return errorResult;
-            } finally {
-                elasticsearchCheckInProgress.set(false);
-            }
-        });
+        return performHealthCheck(ELASTICSEARCH_TYPE, details, this::getElasticsearchHealthResult);
     }
 
-    private HealthCheckResult performElasticsearchHealthCheck() throws IOException {
+    private HealthCheckResult getElasticsearchHealthResult() {
+        if (!elasticsearchClientReady || elasticsearchRestClient == null) {
+            return new HealthCheckResult(false, "Service unavailable", false);
+        }
+
+        long now = System.currentTimeMillis();
+        HealthCheckResult cached = getCachedElasticsearchHealth(now);
+        if (cached != null) {
+            return cached;
+        }
+
+        return performElasticsearchHealthCheckWithCache(now);
+    }
+
+    private HealthCheckResult getCachedElasticsearchHealth(long now) {
+        ElasticsearchCacheEntry cached = elasticsearchCache.get();
+        if (cached != null && !cached.isExpired(now)) {
+            logger.debug("Returning cached ES health (age: {}ms, status: {})",
+                    now - cached.timestamp, cached.result.isHealthy ? STATUS_UP : STATUS_DOWN);
+            return cached.result;
+        }
+        return null;
+    }
+
+    private HealthCheckResult performElasticsearchHealthCheckWithCache(long now) {
+        // Single-flight: only one thread probes ES; others use stale cache
+        if (!elasticsearchCheckInProgress.compareAndSet(false, true)) {
+            ElasticsearchCacheEntry fallback = elasticsearchCache.get();
+            if (fallback != null) {
+                logger.debug("ES check already in progress – using stale cache");
+                return fallback.result;
+            }
+            // On cold start with concurrent requests, return DEGRADED (not DOWN) until first result
+            logger.debug("ES check already in progress with no cache – returning DEGRADED");
+            return new HealthCheckResult(true, null, true);
+        }
+
+        try {
+            HealthCheckResult result = performElasticsearchHealthCheck();
+            elasticsearchCache.set(new ElasticsearchCacheEntry(result, now));
+            return result;
+        } catch (Exception e) {
+            logger.debug("Elasticsearch health check exception: {}", e.getClass().getSimpleName());
+            HealthCheckResult errorResult = new HealthCheckResult(false, "Service unavailable", false);
+            elasticsearchCache.set(new ElasticsearchCacheEntry(errorResult, now));
+            return errorResult;
+        } finally {
+            elasticsearchCheckInProgress.set(false);
+        }
+    }
+
+    private HealthCheckResult performElasticsearchHealthCheck() {
         ClusterHealthStatus healthStatus = getClusterHealthStatus();
         if (healthStatus == null) {
             // Cluster health unavailable; check if index is reachable to determine degradation vs DOWN
@@ -352,7 +363,7 @@ public class HealthService {
             }
             String body = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
             JsonNode root = objectMapper.readTree(body);
-            String status = root.path("status").asText();
+            String status = root.path(STATUS_KEY).asText();
             if (status == null || status.isEmpty()) {
                 logger.debug("Could not parse cluster status");
                 return null;
@@ -460,12 +471,11 @@ public class HealthService {
         for (String path : paths) {
             try {
                 JsonNode node = root.at(path);
-                if (node != null && !node.isMissingNode()) {
-                    if ((node.isBoolean() && node.asBoolean()) ||
-                        (node.isTextual() && "true".equalsIgnoreCase(node.asText()))) {
-                        logger.debug("Found read-only flag at {}", path);
-                        return true;
-                    }
+                if (node != null && !node.isMissingNode() &&
+                    ((node.isBoolean() && node.asBoolean()) ||
+                     (node.isTextual() && "true".equalsIgnoreCase(node.asText())))) {
+                    logger.debug("Found read-only flag at {}", path);
+                    return true;
                 }
             } catch (Exception e) {
                 logger.debug("Error checking JSON pointer {}: {}", path, e.getClass().getSimpleName());
@@ -482,6 +492,16 @@ public class HealthService {
                 .build())
             .build();
         request.setOptions(options);
+    }
+
+    private void performCanaryDelete(String canaryDocId) {
+        try {
+            Request deleteRequest = new Request("DELETE", "/" + elasticsearchTargetIndex + "/_doc/" + canaryDocId);
+            applyTimeouts(deleteRequest, ELASTICSEARCH_CANARY_TIMEOUT_MS);
+            elasticsearchRestClient.performRequest(deleteRequest);
+        } catch (Exception e) {
+            logger.debug("Canary delete warning: {}", e.getClass().getSimpleName());
+        }
     }
 
     private CanaryWriteResult performCanaryWriteProbe() {
@@ -501,15 +521,7 @@ public class HealthService {
                 return new CanaryWriteResult(false, "Write rejected");
             }
 
-            // Best-effort delete
-            try {
-                Request deleteRequest = new Request("DELETE", "/" + elasticsearchTargetIndex + "/_doc/" + canaryDocId);
-                applyTimeouts(deleteRequest, ELASTICSEARCH_CANARY_TIMEOUT_MS);
-                elasticsearchRestClient.performRequest(deleteRequest);
-            } catch (Exception e) {
-                logger.debug("Canary delete warning: {}", e.getClass().getSimpleName());
-            }
-
+            performCanaryDelete(canaryDocId);
             return new CanaryWriteResult(true, null);
         } catch (java.net.SocketTimeoutException e) {
             logger.debug("Canary probe timeout");
