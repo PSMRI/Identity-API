@@ -176,7 +176,7 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
         "d.FatherName, " +                                      // 9
         "d.SpouseName, " +                                      // 10
         "d.MaritalStatusID, " +                                 // 11
-        "ms.Status, " +                                         // 12 - MaritalStatusName
+        "ms.Status as MaritalStatusName, " +                    // 12 - MaritalStatusName
         "d.IsHIVPositive, " +                                   // 13
         "m.CreatedBy, " +                                       // 14
         "m.CreatedDate, " +                                     // 15
@@ -207,7 +207,7 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
-        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.MaritalStatusID " +
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
         "LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
