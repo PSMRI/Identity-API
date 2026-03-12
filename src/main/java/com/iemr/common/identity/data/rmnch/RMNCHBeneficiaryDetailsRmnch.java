@@ -547,4 +547,7 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	private Integer noOfchildren;
 
+	@Expose
+	private Boolean isDeactivate;
+
 }
