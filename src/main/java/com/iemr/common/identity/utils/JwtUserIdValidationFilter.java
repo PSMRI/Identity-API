@@ -43,7 +43,14 @@ public class JwtUserIdValidationFilter implements Filter {
 			return;
 		}
 		String path = request.getRequestURI();
-		logger.info("JwtUserIdValidationFilter invoked for path: " + path);
+		logger.info("JwtUserIdValidationFilter invoked for path: {}", path);
+
+		// Skip JWT validation for public endpoints
+		if (path.equals("/health") || path.equals("/version")) {
+			logger.info("Public endpoint accessed: {} - skipping JWT validation", path);
+			filterChain.doFilter(servletRequest, servletResponse);
+			return;
+		}
 
 		// Log cookies for debugging
 		Cookie[] cookies = request.getCookies();
@@ -76,10 +83,10 @@ public class JwtUserIdValidationFilter implements Filter {
 				}
 			} else {
 				String userAgent = request.getHeader("User-Agent");
-				logger.info("User-Agent: " + userAgent);
+				logger.info("User-Agent: {}", userAgent);
 				if (userAgent != null && isMobileClient(userAgent) && authHeader != null) {
 					try {
-						logger.info("Common-API incoming userAget : " + userAgent);
+						logger.info("Common-API incoming userAgent: {}", userAgent);
 						UserAgentContext.setUserAgent(userAgent);
 						filterChain.doFilter(servletRequest, servletResponse);
 					} finally {
