@@ -72,6 +72,26 @@ public class RMNCHMobileAppController {
 
 	}
 
+	@PostMapping(value = "/syncDataToAmritByHwc", consumes = "application/json", produces = "application/json")
+	@Operation(summary = "Sync data to AMRIT for already regestered beneficiary with AMRIT beneficiary id ")
+	public String syncDataToAmritHwc(@RequestBody String requestOBJ) {
+		OutputResponse response = new OutputResponse();
+		try {
+			if (requestOBJ != null) {
+				String s = rmnchDataSyncService.syncDataToAmrit(requestOBJ);
+				response.setResponse(s);
+			} else
+				response.setError(5000, "Invalid/NULL request obj");
+		} catch (Exception e) {
+			logger.error("Error in RMNCH mobile data sync : {} " , e.getMessage());
+			response.setError(5000, "Error in RMNCH mobile data sync : " + e);
+		}
+		return response.toString();
+
+	}
+
+
+
 //	@Deprecated
 	@PostMapping(value = "/getBeneficiaryDataForVillage", consumes = "application/json", produces = "application/json")
 	@Operation(summary = "Get beneficiary data for given village ")

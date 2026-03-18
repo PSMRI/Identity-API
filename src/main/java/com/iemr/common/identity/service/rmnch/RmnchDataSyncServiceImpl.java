@@ -267,6 +267,64 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		return new Gson().toJson(resultMap);
 	}
 
+
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public void saveBeneficiaryDetailsAfterRegistration(
+			Long beneficiaryID,
+			Long beneficiaryRegID,
+			String comingRequest) {
+		try {
+			JsonObject requestObj = new Gson().fromJson(comingRequest, JsonObject.class);
+
+			RMNCHBeneficiaryDetailsRmnch beneficiaryDetailsRmnch =
+					rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
+
+			if (beneficiaryDetailsRmnch == null) {
+				beneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
+			}
+
+			beneficiaryDetailsRmnch.setBenficieryid(BigInteger.valueOf(beneficiaryID));
+			beneficiaryDetailsRmnch.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
+			beneficiaryDetailsRmnch.setCreatedBy(
+					requestObj.get("createdBy").getAsString());
+			beneficiaryDetailsRmnch.setVanID(
+					requestObj.get("vanID").getAsInt());
+			beneficiaryDetailsRmnch.setParkingPlaceID(
+					requestObj.get("parkingPlaceID").getAsInt());
+			beneficiaryDetailsRmnch.setProviderServiceMapID(
+					requestObj.get("providerServiceMapID").getAsInt());
+			beneficiaryDetailsRmnch.setGenderId(
+					requestObj.get("genderID").getAsInt());
+			beneficiaryDetailsRmnch.setReproductiveStatusId(
+					requestObj.get("maritalStatusID").getAsInt());
+
+			if (requestObj.get("maritalStatusName") != null
+					&& !requestObj.get("maritalStatusName").isJsonNull()) {
+				beneficiaryDetailsRmnch.setReproductiveStatus(
+						requestObj.get("maritalStatusName").getAsString());
+			}
+
+			beneficiaryDetailsRmnch.setReproductiveStatusId(
+					requestObj.has("reproductiveStatusId") && !requestObj.get("reproductiveStatusId").isJsonNull()
+							? requestObj.get("reproductiveStatusId").getAsInt()
+							: requestObj.get("maritalStatusID").getAsInt()
+			);
+
+			beneficiaryDetailsRmnch.setReproductiveStatus(
+					requestObj.has("reproductiveStatus") && !requestObj.get("reproductiveStatus").isJsonNull()
+							? requestObj.get("reproductiveStatus").getAsString()
+							: null
+			);
+
+			rMNCHBeneficiaryDetailsRmnchRepo.save(beneficiaryDetailsRmnch);
+			logger.info("BeneficiaryDetailsRmnch saved for beneficiaryRegID: " + beneficiaryRegID);
+
+		} catch (Exception e) {
+			logger.error("Error saving BeneficiaryDetailsRmnch: " + e.getMessage());
+			throw e;
+		}
+	}
+
 	@Override
 	public String getBenData(String requestOBJ, String authorisation) throws Exception {
 		String outputResponse = null;
