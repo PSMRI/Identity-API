@@ -23,10 +23,13 @@ package com.iemr.common.identity.controller.rmnch;
 
 import java.sql.Timestamp;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -73,21 +76,41 @@ public class RMNCHMobileAppController {
 	}
 
 	@PostMapping(value = "/syncDataToAmritByHwc", consumes = "application/json", produces = "application/json")
-	@Operation(summary = "Sync data to AMRIT for already regestered beneficiary with AMRIT beneficiary id ")
-	public String syncDataToAmritHwc(@RequestBody String requestOBJ) {
-		OutputResponse response = new OutputResponse();
-		try {
-			if (requestOBJ != null) {
-				String s = rmnchDataSyncService.saveBeneficiaryDetailsAfterRegistration(requestOBJ);
-				response.setResponse(s);
-			} else
-				response.setError(5000, "Invalid/NULL request obj");
-		} catch (Exception e) {
-			logger.error("Error in RMNCH mobile data sync : {} " , e.getMessage());
-			response.setError(5000, "Error in RMNCH mobile data sync : " + e);
-		}
-		return response.toString();
+	@Operation(summary = "Sync data to AMRIT for already registered beneficiary with AMRIT beneficiary id")
+	public ResponseEntity<?> syncDataToAmritHwc(@RequestBody String requestOBJ) {
 
+		try {
+			if (requestOBJ == null || requestOBJ.isEmpty()) {
+				return ResponseEntity.badRequest().body("Invalid/NULL request obj");
+			}
+
+			JsonObject requestObj = new Gson().fromJson(requestOBJ, JsonObject.class);
+
+			Long beneficiaryID = requestObj.has("benficieryid") && !requestObj.get("benficieryid").isJsonNull()
+					? requestObj.get("benficieryid").getAsLong()
+					: null;
+
+			Long beneficiaryRegID = requestObj.has("benRegId") && !requestObj.get("benRegId").isJsonNull()
+					? requestObj.get("benRegId").getAsLong()
+					: null;
+
+			if (beneficiaryID == null || beneficiaryRegID == null) {
+				return ResponseEntity.badRequest().body("beneficiaryID or beneficiaryRegID is missing");
+			}
+
+			String result = rmnchDataSyncService.saveBeneficiaryDetailsAfterRegistration(
+					beneficiaryID,
+					beneficiaryRegID,
+					requestOBJ
+			);
+
+			return ResponseEntity.ok(result);
+
+		} catch (Exception e) {
+			logger.error("Error in RMNCH mobile data sync : {}", e.getMessage());
+			return ResponseEntity.internalServerError()
+					.body("Error in RMNCH mobile data sync : " + e.getMessage());
+		}
 	}
 
 
