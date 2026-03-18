@@ -89,6 +89,8 @@ public class BeneficiariesDTO implements Comparable<BeneficiariesDTO> {
 	private BigInteger religionId;
 	private String religion;
 	private String monthlyFamilyIncome;
+	private String reproductiveStatus;
+	private Integer reproductiveStatusId;
 	// End Outreach
 
 	// Start 1097

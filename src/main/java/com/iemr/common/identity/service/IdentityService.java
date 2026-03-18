@@ -1996,6 +1996,11 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             bdto.setFaceEmbedding(floatList);
         }
         // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
+        if(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId())!=null ){
+            bdto.setReproductiveStatus(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getMenstrualStatus());
+            bdto.setReproductiveStatusId(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatusId());
+        }
+
         bdto.setBeneficiaryFamilyTags(
                 mapper.mapToMBeneficiaryfamilymappingWithBenFamilyDTOList(benMap.getMBeneficiaryfamilymappings()));
         bdto.setBeneficiaryIdentites(
