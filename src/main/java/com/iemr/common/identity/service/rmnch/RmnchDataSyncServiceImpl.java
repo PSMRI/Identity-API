@@ -269,7 +269,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
-	public void saveBeneficiaryDetailsAfterRegistration(
+	public String saveBeneficiaryDetailsAfterRegistration(
 			Long beneficiaryID,
 			Long beneficiaryRegID,
 			String comingRequest) {
@@ -323,6 +323,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 			logger.error("Error saving BeneficiaryDetailsRmnch: " + e.getMessage());
 			throw e;
 		}
+		return "BeneficiaryDetailsRmnch saved for beneficiaryRegID:"+beneficiaryID;
 	}
 
 	@Override
