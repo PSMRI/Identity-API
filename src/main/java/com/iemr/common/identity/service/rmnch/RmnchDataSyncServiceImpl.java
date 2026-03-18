@@ -23,6 +23,7 @@ package com.iemr.common.identity.service.rmnch;
 
 import java.math.BigInteger;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -277,59 +278,74 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 			Long beneficiaryID,
 			Long beneficiaryRegID,
 			String comingRequest) {
+
 		try {
 			JsonObject requestObj = new Gson().fromJson(comingRequest, JsonObject.class);
 
-			RMNCHBeneficiaryDetailsRmnch beneficiaryDetailsRmnch =
+			RMNCHBeneficiaryDetailsRmnch entity =
 					rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
 
-			if (beneficiaryDetailsRmnch == null) {
-				beneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
+			if (entity == null) {
+				entity = new RMNCHBeneficiaryDetailsRmnch();
 			}
 
-			beneficiaryDetailsRmnch.setBenficieryid(BigInteger.valueOf(beneficiaryID));
-			beneficiaryDetailsRmnch.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
-			beneficiaryDetailsRmnch.setCreatedBy(
-					requestObj.get("createdBy").getAsString());
-			beneficiaryDetailsRmnch.setVanID(
-					requestObj.get("vanID").getAsInt());
-			beneficiaryDetailsRmnch.setParkingPlaceID(
-					requestObj.get("parkingPlaceID").getAsInt());
-			beneficiaryDetailsRmnch.setProviderServiceMapID(
-					requestObj.get("providerServiceMapID").getAsInt());
-			beneficiaryDetailsRmnch.setGenderId(
-					requestObj.get("genderID").getAsInt());
-			beneficiaryDetailsRmnch.setReproductiveStatusId(
-					requestObj.get("maritalStatusID").getAsInt());
+			String createdBy = getString(requestObj, "createdBy", "system");
 
-			if (requestObj.get("maritalStatusName") != null
-					&& !requestObj.get("maritalStatusName").isJsonNull()) {
-				beneficiaryDetailsRmnch.setReproductiveStatus(
-						requestObj.get("maritalStatusName").getAsString());
+			entity.setBenficieryid(BigInteger.valueOf(beneficiaryID));
+			entity.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
+			entity.setCreatedBy(createdBy);
+			entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+
+			entity.setVanID(getInt(requestObj, "vanID", null));
+			entity.setParkingPlaceID(getInt(requestObj, "parkingPlaceID", null));
+			entity.setProviderServiceMapID(getInt(requestObj, "providerServiceMapID", null));
+			entity.setGenderId(getInt(requestObj, "genderID", null));
+
+			entity.setReproductiveStatusId(
+					getInt(requestObj, "reproductiveStatusId",
+							getInt(requestObj, "maritalStatusID", null))
+			);
+
+			entity.setReproductiveStatus(
+					getString(requestObj, "reproductiveStatus", null)
+			);
+
+			entity.setFirstName(getString(requestObj, "firstName", null));
+			entity.setLastName(getString(requestObj, "lastName", null));
+			entity.setFatherName(getString(requestObj, "fatherName", null));
+			entity.setSpousename(getString(requestObj, "spouseName", null));
+			entity.setMaritalstatusId(getInt(requestObj, "maritalStatusID", null));
+			entity.setMaritalstatus(getString(requestObj, "maritalStatusName", null));
+
+			// DOB (String → Timestamp)
+			if (requestObj.has("dOB") && !requestObj.get("dOB").isJsonNull()) {
+				entity.setDob(Timestamp.valueOf(
+						requestObj.get("dOB").getAsString().replace("T", " ").replace("Z", "")
+				));
 			}
 
-			beneficiaryDetailsRmnch.setReproductiveStatusId(
-					requestObj.has("reproductiveStatusId") && !requestObj.get("reproductiveStatusId").isJsonNull()
-							? requestObj.get("reproductiveStatusId").getAsInt()
-							: requestObj.get("maritalStatusID").getAsInt()
-			);
+			rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
 
-			beneficiaryDetailsRmnch.setReproductiveStatus(
-					requestObj.has("reproductiveStatus") && !requestObj.get("reproductiveStatus").isJsonNull()
-							? requestObj.get("reproductiveStatus").getAsString()
-							: null
-			);
-
-			rMNCHBeneficiaryDetailsRmnchRepo.save(beneficiaryDetailsRmnch);
-			logger.info("BeneficiaryDetailsRmnch saved for beneficiaryRegID: " + beneficiaryRegID);
+			logger.info("Saved RMNCH for benRegID: " + beneficiaryRegID);
 
 		} catch (Exception e) {
-			logger.error("Error saving BeneficiaryDetailsRmnch: " + e.getMessage());
+			logger.error("Error: ", e);
 			throw e;
 		}
-		return "BeneficiaryDetailsRmnch saved for beneficiaryRegID:"+beneficiaryID;
+
+		return "Saved RMNCH for beneficiaryID: " + beneficiaryID;
+	}
+	private String getString(JsonObject obj, String key, String defaultVal) {
+		return (obj.has(key) && !obj.get(key).isJsonNull())
+				? obj.get(key).getAsString()
+				: defaultVal;
 	}
 
+	private Integer getInt(JsonObject obj, String key, Integer defaultVal) {
+		return (obj.has(key) && !obj.get(key).isJsonNull())
+				? obj.get(key).getAsInt()
+				: defaultVal;
+	}
 	@Override
 	public String getBenData(String requestOBJ, String authorisation) throws Exception {
 		String outputResponse = null;

@@ -125,6 +125,8 @@ public class IdentityDTO {
 	private Integer incomeStatusId;
 	private String incomeStatus;
 	private String monthlyFamilyIncome;
+	private String  reproductiveStatus;
+	private Integer reproductiveStatusId;
 
 	@Expose
 	private Integer vanID;
