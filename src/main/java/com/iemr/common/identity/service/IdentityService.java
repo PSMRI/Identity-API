@@ -1997,7 +1997,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         }
         // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
         if(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId())!=null ){
-            bdto.setReproductiveStatus(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getMenstrualStatus());
+            bdto.setReproductiveStatus(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatus());
             bdto.setReproductiveStatusId(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatusId());
         }
 
