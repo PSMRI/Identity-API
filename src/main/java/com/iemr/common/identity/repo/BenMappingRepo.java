@@ -142,4 +142,106 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
 	@Query("SELECT a FROM MBeneficiarymapping a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
 	MBeneficiarymapping getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
 			@Param("vanID") Integer vanID);
+
+	@Query("SELECT b.benRegId, b.benMapId FROM MBeneficiarymapping b WHERE benRegId IS NOT NULL AND deleted = false")
+    List<Object[]> getAllBeneficiaryIds();
+    
+    /**
+     * Get beneficiary IDs in batches for efficient processing
+     */
+    @Query(value = "SELECT BenRegId FROM i_beneficiarymapping " +
+                   "WHERE Deleted = false ORDER BY BenRegId LIMIT :limit OFFSET :offset", 
+           nativeQuery = true)
+    List<Object[]> getBeneficiaryIdsBatch(@Param("offset") int offset, @Param("limit") int limit);
+    
+    /**
+     * Count total non-deleted beneficiaries
+     */
+    @Query(value = "SELECT COUNT(*) FROM i_beneficiarymapping WHERE Deleted = false", nativeQuery = true)
+    long countActiveBeneficiaries();
+      /**
+     * COMPLETE DATA FETCH - Single query with all joins
+     * This is the key query that fetches everything needed for ES indexing
+     */
+    @Query(value = "SELECT " +
+        "m.BenRegId, " +                                        // 0
+        "brm.BeneficiaryId, " +                                 // 1
+        "d.FirstName, " +                                       // 2
+        "d.MiddleName, " +                                      // 3
+        "d.LastName, " +                                        // 4
+        "d.GenderID, " +                                        // 5
+        "g.GenderName, " +                                      // 6
+        "d.DOB, " +                                             // 7
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()), " +            // 8 - age
+        "d.FatherName, " +                                      // 9
+        "d.SpouseName, " +                                      // 10
+        "d.MaritalStatusID, " +                                 // 11
+        "ms.Status as MaritalStatusName, " +                    // 12 - MaritalStatusName
+        "d.IsHIVPositive, " +                                   // 13
+        "m.CreatedBy, " +                                       // 14
+        "m.CreatedDate, " +                                     // 15
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +             // 16
+        "m.BenAccountID, " +                                    // 17
+        "contact.PreferredPhoneNum, " +                         // 18
+        "fam.BenFamilyMapId, " +                                // 19
+        "addr.CurrStateId, " +                                  // 20
+        "addr.CurrState, " +                                    // 21
+        "addr.CurrDistrictId, " +                               // 22
+        "addr.CurrDistrict, " +                                 // 23
+        "addr.CurrSubDistrictId, " +                            // 24
+        "addr.CurrSubDistrict, " +                              // 25
+        "addr.CurrVillageId, " +                                // 26
+        "addr.CurrVillage, " +                                  // 27
+        "addr.CurrPinCode, " +                                  // 28
+        "addr.CurrServicePointId, " +                           // 29
+        "addr.CurrServicePoint, " +                             // 30
+        "addr.ParkingPlaceID, " +                               // 31
+        "addr.PermStateId, " +                                  // 32
+        "addr.PermState, " +                                    // 33
+        "addr.PermDistrictId, " +                               // 34
+        "addr.PermDistrict, " +                                 // 35
+        "addr.PermSubDistrictId, " +                            // 36
+        "addr.PermSubDistrict, " +                              // 37
+        "addr.PermVillageId, " +                                // 38
+        "addr.PermVillage " +                                   // 39
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+        "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.MaritalStatusID " +
+        "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
+        "LEFT JOIN db_iemr.m_benhealthidmapping h ON m.BenRegId = h.BeneficiaryRegID " +
+        "LEFT JOIN i_beneficiaryfamilymapping fam " +
+        "       ON m.BenRegId = fam.AssociatedBenRegID " +
+        "      AND fam.Deleted = false " +
+        "WHERE m.BenRegId IN :benRegIds " +
+        "AND m.Deleted = false",
+        nativeQuery = true)
+		
+    List<Object[]> findCompleteDataByBenRegIds(@Param("benRegIds") List<BigInteger> benRegIds);
+    
+    /**
+     * Find with all details (JPA approach - for single beneficiary)
+     */
+    @Query("SELECT m FROM MBeneficiarymapping m " +
+           "LEFT JOIN FETCH m.mBeneficiarydetail " +
+           "LEFT JOIN FETCH m.mBeneficiarycontact " +
+           "LEFT JOIN FETCH m.mBeneficiaryaddress " +
+           "WHERE m.benRegId = :benRegId AND m.deleted = false")
+    MBeneficiarymapping findByBenRegIdWithDetails(@Param("benRegId") BigInteger benRegId);
+    
+    /**
+     * Simple find by benRegId
+     */
+    @Query("SELECT m FROM MBeneficiarymapping m WHERE m.benRegId = :benRegId AND m.deleted = false")
+    MBeneficiarymapping findByBenRegId(@Param("benRegId") BigInteger benRegId);
+    
+    /**
+     * Check if beneficiary exists
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM i_beneficiarymapping WHERE BenRegId = :benRegId AND Deleted = false", nativeQuery = true)
+    boolean existsByBenRegId(@Param("benRegId") BigInteger benRegId);
+
+
 }

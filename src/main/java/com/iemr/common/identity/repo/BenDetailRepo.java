@@ -23,6 +23,7 @@ package com.iemr.common.identity.repo;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.Modifying;
@@ -146,5 +147,238 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 
 	@Query("SELECT b FROM MBeneficiarydetail b WHERE b.familyId =:familyid  ")
 	List<MBeneficiarydetail> searchByFamilyId(@Param("familyid") String familyid);
+
+	  /**
+     * Find complete beneficiary data by IDs from Elasticsearch
+     */
+    @Query(value = "SELECT " +
+        "m.BenRegId, " +                                    // 0
+        "brm.beneficiaryID, " +                             // 1
+        "d.FirstName, " +                                   // 2
+        "d.MiddleName, " +                                  // 3 
+        "d.LastName, " +                                    // 4
+        "d.GenderID, " +                                    // 5
+        "g.GenderName, " +                                  // 6
+        "d.DOB, " +                                         // 7
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " +  // 8
+        "d.FatherName, " +                                  // 9
+        "d.SpouseName, " +                                  // 10
+        "d.MaritalStatusID, " +                             // 11 
+        "ms.Status as MaritalStatusName, " +                // 12
+        "d.IsHIVPositive, " +                               // 13
+        "m.CreatedBy, " +                                   // 14
+        "m.CreatedDate, " +                                 // 15
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +          // 16
+        "m.BenAccountID, " +                                // 17
+        "addr.CurrStateId, " +                              // 18
+        "addr.CurrState, " +                                // 19
+        "addr.CurrDistrictId, " +                           // 20
+        "addr.CurrDistrict, " +                             // 21
+        "addr.CurrSubDistrictId, " +                        // 22
+        "addr.CurrSubDistrict, " +                          // 23
+        "addr.CurrPinCode, " +                              // 24
+        "addr.CurrServicePointId, " +                       // 25
+        "addr.CurrServicePoint, " +                         // 26
+        "addr.ParkingPlaceID, " +                           // 27
+        "contact.PreferredPhoneNum, " +                      // 28
+        "addr.CurrVillageId, " +                            // 29 
+        "addr.CurrVillage " +                               // 30 
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
+        "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +        
+        "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId IN (:ids) AND m.Deleted = false", 
+        nativeQuery = true)
+    List<Object[]> findCompleteDataByIds(@Param("ids") List<Long> ids);
+    
+    /**
+     * Direct search in database (fallback)
+     */
+    @Query(value = "SELECT " +
+        "m.BenRegId, " +
+        "brm.beneficiaryID, " +
+        "d.FirstName, " +
+        "d.MiddleName, " +  
+        "d.LastName, " +
+        "d.GenderID, " +
+        "g.GenderName, " +
+        "d.DOB, " +
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) as Age, " +
+        "d.FatherName, " +
+        "d.SpouseName, " +
+        "d.MaritalStatusID, " +                             
+        "ms.Status as MaritalStatusName, " +                
+        "d.IsHIVPositive, " +
+        "m.CreatedBy, " +
+        "m.CreatedDate, " +
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +
+        "m.BenAccountID, " +
+        "addr.CurrStateId, " +
+        "addr.CurrState, " +
+        "addr.CurrDistrictId, " +
+        "addr.CurrDistrict, " +
+        "addr.CurrSubDistrictId, " +
+        "addr.CurrSubDistrict, " +
+        "addr.CurrPinCode, " +
+        "addr.CurrServicePointId, " +
+        "addr.CurrServicePoint, " +
+        "addr.ParkingPlaceID, " +
+        "contact.PreferredPhoneNum, " +
+        "addr.CurrVillageId, " +                           
+        "addr.CurrVillage " +                               
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+        "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +  
+        "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE (d.FirstName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.MiddleName LIKE CONCAT('%', :query, '%') " + 
+        "   OR d.LastName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.FatherName LIKE CONCAT('%', :query, '%') " +
+        "   OR d.BeneficiaryRegID = :query " +
+        "   OR contact.PreferredPhoneNum = :query " +
+        "   OR contact.PhoneNum1 = :query " +
+        "   OR contact.PhoneNum2 = :query " +
+        "   OR contact.PhoneNum3 = :query " +
+        "   OR contact.PhoneNum4 = :query " +
+        "   OR contact.PhoneNum5 = :query) " +
+        "AND m.Deleted = false " +
+        "LIMIT 20", 
+        nativeQuery = true)
+    List<Object[]> searchBeneficiaries(@Param("query") String query);
+    
+    /**
+     * Get all phone numbers for a beneficiary
+     */
+    @Query(value = "SELECT " +
+        "contact.PreferredPhoneNum as phoneNo, " +
+        "'Preferred' as phoneType, " +
+        "1 as priority " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PreferredPhoneNum IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum1, contact.PhoneTyp1, 2 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum1 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum2, contact.PhoneTyp2, 3 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum2 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum3, contact.PhoneTyp3, 4 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum3 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum4, contact.PhoneTyp4, 5 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum4 IS NOT NULL " +
+        "UNION ALL " +
+        "SELECT contact.PhoneNum5, contact.PhoneTyp5, 6 " +
+        "FROM i_beneficiarymapping m " +
+        "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
+        "WHERE m.BenRegId = :beneficiaryId AND contact.PhoneNum5 IS NOT NULL " +
+        "ORDER BY priority", 
+        nativeQuery = true)
+    List<Object[]> findPhoneNumbersByBeneficiaryId(@Param("beneficiaryId") Long beneficiaryId);
+    
+// Advance Search ES
+@Query(value =
+    "SELECT DISTINCT " +
+    "m.BenRegId, " +                                // 0
+    "brm.beneficiaryID, " +                         // 1
+    "d.FirstName, " +                               // 2
+    "d.MiddleName, " +                              // 3
+    "d.LastName, " +                                // 4
+    "d.GenderID, " +                                // 5
+    "g.GenderName, " +                              // 6
+    "d.DOB, " +                                     // 7
+    "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()) AS Age, "+
+    "d.FatherName, " +                              // 9
+    "d.SpouseName, " +                              // 10
+    "d.MaritalStatusID, " +                         // 11
+    "ms.Status AS MaritalStatusName, " +            // 12
+    "d.IsHIVPositive, " +                           // 13
+    "m.CreatedBy, " +                               // 14
+    "m.CreatedDate, " +                             // 15
+    "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +      // 16
+    "m.BenAccountID, " +                            // 17
+    "addr.CurrStateId, " +                          // 18
+    "addr.CurrState, " +                            // 19
+    "addr.CurrDistrictId, " +                       // 20
+    "addr.CurrDistrict, " +                         // 21
+    "addr.CurrSubDistrictId, " +                    // 22
+    "addr.CurrSubDistrict, " +                      // 23
+    "addr.CurrPinCode, " +                          // 24
+    "addr.CurrServicePointId, " +                   // 25
+    "addr.CurrServicePoint, " +                     // 26
+    "addr.ParkingPlaceID, " +                       // 27
+    "contact.PreferredPhoneNum, " +                  // 28
+    "addr.CurrVillageId, " +                            
+    "addr.CurrVillage " +                               
+    "FROM i_beneficiarymapping m " +
+    "LEFT JOIN i_beneficiarydetails d " +
+    "       ON m.BenDetailsId = d.BeneficiaryDetailsID " +
+    "LEFT JOIN db_iemr.m_gender g " +
+    "       ON d.GenderID = g.GenderID " +
+    "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.StatusID " +  
+    "LEFT JOIN i_beneficiaryaddress addr " +
+    "       ON m.BenAddressId = addr.BenAddressID " +
+    "LEFT JOIN i_beneficiarycontacts contact " +
+    "       ON m.BenContactsId = contact.BenContactsID " +
+	"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
+    "WHERE m.Deleted = false " +
+
+    "AND (:firstName IS NULL OR d.FirstName LIKE CONCAT('%', :firstName, '%')) " +
+    "AND (:middleName IS NULL OR d.MiddleName LIKE CONCAT('%', :middleName, '%')) " + 
+    "AND (:lastName IS NULL OR d.LastName LIKE CONCAT('%', :lastName, '%')) " +
+    "AND (:genderId IS NULL OR d.GenderID = :genderId) " +
+    "AND (:dob IS NULL OR DATE(d.DOB) = DATE(:dob)) " +
+
+    "AND (:stateId IS NULL OR addr.CurrStateId = :stateId) " +
+    "AND (:districtId IS NULL OR addr.CurrDistrictId = :districtId) " +
+    "AND (:blockId IS NULL OR addr.CurrSubDistrictId = :blockId) " +
+
+    "AND (:fatherName IS NULL OR d.FatherName LIKE CONCAT('%', :fatherName, '%')) " +
+    "AND (:spouseName IS NULL OR d.SpouseName LIKE CONCAT('%', :spouseName, '%')) " +
+    "AND (:maritalStatus IS NULL OR d.MaritalStatusID = :maritalStatus) " +
+    "AND (:phoneNumber IS NULL OR " +
+    "     contact.PreferredPhoneNum LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum1 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum2 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum3 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum4 LIKE CONCAT('%', :phoneNumber, '%') OR " +
+    "     contact.PhoneNum5 LIKE CONCAT('%', :phoneNumber, '%')) " +
+
+    "AND (:beneficiaryId IS NULL OR d.BeneficiaryRegID = :beneficiaryId) " +
+
+    "ORDER BY m.CreatedDate DESC " +
+    "LIMIT 100",
+    nativeQuery = true)
+List<Object[]> advancedSearchBeneficiaries(
+    @Param("firstName") String firstName,
+    @Param("middleName") String middleName,
+    @Param("lastName") String lastName,
+    @Param("genderId") Integer genderId,
+    @Param("dob") Date dob,
+    @Param("stateId") Integer stateId,
+    @Param("districtId") Integer districtId,
+    @Param("blockId") Integer blockId,
+    @Param("fatherName") String fatherName,
+    @Param("spouseName") String spouseName,
+    @Param("maritalStatus") String maritalStatus,
+    @Param("phoneNumber") String phoneNumber,
+    @Param("beneficiaryId") String beneficiaryId
+);
+
 
 }
