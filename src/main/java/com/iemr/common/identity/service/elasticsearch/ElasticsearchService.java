@@ -96,88 +96,147 @@ public class ElasticsearchService {
                                     .query(qq -> qq
                                             .bool(b -> {
                                                 if (!isNumeric) {
-                                                    // 1. EXACT MATCH (highest priority)
-                                                    b.should(s1 -> s1.term(t -> t
-                                                            .field("firstName.keyword")
-                                                            .value(query)
-                                                            .boost(20.0f)));
-                                                    b.should(s2 -> s2.term(t -> t
-                                                            .field("middleName.keyword")
-                                                            .value(query)
-                                                            .boost(20.0f)));
-                                                    b.should(s3 -> s3.term(t -> t
-                                                            .field("lastName.keyword")
-                                                            .value(query)
-                                                            .boost(20.0f)));
+                                                    String[] queryWords = query.trim().split("\\s+");
+                                                    boolean isMultiWord = queryWords.length > 1;
+
+                                                    if (isMultiWord) {
+                                                        // MULTI-WORD SEARCH: Each word should match at least one name field
+                                                        // Using should instead of must so that partial matches still return results
+                                                        // e.g., "Ravi Kumar XYZ" → if only "Ravi" and "Kumar" match, results are still returned
+                                                        for (String word : queryWords) {
+                                                            final String w = word;
+                                                            final String wLower = word.toLowerCase();
+                                                            b.should(m -> m.bool(wb -> {
+                                                                // Exact match (case-insensitive via lowercase)
+                                                                wb.should(s1 -> s1.term(t -> t.field("firstName.keyword").value(wLower).boost(20.0f)));
+                                                                wb.should(s2 -> s2.term(t -> t.field("middleName.keyword").value(wLower).boost(20.0f)));
+                                                                wb.should(s3 -> s3.term(t -> t.field("lastName.keyword").value(wLower).boost(20.0f)));
+                                                                // Prefix match on analyzed text fields (works from 1st character, case-insensitive via analyzer)
+                                                                wb.should(s4 -> s4.prefix(p -> p.field("firstName").value(wLower).boost(12.0f)));
+                                                                wb.should(s5 -> s5.prefix(p -> p.field("middleName").value(wLower).boost(12.0f)));
+                                                                wb.should(s6 -> s6.prefix(p -> p.field("lastName").value(wLower).boost(12.0f)));
+                                                                // Prefix match on keyword fields (case-insensitive)
+                                                                wb.should(s7 -> s7.prefix(p -> p.field("firstName.keyword").value(wLower).caseInsensitive(true).boost(10.0f)));
+                                                                wb.should(s8 -> s8.prefix(p -> p.field("middleName.keyword").value(wLower).caseInsensitive(true).boost(10.0f)));
+                                                                wb.should(s9 -> s9.prefix(p -> p.field("lastName.keyword").value(wLower).caseInsensitive(true).boost(10.0f)));
+                                                                // Fuzzy match (kicks in for 3+ char words)
+                                                                if (w.length() >= 3) {
+                                                                    wb.should(s10 -> s10.match(mm -> mm.field("firstName").query(w).fuzziness("AUTO").prefixLength(1).maxExpansions(50).boost(5.0f)));
+                                                                    wb.should(s11 -> s11.match(mm -> mm.field("middleName").query(w).fuzziness("AUTO").prefixLength(1).maxExpansions(50).boost(5.0f)));
+                                                                    wb.should(s12 -> s12.match(mm -> mm.field("lastName").query(w).fuzziness("AUTO").prefixLength(1).maxExpansions(50).boost(5.0f)));
+                                                                }
+                                                                // Wildcard starts-with match (case-insensitive)
+                                                                if (w.length() >= 2) {
+                                                                    wb.should(s13 -> s13.wildcard(wc -> wc.field("firstName.keyword").value(wLower + "*").caseInsensitive(true).boost(8.0f)));
+                                                                    wb.should(s14 -> s14.wildcard(wc -> wc.field("middleName.keyword").value(wLower + "*").caseInsensitive(true).boost(8.0f)));
+                                                                    wb.should(s15 -> s15.wildcard(wc -> wc.field("lastName.keyword").value(wLower + "*").caseInsensitive(true).boost(8.0f)));
+                                                                }
+                                                                // Contains match (case-insensitive)
+                                                                if (w.length() >= 3) {
+                                                                    wb.should(s16 -> s16.wildcard(wc -> wc.field("firstName.keyword").value("*" + wLower + "*").caseInsensitive(true).boost(3.0f)));
+                                                                    wb.should(s17 -> s17.wildcard(wc -> wc.field("middleName.keyword").value("*" + wLower + "*").caseInsensitive(true).boost(3.0f)));
+                                                                    wb.should(s18 -> s18.wildcard(wc -> wc.field("lastName.keyword").value("*" + wLower + "*").caseInsensitive(true).boost(3.0f)));
+                                                                }
+                                                                wb.minimumShouldMatch("1");
+                                                                return wb;
+                                                            }));
+                                                        }
+                                                    } else {
+                                                        // SINGLE-WORD SEARCH: original logic
+                                                        String queryLower = query.toLowerCase();
+
+                                                        // 1. EXACT MATCH (highest priority)
+                                                        b.should(s1 -> s1.term(t -> t
+                                                                .field("firstName.keyword")
+                                                                .value(queryLower)
+                                                                .boost(20.0f)));
+                                                        b.should(s2 -> s2.term(t -> t
+                                                                .field("middleName.keyword")
+                                                                .value(queryLower)
+                                                                .boost(20.0f)));
+                                                        b.should(s3 -> s3.term(t -> t
+                                                                .field("lastName.keyword")
+                                                                .value(queryLower)
+                                                                .boost(20.0f)));
 
                                                     // 2. PREFIX MATCH (high priority for "vani" → "vanitha")
-                                                    b.should(s4 -> s4.prefix(p -> p
-                                                            .field("firstName.keyword")
-                                                            .value(query)
-                                                            .boost(10.0f)));
-                                                    b.should(s5 -> s5.prefix(p -> p
-                                                            .field("middleName.keyword")
-                                                            .value(query)
-                                                            .boost(10.0f)));
-                                                    b.should(s6 -> s6.prefix(p -> p
-                                                            .field("lastName.keyword")
-                                                            .value(query)
-                                                            .boost(10.0f)));
+                                                        b.should(s4 -> s4.prefix(p -> p
+                                                                .field("firstName.keyword")
+                                                                .value(queryLower)
+                                                                .caseInsensitive(true)
+                                                                .boost(10.0f)));
+                                                        b.should(s5 -> s5.prefix(p -> p
+                                                                .field("middleName.keyword")
+                                                                .value(queryLower)
+                                                                .caseInsensitive(true)
+                                                                .boost(10.0f)));
+                                                        b.should(s6 -> s6.prefix(p -> p
+                                                                .field("lastName.keyword")
+                                                                .value(queryLower)
+                                                                .caseInsensitive(true)
+                                                                .boost(10.0f)));
 
                                                     // 3. FUZZY MATCH (for typos: "vanit" → "vanitha")
                                                     // AUTO fuzziness: 1 edit for 3-5 chars, 2 edits for 6+ chars
-                                                    b.should(s7 -> s7.match(m -> m
-                                                            .field("firstName")
-                                                            .query(query)
-                                                            .fuzziness("AUTO")
-                                                            .prefixLength(1) // First char must match exactly
-                                                            .maxExpansions(50)
-                                                            .boost(5.0f)));
-                                                    b.should(s8 -> s8.match(m -> m
-                                                            .field("middleName")
-                                                            .query(query)
-                                                            .fuzziness("AUTO")
-                                                            .prefixLength(1) // First char must match exactly
-                                                            .maxExpansions(50)
-                                                            .boost(5.0f)));
-                                                    b.should(s9 -> s9.match(m -> m
-                                                            .field("lastName")
-                                                            .query(query)
-                                                            .fuzziness("AUTO")
-                                                            .prefixLength(1)
-                                                            .maxExpansions(50)
-                                                            .boost(5.0f)));
+                                                        b.should(s7 -> s7.match(m -> m
+                                                                .field("firstName")
+                                                                .query(query)
+                                                                .fuzziness("AUTO")
+                                                                .prefixLength(1)
+                                                                .maxExpansions(50)
+                                                                .boost(5.0f)));
+                                                        b.should(s8 -> s8.match(m -> m
+                                                                .field("middleName")
+                                                                .query(query)
+                                                                .fuzziness("AUTO")
+                                                                .prefixLength(1)
+                                                                .maxExpansions(50)
+                                                                .boost(5.0f)));
+                                                        b.should(s9 -> s9.match(m -> m
+                                                                .field("lastName")
+                                                                .query(query)
+                                                                .fuzziness("AUTO")
+                                                                .prefixLength(1)
+                                                                .maxExpansions(50)
+                                                                .boost(5.0f)));
 
                                                     // 4. WILDCARD MATCH (for "sur*" → "suraj", "surya")
-                                                    if (query.length() >= 2) {
-                                                        b.should(s10 -> s10.wildcard(w -> w
-                                                                .field("firstName.keyword")
-                                                                .value(query + "*")
-                                                                .boost(8.0f)));
-                                                        b.should(s11 -> s11.wildcard(w -> w
-                                                                .field("middleName.keyword")
-                                                                .value(query + "*")
-                                                                .boost(8.0f)));
-                                                        b.should(s12 -> s12.wildcard(w -> w
-                                                                .field("lastName.keyword")
-                                                                .value(query + "*")
-                                                                .boost(8.0f)));
-                                                    }
+                                                        if (query.length() >= 2) {
+                                                            b.should(s10 -> s10.wildcard(w -> w
+                                                                    .field("firstName.keyword")
+                                                                    .value(queryLower + "*")
+                                                                    .caseInsensitive(true)
+                                                                    .boost(8.0f)));
+                                                            b.should(s11 -> s11.wildcard(w -> w
+                                                                    .field("middleName.keyword")
+                                                                    .value(queryLower + "*")
+                                                                    .caseInsensitive(true)
+                                                                    .boost(8.0f)));
+                                                            b.should(s12 -> s12.wildcard(w -> w
+                                                                    .field("lastName.keyword")
+                                                                    .value(queryLower + "*")
+                                                                    .caseInsensitive(true)
+                                                                    .boost(8.0f)));
+                                                        }
 
                                                     // 5. CONTAINS MATCH (for partial matches anywhere)
-                                                    if (query.length() >= 3) {
-                                                        b.should(s13 -> s13.wildcard(w -> w
-                                                                .field("firstName.keyword")
-                                                                .value("*" + query + "*")
-                                                                .boost(3.0f)));
-                                                        b.should(s14 -> s14.wildcard(w -> w
-                                                                .field("middleName.keyword")
-                                                                .value("*" + query + "*")
-                                                                .boost(3.0f)));
-                                                        b.should(s15 -> s15.wildcard(w -> w
-                                                                .field("lastName.keyword")
-                                                                .value("*" + query + "*")
-                                                                .boost(3.0f)));
+                                                        if (query.length() >= 3) {
+                                                            b.should(s13 -> s13.wildcard(w -> w
+                                                                    .field("firstName.keyword")
+                                                                    .value("*" + queryLower + "*")
+                                                                    .caseInsensitive(true)
+                                                                    .boost(3.0f)));
+                                                            b.should(s14 -> s14.wildcard(w -> w
+                                                                    .field("middleName.keyword")
+                                                                    .value("*" + queryLower + "*")
+                                                                    .caseInsensitive(true)
+                                                                    .boost(3.0f)));
+                                                            b.should(s15 -> s15.wildcard(w -> w
+                                                                    .field("lastName.keyword")
+                                                                    .value("*" + queryLower + "*")
+                                                                    .caseInsensitive(true)
+                                                                    .boost(3.0f)));
+                                                        }
                                                     }
                                                 }
 
@@ -239,6 +298,7 @@ public class ElasticsearchService {
                                                     }
                                                 }
 
+                                                // At least one should clause must match for all query types
                                                 b.minimumShouldMatch("1");
                                                 return b;
                                             }))

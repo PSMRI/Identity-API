@@ -165,53 +165,54 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
      */
     @Query(value = "SELECT " +
         "m.BenRegId, " +                                        // 0
-        "brm.BeneficiaryId, " +
+        "brm.BeneficiaryId, " +                                 // 1
         "d.FirstName, " +                                       // 2
-        "d.LastName, " +                                        // 3
-        "d.GenderID, " +                                        // 4
-        "g.GenderName, " +                                      // 5
-        "d.DOB, " +                                             // 6
-        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()), " +            // 7 - age
-        "d.FatherName, " +                                      // 8
-        "d.SpouseName, " +                                      // 9
-        "d.IsHIVPositive, " +                                   // 10
-        "m.CreatedBy, " +                                       // 11
-        "m.CreatedDate, " +                                     // 12
-        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +             // 13
-        "m.BenAccountID, " +                                    // 14
-        "contact.PreferredPhoneNum, " +                         // 15
-		// "h.HealthID, " + "h.HealthIDNumber, " +
-		"fam.BenFamilyMapId, " +  
-        "addr.CurrStateId, " +                                  // 19
-        "addr.CurrState, " +                                    // 20
-        "addr.CurrDistrictId, " +                               // 21
-        "addr.CurrDistrict, " +                                 // 22
-        "addr.CurrSubDistrictId, " +                            // 23
-        "addr.CurrSubDistrict, " +                              // 24
-        "addr.CurrVillageId, " +                                // 25
-        "addr.CurrVillage, " +                                  // 26
-        "addr.CurrPinCode, " +                                  // 27
-        "addr.CurrServicePointId, " +                           // 28
-        "addr.CurrServicePoint, " +                             // 29
-        "addr.ParkingPlaceID, " +                               // 30
-        "addr.PermStateId, " +                                  // 31
-        "addr.PermState, " +                                    // 32
-        "addr.PermDistrictId, " +                               // 33
-        "addr.PermDistrict, " +                                 // 34
-        "addr.PermSubDistrictId, " +                            // 35
-        "addr.PermSubDistrict, " +                              // 36
-        "addr.PermVillageId, " +                                // 37
-        "addr.PermVillage " +                                  // 38
-        // "id.GovtIdentityNo, " +                                 // 39 - Aadhar/Govt ID
-        // "id.IdentityNo " +                                      // 40 - Another identity
+        "d.MiddleName, " +                                      // 3
+        "d.LastName, " +                                        // 4
+        "d.GenderID, " +                                        // 5
+        "g.GenderName, " +                                      // 6
+        "d.DOB, " +                                             // 7
+        "TIMESTAMPDIFF(YEAR, d.DOB, CURDATE()), " +            // 8 - age
+        "d.FatherName, " +                                      // 9
+        "d.SpouseName, " +                                      // 10
+        "d.MaritalStatusID, " +                                 // 11
+        "ms.Status as MaritalStatusName, " +                    // 12 - MaritalStatusName
+        "d.IsHIVPositive, " +                                   // 13
+        "m.CreatedBy, " +                                       // 14
+        "m.CreatedDate, " +                                     // 15
+        "UNIX_TIMESTAMP(m.LastModDate) * 1000, " +             // 16
+        "m.BenAccountID, " +                                    // 17
+        "contact.PreferredPhoneNum, " +                         // 18
+        "fam.BenFamilyMapId, " +                                // 19
+        "addr.CurrStateId, " +                                  // 20
+        "addr.CurrState, " +                                    // 21
+        "addr.CurrDistrictId, " +                               // 22
+        "addr.CurrDistrict, " +                                 // 23
+        "addr.CurrSubDistrictId, " +                            // 24
+        "addr.CurrSubDistrict, " +                              // 25
+        "addr.CurrVillageId, " +                                // 26
+        "addr.CurrVillage, " +                                  // 27
+        "addr.CurrPinCode, " +                                  // 28
+        "addr.CurrServicePointId, " +                           // 29
+        "addr.CurrServicePoint, " +                             // 30
+        "addr.ParkingPlaceID, " +                               // 31
+        "addr.PermStateId, " +                                  // 32
+        "addr.PermState, " +                                    // 33
+        "addr.PermDistrictId, " +                               // 34
+        "addr.PermDistrict, " +                                 // 35
+        "addr.PermSubDistrictId, " +                            // 36
+        "addr.PermSubDistrict, " +                              // 37
+        "addr.PermVillageId, " +                                // 38
+        "addr.PermVillage " +                                   // 39
         "FROM i_beneficiarymapping m " +
         "LEFT JOIN i_beneficiarydetails d ON m.BenDetailsId = d.BeneficiaryDetailsID " +
         "LEFT JOIN db_iemr.m_gender g ON d.GenderID = g.GenderID " +
+        "LEFT JOIN db_iemr.m_maritalstatus ms ON d.MaritalStatusID = ms.MaritalStatusID " +
         "LEFT JOIN i_beneficiaryaddress addr ON m.BenAddressId = addr.BenAddressID " +
         "LEFT JOIN i_beneficiarycontacts contact ON m.BenContactsId = contact.BenContactsID " +
-		"LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
-		"LEFT JOIN db_iemr.m_benhealthidmapping h ON m.BenRegId = h.BeneficiaryRegID " +
-		 "LEFT JOIN i_beneficiaryfamilymapping fam " +
+        "LEFT JOIN m_beneficiaryregidmapping brm ON brm.BenRegId = m.BenRegId " +
+        "LEFT JOIN db_iemr.m_benhealthidmapping h ON m.BenRegId = h.BeneficiaryRegID " +
+        "LEFT JOIN i_beneficiaryfamilymapping fam " +
         "       ON m.BenRegId = fam.AssociatedBenRegID " +
         "      AND fam.Deleted = false " +
         "WHERE m.BenRegId IN :benRegIds " +
