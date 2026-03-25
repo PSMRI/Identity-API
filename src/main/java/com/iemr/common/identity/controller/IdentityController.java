@@ -30,10 +30,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.iemr.common.identity.data.rmnch.RMNCHBeneficiaryDetailsRmnch;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -314,6 +317,19 @@ public class IdentityController {
 					5000, "failure", "");
 		}
 		return response;
+	}
+
+
+	@PostMapping("/getRmnchDataByBenRedID")
+	public ResponseEntity<RMNCHBeneficiaryDetailsRmnch> getRmnchDataByBenID(
+			@RequestBody BigInteger object) {
+
+		try {
+			RMNCHBeneficiaryDetailsRmnch data = svc.getRmnchDataByBenID(object);
+			return ResponseEntity.ok(data);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+		}
 	}
 	// search beneficiary by lastModDate and districtID
 		@Operation(summary ="Get count of beneficiary by villageId and last modified date-time")

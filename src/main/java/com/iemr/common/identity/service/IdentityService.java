@@ -799,6 +799,12 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         return beneficiaryList;
     }
 
+
+    public RMNCHBeneficiaryDetailsRmnch getRmnchDataByBenID(BigInteger benID) {
+
+        return rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID);
+    }
+
     public Long countBeneficiaryByVillageIdAndLastModifyDate(List<Integer> villageIDs, Timestamp lastModifiedDate) {
         Long beneficiaryCount = 0L;
         try {
@@ -1996,6 +2002,11 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             bdto.setFaceEmbedding(floatList);
         }
         // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
+        if(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId())!=null ){
+            bdto.setReproductiveStatus(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatus());
+            bdto.setReproductiveStatusId(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatusId());
+        }
+
         bdto.setBeneficiaryFamilyTags(
                 mapper.mapToMBeneficiaryfamilymappingWithBenFamilyDTOList(benMap.getMBeneficiaryfamilymappings()));
         bdto.setBeneficiaryIdentites(

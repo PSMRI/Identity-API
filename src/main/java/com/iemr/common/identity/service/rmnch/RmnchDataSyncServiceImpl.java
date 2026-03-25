@@ -23,6 +23,7 @@ package com.iemr.common.identity.service.rmnch;
 
 import java.math.BigInteger;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.iemr.common.identity.utils.OutputResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,6 +80,8 @@ import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
 import com.iemr.common.identity.utils.http.HttpUtils;
 import com.iemr.common.identity.utils.mapper.InputMapper;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
 @Qualifier("rmnchServiceImpl")
@@ -110,7 +115,6 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHBenContactRepo rMNCHBenContactRepo;
 	@Autowired
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
-
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ) throws Exception {
@@ -267,6 +271,92 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		return new Gson().toJson(resultMap);
 	}
 
+
+
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public String saveBeneficiaryDetailsAfterRegistration(
+			Long beneficiaryID,
+			Long beneficiaryRegID,
+			String comingRequest) {
+
+		try {
+			JsonObject requestObj = new Gson().fromJson(comingRequest, JsonObject.class);
+
+			// ✅ use find instead of get
+			RMNCHBeneficiaryDetailsRmnch entity =
+					rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
+
+			boolean isNew = false;
+
+			if (entity == null) {
+				entity = new RMNCHBeneficiaryDetailsRmnch();
+				isNew = true;
+			}
+
+			String createdBy = getString(requestObj, "createdBy", "system");
+
+			entity.setBenficieryid(BigInteger.valueOf(beneficiaryID));
+			entity.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
+
+			// ✅ Only set created fields for new record
+			if (isNew) {
+				entity.setCreatedBy(createdBy);
+				entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+			} else {
+				entity.setUpdatedBy(createdBy);
+				entity.setUpdatedDate(new Timestamp(System.currentTimeMillis()));
+			}
+
+			entity.setVanID(getInt(requestObj, "vanID", null));
+			entity.setParkingPlaceID(getInt(requestObj, "parkingPlaceID", null));
+			entity.setProviderServiceMapID(getInt(requestObj, "providerServiceMapID", null));
+			entity.setGenderId(getInt(requestObj, "genderID", null));
+
+			entity.setReproductiveStatusId(
+					getInt(requestObj, "reproductiveStatusId",
+							getInt(requestObj, "maritalStatusID", null))
+			);
+
+			entity.setReproductiveStatus(
+					getString(requestObj, "reproductiveStatus", null)
+			);
+
+			entity.setFirstName(getString(requestObj, "firstName", null));
+			entity.setLastName(getString(requestObj, "lastName", null));
+			entity.setFatherName(getString(requestObj, "fatherName", null));
+			entity.setSpousename(getString(requestObj, "spouseName", null));
+			entity.setMaritalstatusId(getInt(requestObj, "maritalStatusID", null));
+			entity.setMaritalstatus(getString(requestObj, "maritalStatusName", null));
+
+			// DOB
+			if (requestObj.has("dOB") && !requestObj.get("dOB").isJsonNull()) {
+				entity.setDob(Timestamp.valueOf(
+						requestObj.get("dOB").getAsString().replace("T", " ").replace("Z", "")
+				));
+			}
+
+			rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
+
+			logger.info("Saved RMNCH for benRegID: " + beneficiaryRegID);
+
+		} catch (Exception e) {
+			logger.error("Error: ", e);
+			throw e;
+		}
+
+		return "Saved RMNCH for beneficiaryID: " + beneficiaryID;
+	}
+	private String getString(JsonObject obj, String key, String defaultVal) {
+		return (obj.has(key) && !obj.get(key).isJsonNull())
+				? obj.get(key).getAsString()
+				: defaultVal;
+	}
+
+	private Integer getInt(JsonObject obj, String key, Integer defaultVal) {
+		return (obj.has(key) && !obj.get(key).isJsonNull())
+				? obj.get(key).getAsInt()
+				: defaultVal;
+	}
 	@Override
 	public String getBenData(String requestOBJ, String authorisation) throws Exception {
 		String outputResponse = null;
