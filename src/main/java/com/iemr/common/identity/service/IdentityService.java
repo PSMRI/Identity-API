@@ -1015,11 +1015,15 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             // convertIdentityEditDTOToMBeneficiarydetail(identity);
             /**
              * new logic for data sync, 26-09-2018
+             * Facility-based users (no vanID) — use record directly without sync lookup
              */
-            // getting correct beneficiaryDetailsId by passing vanSerialNo & vanID
-            MBeneficiarydetail benDetails = detailRepo.findBenDetailsByVanSerialNoAndVanID(
-                    benMapping.getMBeneficiarydetail().getBeneficiaryDetailsId(), benMapping.getVanID());
-            // next statement is new one, setting correct beneficiaryDetailsId
+            MBeneficiarydetail benDetails;
+            if (benMapping.getVanID() != null) {
+                benDetails = detailRepo.findBenDetailsByVanSerialNoAndVanID(
+                        benMapping.getMBeneficiarydetail().getBeneficiaryDetailsId(), benMapping.getVanID());
+            } else {
+                benDetails = detailRepo.findById(benMapping.getMBeneficiarydetail().getBeneficiaryDetailsId()).orElse(null);
+            }
             if (benDetails != null) {
                 // Create a new instance of MBeneficiarydetail or use the existing one
                 MBeneficiarydetail mbDetl = convertIdentityEditDTOToMBeneficiarydetail(identity);
@@ -1080,14 +1084,18 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
             /**
              * new logic for data sync, 26-09-2018
+             * Facility-based users (no vanID) — use record directly
              */
-            // getting correct beneficiaryDetailsId by passing vanSerialNo & vanID
-            BigInteger benAddressID = addressRepo.findIdByVanSerialNoAndVanID(
-                    benMapping.getMBeneficiaryaddress().getBenAddressID(), benMapping.getVanID());
-            // next statement is new one, setting correct beneficiaryDetailsId
+            BigInteger benAddressID;
+            if (benMapping.getVanID() != null) {
+                benAddressID = addressRepo.findIdByVanSerialNoAndVanID(
+                        benMapping.getMBeneficiaryaddress().getBenAddressID(), benMapping.getVanID());
+            } else {
+                benAddressID = benMapping.getMBeneficiaryaddress().getBenAddressID();
+            }
             if (benAddressID != null) {
-                mbAddr.setBenAddressID(benAddressID); 
-            }else {
+                mbAddr.setBenAddressID(benAddressID);
+            } else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
 
@@ -1107,14 +1115,18 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
             /**
              * new logic for data sync, 26-09-2018
+             * Facility-based users (no vanID) — use record directly
              */
-            // getting correct beneficiaryDetailsId by passing vanSerialNo & vanID
-            BigInteger benContactsID = contactRepo.findIdByVanSerialNoAndVanID(
-                    benMapping.getMBeneficiarycontact().getBenContactsID(), benMapping.getVanID());
-            // next statement is new one, setting correct beneficiaryDetailsId
+            BigInteger benContactsID;
+            if (benMapping.getVanID() != null) {
+                benContactsID = contactRepo.findIdByVanSerialNoAndVanID(
+                        benMapping.getMBeneficiarycontact().getBenContactsID(), benMapping.getVanID());
+            } else {
+                benContactsID = benMapping.getMBeneficiarycontact().getBenContactsID();
+            }
             if (benContactsID != null) {
-                benCon.setBenContactsID(benContactsID); 
-            }else {
+                benCon.setBenContactsID(benContactsID);
+            } else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
 
@@ -1225,14 +1237,18 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
             /**
              * new logic for data sync, 26-09-2018
+             * Facility-based users (no vanID) — use record directly
              */
-            // getting correct beneficiaryDetailsId by passing vanSerialNo & vanID
-            BigInteger benAccountID = accountRepo.findIdByVanSerialNoAndVanID(
-                    benMapping.getMBeneficiaryAccount().getBenAccountID(), benMapping.getVanID());
-            // next statement is new one, setting correct beneficiaryDetailsId
+            BigInteger benAccountID;
+            if (benMapping.getVanID() != null) {
+                benAccountID = accountRepo.findIdByVanSerialNoAndVanID(
+                        benMapping.getMBeneficiaryAccount().getBenAccountID(), benMapping.getVanID());
+            } else {
+                benAccountID = benMapping.getMBeneficiaryAccount().getBenAccountID();
+            }
             if (benAccountID != null) {
-                beneficiaryAccount.setBenAccountID(benAccountID); 
-            }else {
+                beneficiaryAccount.setBenAccountID(benAccountID);
+            } else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
 
@@ -1250,14 +1266,18 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
             /**
              * new logic for data sync, 26-09-2018
+             * Facility-based users (no vanID) — use record directly
              */
-            // getting correct beneficiaryDetailsId by passing vanSerialNo & vanID
-            BigInteger benImageId = imageRepo.findIdByVanSerialNoAndVanID(
-                    benMapping.getMBeneficiaryImage().getBenImageId(), benMapping.getVanID());
-            // next statement is new one, setting correct beneficiaryDetailsId
+            BigInteger benImageId;
+            if (benMapping.getVanID() != null) {
+                benImageId = imageRepo.findIdByVanSerialNoAndVanID(
+                        benMapping.getMBeneficiaryImage().getBenImageId(), benMapping.getVanID());
+            } else {
+                benImageId = benMapping.getMBeneficiaryImage().getBenImageId();
+            }
             if (benImageId != null) {
-                beneficiaryImage.setBenImageId(benImageId); 
-            }else {
+                beneficiaryImage.setBenImageId(benImageId);
+            } else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
 
