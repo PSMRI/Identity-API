@@ -845,21 +845,51 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
     private MBeneficiarymapping getBeneficiariesDTONew(Object[] benMapArr) {
         MBeneficiarymapping mapping = new MBeneficiarymapping();
-        if (benMapArr != null && benMapArr.length == 12 && benMapArr[8] != null && benMapArr[9] != null) {
+        // Allow null vanID for facility-based users (benMapArr[8] can be null)
+        if (benMapArr != null && benMapArr.length == 12 && benMapArr[9] != null) {
             mapping.setBenMapId(getBigIntegerValueFromObject(benMapArr[0]));
             mapping.setCreatedBy(String.valueOf(benMapArr[10]));
             mapping.setCreatedDate((Timestamp) benMapArr[11]);
-            mapping = mappingRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
-            MBeneficiaryaddress address = addressRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[1]), (Integer) benMapArr[8]);
-            MBeneficiaryconsent consent = consentRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[2]), (Integer) benMapArr[8]);
-            MBeneficiarycontact contact = contactRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[3]), (Integer) benMapArr[8]);
-            MBeneficiarydetail details = detailRepo.getWith_vanSerialNo_vanID(getBigIntegerValueFromObject(benMapArr[4]), (Integer) benMapArr[8]);
-            MBeneficiaryregidmapping regidmapping = regIdRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[5]), (Integer) benMapArr[8]);
-            MBeneficiaryAccount account = accountRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[7]), (Integer) benMapArr[8]);
-            MBeneficiaryImage image = imageRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[6]), (Integer) benMapArr[8]);
-            List<MBeneficiaryservicemapping> servicemap = serviceMapRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
-            List<MBeneficiaryidentity> identity = identityRepo.findByBenMapIdAndVanID(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
-            List<MBeneficiaryfamilymapping> familymapping = familyMapRepo.findByBenMapIdAndVanIDOrderByBenFamilyMapIdAsc(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
+            Integer vanID = (benMapArr[8] != null) ? (Integer) benMapArr[8] : null;
+
+            MBeneficiaryaddress address;
+            MBeneficiaryconsent consent;
+            MBeneficiarycontact contact;
+            MBeneficiarydetail details;
+            MBeneficiaryregidmapping regidmapping;
+            MBeneficiaryAccount account;
+            MBeneficiaryImage image;
+            List<MBeneficiaryservicemapping> servicemap;
+            List<MBeneficiaryidentity> identity;
+            List<MBeneficiaryfamilymapping> familymapping;
+
+            if (vanID != null) {
+                // Van-based user — use vanSerialNo + vanID lookup (data sync safe)
+                mapping = mappingRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[9]), vanID);
+                address = addressRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[1]), vanID);
+                consent = consentRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[2]), vanID);
+                contact = contactRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[3]), vanID);
+                details = detailRepo.getWith_vanSerialNo_vanID(getBigIntegerValueFromObject(benMapArr[4]), vanID);
+                regidmapping = regIdRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[5]), vanID);
+                account = accountRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[7]), vanID);
+                image = imageRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[6]), vanID);
+                servicemap = serviceMapRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[0]), vanID);
+                identity = identityRepo.findByBenMapIdAndVanID(getBigIntegerValueFromObject(benMapArr[0]), vanID);
+                familymapping = familyMapRepo.findByBenMapIdAndVanIDOrderByBenFamilyMapIdAsc(getBigIntegerValueFromObject(benMapArr[0]), vanID);
+            } else {
+                // Facility-based user (no vanID) — use direct ID lookup
+                mapping = mappingRepo.findById(getBigIntegerValueFromObject(benMapArr[9])).orElse(new MBeneficiarymapping());
+                address = addressRepo.findById(getBigIntegerValueFromObject(benMapArr[1])).orElse(null);
+                consent = consentRepo.findById(getBigIntegerValueFromObject(benMapArr[2])).orElse(null);
+                contact = contactRepo.findById(getBigIntegerValueFromObject(benMapArr[3])).orElse(null);
+                details = detailRepo.findById(getBigIntegerValueFromObject(benMapArr[4])).orElse(null);
+                regidmapping = regIdRepo.findById(getBigIntegerValueFromObject(benMapArr[5])).orElse(null);
+                account = accountRepo.findById(getBigIntegerValueFromObject(benMapArr[7])).orElse(null);
+                image = imageRepo.findById(getBigIntegerValueFromObject(benMapArr[6])).orElse(null);
+                servicemap = new ArrayList<>();
+                identity = identityRepo.findByBenMapId(getBigIntegerValueFromObject(benMapArr[0]));
+                familymapping = familyMapRepo.findByBenMapIdOrderByBenFamilyMapIdAsc(getBigIntegerValueFromObject(benMapArr[0]));
+            }
 
             mapping.setMBeneficiaryaddress(address);
             mapping.setMBeneficiaryconsent(consent);
@@ -900,12 +930,19 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         benMapOBJ.setCreatedBy(String.valueOf(benMapArr[10]));
         benMapOBJ.setCreatedDate((Timestamp) benMapArr[11]);
 
-        if (benMapArr.length == 12 && benMapArr[8] != null && benMapArr[9] != null) {
-
-            benMapOBJ.setMBeneficiarydetail(detailRepo
-                    .getWith_vanSerialNo_vanID(getBigIntegerValueFromObject(benMapArr[4]), (Integer) benMapArr[8]));
-            benMapOBJ.setMBeneficiaryregidmapping(regIdRepo
-                    .getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[5]), (Integer) benMapArr[8]));
+        if (benMapArr.length == 12 && benMapArr[9] != null) {
+            Integer vanID = (benMapArr[8] != null) ? (Integer) benMapArr[8] : null;
+            if (vanID != null) {
+                benMapOBJ.setMBeneficiarydetail(detailRepo
+                        .getWith_vanSerialNo_vanID(getBigIntegerValueFromObject(benMapArr[4]), vanID));
+                benMapOBJ.setMBeneficiaryregidmapping(regIdRepo
+                        .getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[5]), vanID));
+            } else {
+                benMapOBJ.setMBeneficiarydetail(detailRepo
+                        .findById(getBigIntegerValueFromObject(benMapArr[4])).orElse(null));
+                benMapOBJ.setMBeneficiaryregidmapping(regIdRepo
+                        .findById(getBigIntegerValueFromObject(benMapArr[5])).orElse(null));
+            }
         }
         return benMapOBJ;
     }
@@ -917,8 +954,13 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
         // for createdBy & createdDate
         if (benAdvanceSearchOBJ != null) {
-            MBeneficiarydetail benDetailsOBJ = detailRepo
-                    .getWith_vanSerialNo_vanID(benAdvanceSearchOBJ.getBenDetailsID(), benAdvanceSearchOBJ.getVanID());
+            MBeneficiarydetail benDetailsOBJ;
+            if (benAdvanceSearchOBJ.getVanID() != null) {
+                benDetailsOBJ = detailRepo
+                        .getWith_vanSerialNo_vanID(benAdvanceSearchOBJ.getBenDetailsID(), benAdvanceSearchOBJ.getVanID());
+            } else {
+                benDetailsOBJ = detailRepo.findById(benAdvanceSearchOBJ.getBenDetailsID()).orElse(null);
+            }
 
             if (benAdvanceSearchOBJ.getHouseHoldID() != null) {
                 benMapOBJ.setHouseHoldID(benAdvanceSearchOBJ.getHouseHoldID());
