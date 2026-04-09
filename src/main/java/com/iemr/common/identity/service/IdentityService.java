@@ -1995,7 +1995,9 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             }
             bdto.setFaceEmbedding(floatList);
         }
-        // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
+        if (benMap != null && benMap.getMBeneficiarydetail() != null) {
+            bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
+        }
         bdto.setBeneficiaryFamilyTags(
                 mapper.mapToMBeneficiaryfamilymappingWithBenFamilyDTOList(benMap.getMBeneficiaryfamilymappings()));
         bdto.setBeneficiaryIdentites(
