@@ -51,4 +51,9 @@ public @Data class Address {
 
 	private Integer vanID;
 	private Integer parkingPlaceID;
+
+	private Integer areaId;
+	private String area;
+	private String otherResidentialArea;
+	private String coordinate;
 }

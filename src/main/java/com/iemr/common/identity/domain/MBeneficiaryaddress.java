@@ -231,6 +231,18 @@ public class MBeneficiaryaddress implements Serializable {
 	@Column(name = "EmerServicePoint")
 	private String emerServicePoint;
 
+	@Column(name = "PermCoordinate", length = 50)
+	private String permCoordinate;
+
+	@Column(name = "CurrCoordinate", length = 50)
+	private String currCoordinate;
+
+	@Column(name = "EmerCoordinate", length = 50)
+	private String emerCoordinate;
+
+	@Column(name = "OtherResidentialArea", length = 200)
+	private String otherResidentialArea;
+
 	// End
 
 	@Column(nullable = false, length = 4)
@@ -276,6 +288,10 @@ public class MBeneficiaryaddress implements Serializable {
 		this.currVillage = address.getVillage();
 		this.currAddressValue = address.getAddressValue();
 		this.currPinCode = address.getPinCode();
+		this.currAreaId = address.getAreaId();
+		this.currArea = address.getArea();
+		this.currCoordinate = address.getCoordinate();
+		this.otherResidentialArea = address.getOtherResidentialArea();
 
 		return this;
 	}
@@ -296,6 +312,9 @@ public class MBeneficiaryaddress implements Serializable {
 		this.permVillage = address.getVillage();
 		this.permAddressValue = address.getAddressValue();
 		this.permPinCode = address.getPinCode();
+		this.permAreaId = address.getAreaId();
+		this.permArea = address.getArea();
+		this.permCoordinate = address.getCoordinate();
 
 		return this;
 	}
@@ -316,6 +335,9 @@ public class MBeneficiaryaddress implements Serializable {
 		this.emerVillage = address.getVillage();
 		this.emerAddressValue = address.getAddressValue();
 		this.emerPinCode = address.getPinCode();
+		this.emerAreaId = address.getAreaId();
+		this.emerArea = address.getArea();
+		this.emerCoordinate = address.getCoordinate();
 
 		return this;
 	}

@@ -1807,6 +1807,12 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             beneficiaryAddress.setCurrServicePointId(dto.getCurrentAddress().getServicePointID());
             beneficiaryAddress.setCurrServicePoint(dto.getCurrentAddress().getServicePointName());
             beneficiaryAddress.setCurrHabitation(dto.getCurrentAddress().getHabitation());
+            beneficiaryAddress.setCurrCoordinate(dto.getCurrentAddress().getCoordinate());
+            beneficiaryAddress.setOtherResidentialArea(dto.getCurrentAddress().getOtherResidentialArea());
+            if (dto.getCurrentAddress().getAreaId() != null)
+                beneficiaryAddress.setCurrAreaId(dto.getCurrentAddress().getAreaId());
+            if (dto.getCurrentAddress().getArea() != null)
+                beneficiaryAddress.setCurrArea(dto.getCurrentAddress().getArea());
         }
         if (dto.getEmergencyAddress() != null) {
             beneficiaryAddress.setEmerAddrLine1(dto.getEmergencyAddress().getAddrLine1());
@@ -1831,6 +1837,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             beneficiaryAddress.setEmerServicePointId(dto.getEmergencyAddress().getServicePointID());
             beneficiaryAddress.setEmerServicePoint(dto.getEmergencyAddress().getServicePointName());
             beneficiaryAddress.setEmerHabitation(dto.getEmergencyAddress().getHabitation());
+            beneficiaryAddress.setEmerCoordinate(dto.getEmergencyAddress().getCoordinate());
         }
 
         if (dto.getPermanentAddress() != null) {
@@ -1857,6 +1864,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             beneficiaryAddress.setPermServicePointId(dto.getPermanentAddress().getServicePointID());
             beneficiaryAddress.setPermServicePoint(dto.getPermanentAddress().getServicePointName());
             beneficiaryAddress.setPermHabitation(dto.getPermanentAddress().getHabitation());
+            beneficiaryAddress.setPermCoordinate(dto.getPermanentAddress().getCoordinate());
         }
         if (dto.getAgentName() != null) {
             beneficiaryAddress.setCreatedBy(dto.getAgentName());
