@@ -867,45 +867,20 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
     private MBeneficiarymapping getBeneficiariesDTONew(Object[] benMapArr) {
         MBeneficiarymapping mapping = new MBeneficiarymapping();
         if (benMapArr != null && benMapArr.length == 12 && benMapArr[8] != null && benMapArr[9] != null) {
-            long __rowStart = System.currentTimeMillis();
-            long __t;
             mapping.setBenMapId(getBigIntegerValueFromObject(benMapArr[0]));
             mapping.setCreatedBy(String.valueOf(benMapArr[10]));
             mapping.setCreatedDate((Timestamp) benMapArr[11]);
-            __t = System.currentTimeMillis();
             mapping = mappingRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
-            logger.info("[PERF] mapping took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiaryaddress address = addressRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[1]), (Integer) benMapArr[8]);
-            logger.info("[PERF] address took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiaryconsent consent = consentRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[2]), (Integer) benMapArr[8]);
-            logger.info("[PERF] consent took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiarycontact contact = contactRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[3]), (Integer) benMapArr[8]);
-            logger.info("[PERF] contact took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiarydetail details = detailRepo.getWith_vanSerialNo_vanID(getBigIntegerValueFromObject(benMapArr[4]), (Integer) benMapArr[8]);
-            logger.info("[PERF] details took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiaryregidmapping regidmapping = regIdRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[5]), (Integer) benMapArr[8]);
-            logger.info("[PERF] regid took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiaryAccount account = accountRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[7]), (Integer) benMapArr[8]);
-            logger.info("[PERF] account took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             MBeneficiaryImage image = imageRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[6]), (Integer) benMapArr[8]);
-            logger.info("[PERF] image took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             List<MBeneficiaryservicemapping> servicemap = serviceMapRepo.getWithVanSerialNoVanID(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
-            logger.info("[PERF] servicemap took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             List<MBeneficiaryidentity> identity = identityRepo.findByBenMapIdAndVanID(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
-            logger.info("[PERF] identity took {} ms", System.currentTimeMillis() - __t);
-            __t = System.currentTimeMillis();
             List<MBeneficiaryfamilymapping> familymapping = familyMapRepo.findByBenMapIdAndVanIDOrderByBenFamilyMapIdAsc(getBigIntegerValueFromObject(benMapArr[0]), (Integer) benMapArr[8]);
-            logger.info("[PERF] familymapping took {} ms", System.currentTimeMillis() - __t);
-            logger.info("[PERF] --- row total (11 queries): {} ms ---", System.currentTimeMillis() - __rowStart);
 
             mapping.setMBeneficiaryaddress(address);
             mapping.setMBeneficiaryconsent(consent);
