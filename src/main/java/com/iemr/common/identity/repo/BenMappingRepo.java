@@ -80,7 +80,7 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
 	@Query("SELECT t.benMapId, t.benAddressId, t.benConsentId, t.benContactsId, t.benDetailsId, "
 			+ " t.benRegId, t.benImageId, t.benAccountID, t.vanID, t.vanSerialNo, "
 			+ " t.createdBy, t.createdDate FROM MBeneficiarymapping t "
-			+ "  WHERE t.benContactsId IN :benContactIds AND t.vanID = :vanID ")
+			+ "  WHERE t.benContactsId IN (:benContactIds) AND t.vanID = :vanID ")
 	public List<Object[]> getBenMappingByBenContactIdListNew(
 			@Param("benContactIds") List<BigInteger> benContactIds,
 			@Param("vanID") Integer vanID);
