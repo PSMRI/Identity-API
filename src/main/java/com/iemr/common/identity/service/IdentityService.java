@@ -582,7 +582,7 @@ public class IdentityService {
             long __dtoStart = System.currentTimeMillis();
             for (Object[] benMapOBJ : benMapObjArr) {
                 long __oneRow = System.currentTimeMillis();
-                list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTONew(benMapOBJ)));
+                list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTOForPhoneSearch(benMapOBJ)));
                 logger.info("[PERF] one-row DTO (incl. getBeneficiariesDTO wrapper) took {} ms",
                         System.currentTimeMillis() - __oneRow);
             }
@@ -910,6 +910,40 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 }
             }
 
+        }
+        return mapping;
+    }
+
+    /**
+     * Phone-search-only helper. Uses the existing mappingRepo.getMapping(...) JPQL
+     * (single query with LEFT JOINs) instead of 11 separate repo calls. Other flows
+     * (advance search, family search, etc.) continue to use getBeneficiariesDTONew.
+     */
+    private MBeneficiarymapping getBeneficiariesDTOForPhoneSearch(Object[] benMapArr) {
+        MBeneficiarymapping mapping = new MBeneficiarymapping();
+        if (benMapArr != null && benMapArr.length == 12 && benMapArr[8] != null && benMapArr[9] != null) {
+            MBeneficiarymapping fetched = mappingRepo.getMapping(
+                    getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
+            if (fetched != null) {
+                mapping = fetched;
+            }
+            mapping.setBenMapId(getBigIntegerValueFromObject(benMapArr[0]));
+            mapping.setCreatedBy(String.valueOf(benMapArr[10]));
+            mapping.setCreatedDate((Timestamp) benMapArr[11]);
+
+            BigInteger benRegId = new BigInteger(benMapArr[5].toString());
+            RMNCHBeneficiaryDetailsRmnch obj = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benRegId);
+            if (obj != null) {
+                if (obj.getHouseoldId() != null) {
+                    mapping.setHouseHoldID(obj.getHouseoldId());
+                }
+                if (obj.getGuidelineId() != null) {
+                    mapping.setGuideLineID(obj.getGuidelineId());
+                }
+                if (obj.getRchid() != null) {
+                    mapping.setRchID(obj.getRchid());
+                }
+            }
         }
         return mapping;
     }
