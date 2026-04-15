@@ -561,9 +561,17 @@ public class IdentityService {
 
             List<Object[]> benMapObjArr = new ArrayList<>();
 
-            for (MBeneficiarycontact benContactOBJ : benContact) {
-                benMapObjArr.addAll(mappingRepo.getBenMappingByBenContactIdListNew(benContactOBJ.getVanSerialNo(),
-                        benContactOBJ.getVanID()));
+            if (!benContact.isEmpty()) {
+                Map<Integer, List<BigInteger>> contactIdsByVan = benContact.stream()
+                        .filter(c -> c.getVanID() != null && c.getVanSerialNo() != null)
+                        .collect(Collectors.groupingBy(
+                                MBeneficiarycontact::getVanID,
+                                Collectors.mapping(MBeneficiarycontact::getVanSerialNo, Collectors.toList())));
+
+                for (Map.Entry<Integer, List<BigInteger>> entry : contactIdsByVan.entrySet()) {
+                    benMapObjArr.addAll(
+                            mappingRepo.getBenMappingByBenContactIdListNew(entry.getValue(), entry.getKey()));
+                }
             }
 
             for (Object[] benMapOBJ : benMapObjArr) {
