@@ -37,7 +37,7 @@ public interface RMNCHBeneficiaryDetailsRmnchRepo extends CrudRepository<RMNCHBe
 			@Param("vanID") int vanID);
 
 	// Repository
-	@Query(value = "SELECT * FROM rmnch_beneficiary_details_rmnch " +
+	@Query(value = "SELECT * FROM i_beneficiarydetails_rmnch " +
 			"WHERE BeneficiaryRegID = :benRegId " +
 			"ORDER BY beneficiaryDetails_RmnchId DESC " +
 			"LIMIT 1",
