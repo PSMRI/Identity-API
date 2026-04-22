@@ -36,6 +36,11 @@ public interface RMNCHBeneficiaryDetailsRmnchRepo extends CrudRepository<RMNCHBe
 	public RMNCHBeneficiaryDetailsRmnch getByIdAndVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
 			@Param("vanID") int vanID);
 
-	@Query(" SELECT t FROM RMNCHBeneficiaryDetailsRmnch t WHERE t.BenRegId =:benRegID ")
+	// Repository
+	@Query(value = "SELECT * FROM rmnch_beneficiary_details_rmnch " +
+			"WHERE BeneficiaryRegID = :benRegId " +
+			"ORDER BY beneficiaryDetails_RmnchId DESC " +
+			"LIMIT 1",
+			nativeQuery = true)
 	public RMNCHBeneficiaryDetailsRmnch getByRegID(@Param("benRegID") BigInteger benRegId);
 }
