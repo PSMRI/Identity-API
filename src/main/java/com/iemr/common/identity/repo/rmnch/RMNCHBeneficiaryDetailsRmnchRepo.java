@@ -42,5 +42,5 @@ public interface RMNCHBeneficiaryDetailsRmnchRepo extends CrudRepository<RMNCHBe
 			"ORDER BY beneficiaryDetails_RmnchId DESC " +
 			"LIMIT 1",
 			nativeQuery = true)
-	public RMNCHBeneficiaryDetailsRmnch getByRegID(@Param("benRegID") BigInteger benRegId);
+	public RMNCHBeneficiaryDetailsRmnch getByRegID(@Param("benRegId") BigInteger benRegId);
 }
