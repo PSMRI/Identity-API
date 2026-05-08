@@ -42,7 +42,7 @@ import lombok.Data;
  * 
  */
 @Entity
-@Table(name = "m_beneficiaryregidmapping")
+@Table(name = "m_beneficiaryregidmapping", schema = "db_identity")
 @NamedQuery(name = "MBeneficiaryregidmapping.findAll", query = "SELECT m FROM MBeneficiaryregidmapping m")
 @Data
 public class MBeneficiaryregidmapping implements Serializable {
