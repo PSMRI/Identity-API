@@ -1337,6 +1337,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         if (dto.getOtherFields() != null) {
             beneficiarydetail.setOtherFields(dto.getOtherFields());
         }
+        beneficiarydetail.setSexualOrientationID(dto.getSexualOrientationID());
+        beneficiarydetail.setSexualOrientationType(dto.getSexualOrientationType());
 
         return beneficiarydetail;
     }
