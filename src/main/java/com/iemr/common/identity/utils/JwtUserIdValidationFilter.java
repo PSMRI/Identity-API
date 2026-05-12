@@ -43,6 +43,7 @@ public class JwtUserIdValidationFilter implements Filter {
 			return;
 		}
 		String path = request.getRequestURI();
+
 		String servletPath = request.getServletPath();
 		logger.info("JwtUserIdValidationFilter invoked for requestURI: {}, servletPath: {}", path, servletPath);
 
