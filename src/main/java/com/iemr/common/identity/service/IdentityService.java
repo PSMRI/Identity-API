@@ -559,12 +559,13 @@ public class IdentityService {
 
             logger.info(benContact.size() + " contacts found for phone number " + phoneNum);
 
-            List<Object[]> benMapObjArr = new ArrayList<>();
+            List<BigInteger> contactIds = benContact.stream()
+                    .map(MBeneficiarycontact::getVanSerialNo)
+                    .filter(id -> id != null)
+                    .collect(Collectors.toList());
 
-            for (MBeneficiarycontact benContactOBJ : benContact) {
-                benMapObjArr.addAll(mappingRepo.getBenMappingByBenContactIdListNew(benContactOBJ.getVanSerialNo(),
-                        benContactOBJ.getVanID()));
-            }
+            List<Object[]> benMapObjArr = contactIds.isEmpty() ? new ArrayList<>()
+                    : mappingRepo.getBenMappingByBenContactIdList(contactIds);
 
             for (Object[] benMapOBJ : benMapObjArr) {
                 list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTONew(benMapOBJ)));
