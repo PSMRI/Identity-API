@@ -1038,6 +1038,18 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 if (benDetails.getOther() != null) {
                     mbDetl.setOther(benDetails.getOther());
                 }
+                if (mbDetl.getOccupationId() == null && benDetails.getOccupationId() != null) {
+                    mbDetl.setOccupationId(benDetails.getOccupationId());
+                }
+                if (mbDetl.getOccupation() == null && benDetails.getOccupation() != null) {
+                    mbDetl.setOccupation(benDetails.getOccupation());
+                }
+                if (mbDetl.getEducationId() == null && benDetails.getEducationId() != null) {
+                    mbDetl.setEducationId(benDetails.getEducationId());
+                }
+                if (mbDetl.getEducation() == null && benDetails.getEducation() != null) {
+                    mbDetl.setEducation(benDetails.getEducation());
+                }
 
                 // Extract and set extra fields
 //				String identityJson = new Gson().toJson(json);
