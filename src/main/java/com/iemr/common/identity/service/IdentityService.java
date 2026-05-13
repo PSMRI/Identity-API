@@ -25,7 +25,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -153,6 +152,8 @@ public class IdentityService {
     BenMappingRepo mappingRepo;
     @Autowired
     BenRegIdMappingRepo regIdRepo;
+    @Autowired
+    private BenRegIdClaimService benRegIdClaimService;
     @Autowired
     BenServiceMappingRepo serviceMapRepo;
     @Autowired
@@ -1345,34 +1346,13 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
      * @param identity
      * @return
      */
-    ArrayDeque<MBeneficiaryregidmapping> queue = new ArrayDeque<>();
-
     public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
         logger.info("IdentityService.createIdentity - start");
 
-        List<MBeneficiaryregidmapping> list = null;
-        MBeneficiaryregidmapping regMap = null;
-        synchronized (queue) {
-            if (queue.isEmpty()) {
-                logger.info("fetching 10000 rows");
-                list = regIdRepo.findTop10000ByProvisionedAndReserved(false, false);
-                logger.info("Adding SynchronousQueue start-- ");
-                for (MBeneficiaryregidmapping map : list) {
-                    queue.add(map);
-                }
-                logger.info("Adding SynchronousQueue end-- ");
-            }
-            regMap = queue.removeFirst();
-        }
-        regMap.setReserved(true);
-        if (regMap.getCreatedDate() == null) {
-            SimpleDateFormat sdf = new SimpleDateFormat(CREATED_DATE_FORMAT);
-            String dateToStoreInDataBase = sdf.format(new Date());
-            Timestamp ts = Timestamp.valueOf(dateToStoreInDataBase);
-            regMap.setCreatedDate(ts);
-        }
-
-        regIdRepo.save(regMap);
+        // Atomically claim the next available ID using SELECT … FOR UPDATE SKIP LOCKED.
+        // This is safe across multiple app servers sharing the same database — each server
+        // locks and reserves a distinct row, so duplicate BenRegId inserts cannot occur.
+        MBeneficiaryregidmapping regMap = benRegIdClaimService.claimNextAvailableRegId();
 
         regMap.setProvisioned(true);
 
