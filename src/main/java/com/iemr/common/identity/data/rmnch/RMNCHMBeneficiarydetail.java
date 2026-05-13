@@ -214,4 +214,19 @@ public class RMNCHMBeneficiarydetail {
 	@Expose
 	@Transient
 	private Integer ProviderServiceMapID;
+
+	@Column(name = "economicStatus")
+	private String economicStatus;
+
+	@Column(name = "economicStatusId")
+	private Integer economicStatusId;
+
+	@Column(name = "residentialArea")
+	private String  residentialArea;
+
+	@Column(name = "residentialAreaId")
+	private Integer  residentialAreaId;
+
+	@Column(name = "address")
+	private String address;
 }

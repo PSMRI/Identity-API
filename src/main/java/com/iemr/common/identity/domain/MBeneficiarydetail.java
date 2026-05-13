@@ -247,6 +247,21 @@ public class MBeneficiarydetail implements Serializable {
 	
 	@Column(name = "ExtraFields")
 	private String otherFields;
+
+	@Column(name = "economicStatus")
+	private String economicStatus;
+
+	@Column(name = "economicStatusId")
+	private Integer economicStatusId;
+
+	@Column(name = "residentialArea")
+	private String  residentialArea;
+
+	@Column(name = "residentialAreaId")
+	private Integer  residentialAreaId;
+
+	@Column(name = "address")
+	private String address;
 	
 //	@Column(columnDefinition = "json")
 //	private JsonElement otherFields;
