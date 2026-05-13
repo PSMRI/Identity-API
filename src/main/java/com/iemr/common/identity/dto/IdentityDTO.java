@@ -132,6 +132,21 @@ public class IdentityDTO {
 
 	@Expose
 	private Boolean beneficiaryConsent;
+
+	@Expose
+	private String economicStatus;
+
+	@Expose
+	private Integer economicStatusId;
+
+	@Expose
+	private String  residentialArea;
+
+	@Expose
+	private Integer  residentialAreaId;
+
+	@Expose
+	private String address;
 	// private Object otherFields;
 
 }

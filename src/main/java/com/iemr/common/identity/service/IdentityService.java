@@ -1698,6 +1698,11 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         beneficiarydetail.setMiddleName(dto.getMiddleName());
         beneficiarydetail.setOccupation(dto.getOccupationName());
         beneficiarydetail.setOccupationId(dto.getOccupationId());
+        beneficiarydetail.setEconomicStatus(dto.getEconomicStatus());
+        beneficiarydetail.setEconomicStatusId(dto.getEconomicStatusId());
+        beneficiarydetail.setResidentialArea(dto.getResidentialArea());
+        beneficiarydetail.setResidentialAreaId(dto.getResidentialAreaId());
+        beneficiarydetail.setAddress(dto.getAddress());
         beneficiarydetail.setPhcId(dto.getPhcId());
         beneficiarydetail.setPlaceOfWork(dto.getPlaceOfWork());
         beneficiarydetail.setPreferredLanguageId(dto.getPreferredLanguageId());
