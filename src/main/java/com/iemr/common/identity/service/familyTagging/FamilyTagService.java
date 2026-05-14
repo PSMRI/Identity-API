@@ -36,4 +36,6 @@ public interface FamilyTagService {
 	public String searchFamily(String request) throws IEMRException;
 
 	public String editFamilyDetails(String request) throws IEMRException;
+
+	public String getFamilyDetailsByBeneficiaryId(String request) throws IEMRException;
 }

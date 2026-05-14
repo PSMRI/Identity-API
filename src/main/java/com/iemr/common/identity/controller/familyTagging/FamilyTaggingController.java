@@ -116,6 +116,20 @@ public class FamilyTaggingController {
 		return response.toString();
 	}
 
+	@Operation(summary = "Get family tagging details by beneficiary ID")
+	@PostMapping(value = { "/getBenFamilyDetails" }, consumes = "application/json", produces = "application/json")
+	public String getFamilyDetailsByBeneficiaryId(@RequestBody String comingReq) {
+		OutputResponse response = new OutputResponse();
+		try {
+			String s = familyTagService.getFamilyDetailsByBeneficiaryId(comingReq);
+			response.setResponse(s);
+		} catch (Exception e) {
+			logger.error("Error in fetching family details by beneficiary ID : " + e);
+			response.setError(5000, "Error in fetching family details by beneficiary ID : " + e.getLocalizedMessage());
+		}
+		return response.toString();
+	}
+
 	@Operation(summary = "Edit beneficiary family details")
 	@PostMapping(value = { "/editFamilyTagging" }, consumes = "application/json", produces = "application/json")
 	public String editFamilyDetails(@RequestBody String comingReq) {
