@@ -306,9 +306,8 @@ public class FamilyTagServiceImpl implements FamilyTagService {
 	}
 
 	private void addFamilyMembersToList(List<MBeneficiarydetail> list, List<FamilyMembers> responseList) {
-		StringBuilder name = new StringBuilder("");
 		for (MBeneficiarydetail obj : list) {
-			
+			StringBuilder name = new StringBuilder("");
 			FamilyMembers famObj = new FamilyMembers();
 			BigInteger benRegId = benMappingRepo.getBenRegId(obj.getBeneficiaryDetailsId(), obj.getVanID());
 			if (benRegId != null)
