@@ -86,6 +86,7 @@ public class RMNCHMBeneficiarydetail {
 	@Column(length = 45)
 	private String incomeStatus;
 
+	@Column(name = "LastModDate", insertable = false, updatable = false)
 	private Timestamp lastModDate;
 
 	@Column(length = 20)
