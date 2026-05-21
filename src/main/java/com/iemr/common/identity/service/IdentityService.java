@@ -1659,6 +1659,9 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         } else if (cleaned.startsWith("91") && cleaned.length() == 12) {
             // Handle case where + is already removed but 91 remains
             cleaned = cleaned.substring(2);
+        } else if (cleaned.startsWith("0") && cleaned.length() == 11) {
+            // Handle case where number starts with 0 and is 11 digits long
+            cleaned = cleaned.substring(1);
         }
 
         return cleaned.trim();
