@@ -27,6 +27,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -555,7 +556,15 @@ public class IdentityService {
         List<BeneficiariesDTO> list = new ArrayList<>();
 
         try {
-            List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(phoneNum);
+            // List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(phoneNum);
+
+            String clean = phoneNum.trim();
+            if (clean.startsWith("+91")) clean = clean.substring(3);
+            else if (clean.startsWith("91") && clean.length() == 12) clean = clean.substring(2);
+            else if (clean.startsWith("0") && clean.length() == 11) clean = clean.substring(1);
+
+            List<String> variants = Arrays.asList(clean, "0" + clean, "91" + clean, "+91" + clean);
+            List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(variants);
 
             logger.info(benContact.size() + " contacts found for phone number " + phoneNum);
 

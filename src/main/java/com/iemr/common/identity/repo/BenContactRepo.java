@@ -49,8 +49,12 @@ public interface BenContactRepo extends CrudRepository<MBeneficiarycontact, BigI
 	List<MBeneficiarycontact> findByPreferredSMSPhoneNumOrderByBenContactsIDAsc(String smsPhoneNum);
 
 	
-	@Query("select c from MBeneficiarycontact c where c.preferredPhoneNum = :phoneNum ")
-	List<MBeneficiarycontact> findByAnyPhoneNum(@Param("phoneNum") String phoneNum);
+	// @Query("select c from MBeneficiarycontact c where c.preferredPhoneNum = :phoneNum ")
+	// List<MBeneficiarycontact> findByAnyPhoneNum(@Param("phoneNum") String phoneNum);
+
+	@Query("select c from MBeneficiarycontact c where c.preferredPhoneNum IN :variants")
+    List<MBeneficiarycontact> findByAnyPhoneNum(@Param("variants") List<String> variants);
+
 
 
 	@Query("select c from MBeneficiarycontact c where c.preferredPhoneNum = :phoneNum or c.phoneNum1 = :phoneNum "
@@ -69,5 +73,7 @@ public interface BenContactRepo extends CrudRepository<MBeneficiarycontact, BigI
 	@Query("SELECT a FROM MBeneficiarycontact a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
 	MBeneficiarycontact getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
 			@Param("vanID") Integer vanID);
+
+			
 
 }
