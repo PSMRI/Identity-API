@@ -121,6 +121,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		ArrayList<Long> bornBirthDeatilsIds = new ArrayList<>();
 		ArrayList<Long> cBACDetailsIds = new ArrayList<>();
 		ArrayList<Long> houseHoldDetailsIds = new ArrayList<>();
+		ArrayList<Long> beneficiaryImageIds = new ArrayList<>();
 
 		try {
 			if (requestOBJ != null && !requestOBJ.isEmpty()) {
@@ -189,6 +190,35 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							benDetailsExtraList.forEach((n) -> beneficiaryDetailsIds.add(n.getId()));
 							// update beneficiary data in i_beneficiarydetails table
 							rMNCHBenDetailsRepo.saveAll(benDetailsList);
+
+							// save beneficiary image from sync payload to i_beneficiaryimage
+							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
+								if (obj.getUser_image() != null && !obj.getUser_image().isEmpty()
+										&& obj.getBenRegId() != null) {
+									RMNCHMBeneficiarymapping mapping = rMNCHMBenMappingRepo
+											.getByBenRegId(obj.getBenRegId());
+									if (mapping != null) {
+										RMNCHMBeneficiaryImage imageObj;
+										if (mapping.getBenImageId() != null) {
+											imageObj = rMNCHBenImageRepo.getByIdAndVanID(
+													mapping.getBenImageId().longValue(), mapping.getVanID());
+											if (imageObj == null)
+												imageObj = new RMNCHMBeneficiaryImage();
+										} else {
+											imageObj = new RMNCHMBeneficiaryImage();
+										}
+										imageObj.setUser_image(obj.getUser_image());
+										imageObj.setVanID(mapping.getVanID());
+										imageObj.setParkingPlaceID(mapping.getParkingPlaceID());
+										imageObj = rMNCHBenImageRepo.save(imageObj);
+										if (mapping.getBenImageId() == null) {
+											mapping.setBenImageId(imageObj.getBenImageId());
+											rMNCHMBenMappingRepo.save(mapping);
+										}
+										beneficiaryImageIds.add(imageObj.getBenImageId().longValue());
+									}
+								}
+							}
 
 						// born birth details
 						if (jsnOBJ != null && jsnOBJ.has("bornBirthDeatils")) {
@@ -263,6 +293,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		resultMap.put("bornBirthDeatils", bornBirthDeatilsIds);
 		resultMap.put("cBACDetails", cBACDetailsIds);
 		resultMap.put("houseHoldDetails", houseHoldDetailsIds);
+		resultMap.put("beneficiaryImage", beneficiaryImageIds);
 
 		return new Gson().toJson(resultMap);
 	}

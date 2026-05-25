@@ -43,4 +43,7 @@ public interface RMNCHMBenMappingRepo extends CrudRepository<RMNCHMBeneficiaryma
 	@Query(nativeQuery = true, value = " SELECT userid FROM db_iemr.m_user WHERE UserName = :userName ")
 	public Integer getUserIDByUserName(@Param("userName") String userName);
 
+	@Query(" SELECT t FROM RMNCHMBeneficiarymapping t WHERE t.benRegId = :benRegId")
+	public RMNCHMBeneficiarymapping getByBenRegId(@Param("benRegId") BigInteger benRegId);
+
 }
