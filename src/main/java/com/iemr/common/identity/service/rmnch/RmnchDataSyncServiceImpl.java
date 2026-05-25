@@ -192,6 +192,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							rMNCHBenDetailsRepo.saveAll(benDetailsList);
 
 							// save beneficiary image from sync payload to i_beneficiaryimage
+							Timestamp now = new Timestamp(System.currentTimeMillis());
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								if (obj.getUser_image() != null && !obj.getUser_image().isEmpty()
 										&& obj.getBenRegId() != null) {
@@ -204,8 +205,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 													mapping.getBenImageId().longValue(), mapping.getVanID());
 											if (imageObj == null)
 												imageObj = new RMNCHMBeneficiaryImage();
+											imageObj.setModifiedBy(obj.getCreatedBy());
+											imageObj.setLastModDate(now);
 										} else {
 											imageObj = new RMNCHMBeneficiaryImage();
+											imageObj.setCreatedBy(obj.getCreatedBy());
+											imageObj.setCreatedDate(now);
 										}
 										imageObj.setUser_image(obj.getUser_image());
 										imageObj.setVanID(mapping.getVanID());
