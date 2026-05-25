@@ -217,6 +217,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										imageObj.setParkingPlaceID(mapping.getParkingPlaceID());
 										imageObj = rMNCHBenImageRepo.save(imageObj);
 										if (mapping.getBenImageId() == null) {
+											rMNCHBenImageRepo.updateVanSerialNo(imageObj.getBenImageId());
 											mapping.setBenImageId(imageObj.getBenImageId());
 											rMNCHMBenMappingRepo.save(mapping);
 										}
