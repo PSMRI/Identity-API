@@ -148,6 +148,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
+								if (benRegID == null && obj.getBenRegId() != null)
+									benRegID = obj.getBenRegId();
 								obj.setBenRegId(benRegID);
 								RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
 										.getByRegID(benRegID);
