@@ -185,6 +185,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							}
 
+							// snapshot before saveAll — @Transient fields (user_image) are lost after merge()
+							List<RMNCHBeneficiaryDetailsRmnch> benDetailsSnapshot = new ArrayList<>(benDetailsExtraList);
+
 							benDetailsExtraList = (ArrayList<RMNCHBeneficiaryDetailsRmnch>) rMNCHBeneficiaryDetailsRmnchRepo
 									.saveAll(benDetailsExtraList);
 
@@ -194,7 +197,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							// save beneficiary image from sync payload to i_beneficiaryimage
 							Timestamp now = new Timestamp(System.currentTimeMillis());
-							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
+							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsSnapshot) {
 								if (obj.getUser_image() != null && !obj.getUser_image().isEmpty()
 										&& obj.getBenRegId() != null) {
 									RMNCHMBeneficiarymapping mapping = rMNCHMBenMappingRepo
