@@ -209,8 +209,11 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										if (mapping.getBenImageId() != null) {
 											imageObj = rMNCHBenImageRepo.getByIdAndVanID(
 													mapping.getBenImageId().longValue(), mapping.getVanID());
-											if (imageObj == null)
+											if (imageObj == null) {
 												imageObj = new RMNCHMBeneficiaryImage();
+												imageObj.setCreatedBy(obj.getCreatedBy());
+												imageObj.setCreatedDate(now);
+											}
 											imageObj.setModifiedBy(obj.getCreatedBy());
 											imageObj.setLastModDate(now);
 										} else {
