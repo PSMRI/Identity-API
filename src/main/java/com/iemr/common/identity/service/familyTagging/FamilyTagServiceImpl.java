@@ -37,6 +37,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iemr.common.identity.data.familyTagging.BenFamilyMapping;
 import com.iemr.common.identity.data.familyTagging.FamilyMembers;
+import com.iemr.common.identity.data.familyTagging.FamilySearchResponse;
 import com.iemr.common.identity.domain.MBeneficiarydetail;
 import com.iemr.common.identity.domain.MBeneficiarymapping;
 import com.iemr.common.identity.exception.IEMRException;
@@ -264,10 +265,49 @@ public class FamilyTagServiceImpl implements FamilyTagService {
 			throw new IEMRException("Error while fetching family member details :" + e.getLocalizedMessage());
 		}
 	}
+	@Override
+	public String getFamilyDetailsByBeneficiaryId(String request) throws IEMRException {
+		try {
+			BenFamilyMapping reqObj = InputMapper.gson().fromJson(request, BenFamilyMapping.class);
+			if (reqObj.getBeneficiaryRegId() == null)
+				throw new IEMRException("beneficiaryRegId is required");
+
+			MBeneficiarymapping mapping = benMappingRepo
+					.getBenDetailsId(BigInteger.valueOf(reqObj.getBeneficiaryRegId()));
+			if (mapping == null || mapping.getBenDetailsId() == null)
+				throw new IEMRException("Beneficiary not found");
+
+			List<MBeneficiarydetail> benDetails = benDetailRepo
+					.findByBeneficiaryDetailsIdOrderByBeneficiaryDetailsIdAsc(mapping.getBenDetailsId());
+			if (benDetails == null || benDetails.isEmpty() || benDetails.get(0).getFamilyId() == null)
+				return "No family tagged to this beneficiary";
+
+			String familyId = benDetails.get(0).getFamilyId();
+
+			BenFamilyMapping familyMaster = familyTagRepo.searchFamilyByFamilyId(familyId);
+			List<MBeneficiarydetail> memberList = benDetailRepo.getFamilyDetails(familyId);
+
+			FamilySearchResponse resp = new FamilySearchResponse();
+			if (familyMaster != null) {
+				resp.setFamilyId(familyMaster.getFamilyId());
+				resp.setFamilyName(familyMaster.getFamilyName());
+				resp.setHeadOfTheFamily(familyMaster.getFamilyHeadName());
+				resp.setNoOfMembers(familyMaster.getNoOfmembers());
+			}
+			List<FamilyMembers> memberResponseList = new ArrayList<>();
+			addFamilyMembersToList(memberList, memberResponseList);
+			resp.setFamilyMembers(memberResponseList);
+
+			return new Gson().toJson(resp);
+		} catch (Exception e) {
+			throw new IEMRException(
+					"Error while fetching family details by beneficiary ID : " + e.getLocalizedMessage());
+		}
+	}
+
 	private void addFamilyMembersToList(List<MBeneficiarydetail> list, List<FamilyMembers> responseList) {
-		StringBuilder name = new StringBuilder("");
 		for (MBeneficiarydetail obj : list) {
-			
+			StringBuilder name = new StringBuilder("");
 			FamilyMembers famObj = new FamilyMembers();
 			BigInteger benRegId = benMappingRepo.getBenRegId(obj.getBeneficiaryDetailsId(), obj.getVanID());
 			if (benRegId != null)

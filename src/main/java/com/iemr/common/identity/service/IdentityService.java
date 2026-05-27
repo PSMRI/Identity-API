@@ -25,7 +25,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -153,6 +152,8 @@ public class IdentityService {
     BenMappingRepo mappingRepo;
     @Autowired
     BenRegIdMappingRepo regIdRepo;
+    @Autowired
+    private BenRegIdClaimService benRegIdClaimService;
     @Autowired
     BenServiceMappingRepo serviceMapRepo;
     @Autowired
@@ -1084,6 +1085,18 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                 if (benDetails.getOther() != null) {
                     mbDetl.setOther(benDetails.getOther());
                 }
+                if (mbDetl.getOccupationId() == null && benDetails.getOccupationId() != null) {
+                    mbDetl.setOccupationId(benDetails.getOccupationId());
+                }
+                if (mbDetl.getOccupation() == null && benDetails.getOccupation() != null) {
+                    mbDetl.setOccupation(benDetails.getOccupation());
+                }
+                if (mbDetl.getEducationId() == null && benDetails.getEducationId() != null) {
+                    mbDetl.setEducationId(benDetails.getEducationId());
+                }
+                if (mbDetl.getEducation() == null && benDetails.getEducation() != null) {
+                    mbDetl.setEducation(benDetails.getEducation());
+                }
 
                 // Extract and set extra fields
 //				String identityJson = new Gson().toJson(json);
@@ -1399,6 +1412,8 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         if (dto.getOtherFields() != null) {
             beneficiarydetail.setOtherFields(dto.getOtherFields());
         }
+        beneficiarydetail.setSexualOrientationID(dto.getSexualOrientationID());
+        beneficiarydetail.setSexualOrientationType(dto.getSexualOrientationType());
 
         return beneficiarydetail;
     }
@@ -1407,34 +1422,13 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
      * @param identity
      * @return
      */
-    ArrayDeque<MBeneficiaryregidmapping> queue = new ArrayDeque<>();
-
     public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
         logger.info("IdentityService.createIdentity - start");
 
-        List<MBeneficiaryregidmapping> list = null;
-        MBeneficiaryregidmapping regMap = null;
-        synchronized (queue) {
-            if (queue.isEmpty()) {
-                logger.info("fetching 10000 rows");
-                list = regIdRepo.findTop10000ByProvisionedAndReserved(false, false);
-                logger.info("Adding SynchronousQueue start-- ");
-                for (MBeneficiaryregidmapping map : list) {
-                    queue.add(map);
-                }
-                logger.info("Adding SynchronousQueue end-- ");
-            }
-            regMap = queue.removeFirst();
-        }
-        regMap.setReserved(true);
-        if (regMap.getCreatedDate() == null) {
-            SimpleDateFormat sdf = new SimpleDateFormat(CREATED_DATE_FORMAT);
-            String dateToStoreInDataBase = sdf.format(new Date());
-            Timestamp ts = Timestamp.valueOf(dateToStoreInDataBase);
-            regMap.setCreatedDate(ts);
-        }
-
-        regIdRepo.save(regMap);
+        // Atomically claim the next available ID using SELECT … FOR UPDATE SKIP LOCKED.
+        // This is safe across multiple app servers sharing the same database — each server
+        // locks and reserves a distinct row, so duplicate BenRegId inserts cannot occur.
+        MBeneficiaryregidmapping regMap = benRegIdClaimService.claimNextAvailableRegId();
 
         regMap.setProvisioned(true);
 
@@ -1727,6 +1721,9 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         } else if (cleaned.startsWith("91") && cleaned.length() == 12) {
             // Handle case where + is already removed but 91 remains
             cleaned = cleaned.substring(2);
+        } else if (cleaned.startsWith("0") && cleaned.length() == 11) {
+            // Handle case where number starts with 0 and is 11 digits long
+            cleaned = cleaned.substring(1);
         }
 
         return cleaned.trim();

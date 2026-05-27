@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.iemr.common.identity</groupId>
 	<artifactId>identity-api</artifactId>
-	<version>3.6.1</version>
+	<version>3.6.2</version>
 
 	<packaging>war</packaging>
 
@@ -249,17 +249,6 @@
 			<artifactId>jjwt-jackson</artifactId>
 			<version>0.12.6</version>
 			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<!-- Elasticsearch client for health check -->
-		<dependency>
-			<groupId>org.elasticsearch.client</groupId>
-			<artifactId>elasticsearch-rest-client</artifactId>
-			<version>8.10.0</version>
 		</dependency>
 		<!--END NEW DEPENDENCIES ADDED-->
 	</dependencies>

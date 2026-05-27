@@ -75,4 +75,13 @@ public interface BenRegIdMappingRepo extends CrudRepository<MBeneficiaryregidmap
 
 	List<MBeneficiaryregidmapping> findTop10000ByProvisionedAndReserved(Boolean isProvisioned,Boolean isReserved);
 
+	/**
+	 * Atomically selects and locks the next available registration ID row.
+	 * SKIP LOCKED ensures concurrent servers each get a distinct row without blocking each other,
+	 * eliminating duplicate BenRegId assignments when multiple app instances share the same database.
+	 */
+	@Transactional
+	@Query(value = "SELECT * FROM m_beneficiaryregidmapping WHERE Provisioned = false AND Reserved = false ORDER BY BenRegId ASC LIMIT 1 FOR UPDATE SKIP LOCKED", nativeQuery = true)
+	MBeneficiaryregidmapping findAndLockNextAvailable();
+
 }
