@@ -287,59 +287,64 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 			JsonObject requestObj = new Gson().fromJson(comingRequest, JsonObject.class);
 
 			// ✅ use find instead of get
-			RMNCHBeneficiaryDetailsRmnch entity =
-					rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
+			if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID)).isEmpty()){
+				RMNCHBeneficiaryDetailsRmnch entity =
+						rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID)).get(0);
 
-			boolean isNew = false;
+				boolean isNew = false;
 
-			if (entity == null) {
-				entity = new RMNCHBeneficiaryDetailsRmnch();
-				isNew = true;
+				if (entity == null) {
+					entity = new RMNCHBeneficiaryDetailsRmnch();
+					isNew = true;
+				}
+
+				String createdBy = getString(requestObj, "createdBy", "system");
+
+				entity.setBenficieryid(BigInteger.valueOf(beneficiaryID));
+				entity.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
+
+				// ✅ Only set created fields for new record
+				if (isNew) {
+					entity.setCreatedBy(createdBy);
+					entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+				} else {
+					entity.setUpdatedBy(createdBy);
+					entity.setUpdatedDate(new Timestamp(System.currentTimeMillis()));
+				}
+
+				entity.setVanID(getInt(requestObj, "vanID", null));
+				entity.setParkingPlaceID(getInt(requestObj, "parkingPlaceID", null));
+				entity.setProviderServiceMapID(getInt(requestObj, "providerServiceMapID", null));
+				entity.setGenderId(getInt(requestObj, "genderID", null));
+
+				entity.setReproductiveStatusId(
+						getInt(requestObj, "reproductiveStatusId",
+								getInt(requestObj, "maritalStatusID", null))
+				);
+
+				entity.setReproductiveStatus(
+						getString(requestObj, "reproductiveStatus", null)
+				);
+
+				entity.setFirstName(getString(requestObj, "firstName", null));
+				entity.setLastName(getString(requestObj, "lastName", null));
+				entity.setFatherName(getString(requestObj, "fatherName", null));
+				entity.setSpousename(getString(requestObj, "spouseName", null));
+				entity.setMaritalstatusId(getInt(requestObj, "maritalStatusID", null));
+				entity.setMaritalstatus(getString(requestObj, "maritalStatusName", null));
+
+				// DOB
+				if (requestObj.has("dOB") && !requestObj.get("dOB").isJsonNull()) {
+					entity.setDob(Timestamp.valueOf(
+							requestObj.get("dOB").getAsString().replace("T", " ").replace("Z", "")
+					));
+				}
+
+				rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
+
 			}
 
-			String createdBy = getString(requestObj, "createdBy", "system");
 
-			entity.setBenficieryid(BigInteger.valueOf(beneficiaryID));
-			entity.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
-
-			// ✅ Only set created fields for new record
-			if (isNew) {
-				entity.setCreatedBy(createdBy);
-				entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
-			} else {
-				entity.setUpdatedBy(createdBy);
-				entity.setUpdatedDate(new Timestamp(System.currentTimeMillis()));
-			}
-
-			entity.setVanID(getInt(requestObj, "vanID", null));
-			entity.setParkingPlaceID(getInt(requestObj, "parkingPlaceID", null));
-			entity.setProviderServiceMapID(getInt(requestObj, "providerServiceMapID", null));
-			entity.setGenderId(getInt(requestObj, "genderID", null));
-
-			entity.setReproductiveStatusId(
-					getInt(requestObj, "reproductiveStatusId",
-							getInt(requestObj, "maritalStatusID", null))
-			);
-
-			entity.setReproductiveStatus(
-					getString(requestObj, "reproductiveStatus", null)
-			);
-
-			entity.setFirstName(getString(requestObj, "firstName", null));
-			entity.setLastName(getString(requestObj, "lastName", null));
-			entity.setFatherName(getString(requestObj, "fatherName", null));
-			entity.setSpousename(getString(requestObj, "spouseName", null));
-			entity.setMaritalstatusId(getInt(requestObj, "maritalStatusID", null));
-			entity.setMaritalstatus(getString(requestObj, "maritalStatusName", null));
-
-			// DOB
-			if (requestObj.has("dOB") && !requestObj.get("dOB").isJsonNull()) {
-				entity.setDob(Timestamp.valueOf(
-						requestObj.get("dOB").getAsString().replace("T", " ").replace("Z", "")
-				));
-			}
-
-			rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
 
 			logger.info("Saved RMNCH for benRegID: " + beneficiaryRegID);
 
