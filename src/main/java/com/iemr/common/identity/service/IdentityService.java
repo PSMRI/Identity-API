@@ -2003,6 +2003,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
      * @return
      */
     private BeneficiariesDTO getBeneficiariesDTO(MBeneficiarymapping benMap) {
+        RMNCHBeneficiaryDetailsRmnch rmnchBeneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
         BeneficiariesDTO bdto = mapper.mBeneficiarymappingToBeneficiariesDTO(benMap);
         if (null != benMap && null != benMap.getMBeneficiarydetail()
                 && !StringUtils.isEmpty(benMap.getMBeneficiarydetail().getFaceEmbedding())) {
@@ -2018,9 +2019,11 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             bdto.setFaceEmbedding(floatList);
         }
         // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
-        if(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId())!=null ){
-            bdto.setReproductiveStatus(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatus());
-            bdto.setReproductiveStatusId(rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).getReproductiveStatusId());
+
+        if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).isEmpty() ){
+            rmnchBeneficiaryDetailsRmnch = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).get(0);
+            bdto.setReproductiveStatus(rmnchBeneficiaryDetailsRmnch.getReproductiveStatus());
+            bdto.setReproductiveStatusId(rmnchBeneficiaryDetailsRmnch.getReproductiveStatusId());
         }
 
         bdto.setBeneficiaryFamilyTags(
