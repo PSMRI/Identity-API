@@ -31,19 +31,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -148,7 +145,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
 								RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
-										.getByRegID(benRegID);
+										.getByRegID(benRegID).get(0);
 								if (temp != null) {
 									obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
 								}
@@ -407,7 +404,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 					if (m.getBenRegId() != null) {
 						benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
-								.getByRegID(m.getBenRegId());
+								.getByRegID(m.getBenRegId()).get(0);
 						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
 
 						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());

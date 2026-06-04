@@ -885,7 +885,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
             BigInteger benRegId = new BigInteger(benMapArr[5].toString());
             RMNCHBeneficiaryDetailsRmnch obj = rMNCHBeneficiaryDetailsRmnchRepo
-                    .getByRegID(benRegId);
+                    .getByRegID(benRegId).get(0);
 
             if (obj != null) {
                 if (obj.getHouseoldId() != null) {
