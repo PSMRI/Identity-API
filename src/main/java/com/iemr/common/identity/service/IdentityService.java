@@ -811,8 +811,12 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
 
     public RMNCHBeneficiaryDetailsRmnch getRmnchDataByBenID(BigInteger benID) {
+        RMNCHBeneficiaryDetailsRmnch rmnchBeneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
 
-        return rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID);
+        if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID).isEmpty()){
+            rmnchBeneficiaryDetailsRmnch = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID).get(0);
+        }
+        return rmnchBeneficiaryDetailsRmnch;
     }
 
     public Long countBeneficiaryByVillageIdAndLastModifyDate(List<Integer> villageIDs, Timestamp lastModifiedDate) {
