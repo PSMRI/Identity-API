@@ -254,7 +254,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		} catch (
 
 		Exception e) {
-			throw new Exception(e.getMessage());
+			throw new Exception(e); // ✅ original exception wrap karo
+
 		}
 		resultMap.put("beneficiaryDetails", beneficiaryDetailsIds);
 		resultMap.put("bornBirthDeatils", bornBirthDeatilsIds);
