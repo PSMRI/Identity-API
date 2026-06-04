@@ -40,13 +40,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -151,11 +149,16 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
-										.getByRegID(benRegID);
-								if (temp != null) {
-									obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+								if(!rMNCHBeneficiaryDetailsRmnchRepo
+										.getByRegID(benRegID).isEmpty()){
+									RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
+											.getByRegID(benRegID).get(0);
+									if (temp != null) {
+										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+									}
 								}
+
+
 
 								if (obj.getRelatedBeneficiaryIds() != null
 										&& obj.getRelatedBeneficiaryIds().length > 0) {
@@ -261,7 +264,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		} catch (
 
 		Exception e) {
-			throw new Exception(e.getMessage());
+			throw new Exception(e); // ✅ original exception wrap karo
+
 		}
 		resultMap.put("beneficiaryDetails", beneficiaryDetailsIds);
 		resultMap.put("bornBirthDeatils", bornBirthDeatilsIds);
@@ -496,8 +500,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benID = rMNCHMBenRegIdMapRepo.getBenIdFromRegID(m.getBenRegId().longValue());
 
 					if (m.getBenRegId() != null) {
-						benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
-								.getByRegID(m.getBenRegId());
+						if(!rMNCHBeneficiaryDetailsRmnchRepo
+								.getByRegID(m.getBenRegId()).isEmpty()){
+							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
+									.getByRegID(m.getBenRegId()).get(0);
+						}
+
 						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
 
 						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
