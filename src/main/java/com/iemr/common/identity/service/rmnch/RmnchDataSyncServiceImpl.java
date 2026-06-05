@@ -234,6 +234,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							}
 
+							// Keep original list before saveAll — @Transient fields (height/weight/bmi/temperature)
+							// are lost in the JPA-managed instances returned by merge()
+							List<RMNCHBeneficiaryDetailsRmnch> benDetailsOriginalList = new ArrayList<>(benDetailsExtraList);
 							benDetailsExtraList = (ArrayList<RMNCHBeneficiaryDetailsRmnch>) rMNCHBeneficiaryDetailsRmnchRepo
 									.saveAll(benDetailsExtraList);
 
@@ -243,7 +246,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							// Write anthropometry (height/weight/bmi/temperature) to i_beneficiarydetails.otherFields.
 							// i_beneficiarydetails_rmnch has no these columns; FLW-API getBeneficiaryData reads from otherFields.
-							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
+							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsOriginalList) {
 								if (obj.getBenRegId() != null && hasAnthropometryData(obj)) {
 									try {
 										MBeneficiarydetail benDetail = benDetailRepo.findByBenRegId(obj.getBenRegId());
