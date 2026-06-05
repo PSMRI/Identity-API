@@ -73,6 +73,8 @@ import com.iemr.common.identity.repo.rmnch.RMNCHBornBirthDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHCBACDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHHouseHoldDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenMappingRepo;
+import com.iemr.common.identity.domain.MBeneficiarydetail;
+import com.iemr.common.identity.repo.BenDetailRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenRegIdMapRepo;
 import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
@@ -116,6 +118,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 	@Value("${fhir-url}")
 	private String fhirUrl;
+
+	@Autowired
+	private BenDetailRepo benDetailRepo;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
@@ -214,6 +219,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							benDetailsExtraList.forEach((n) -> beneficiaryDetailsIds.add(n.getId()));
 							// update beneficiary data in i_beneficiarydetails table
 							rMNCHBenDetailsRepo.saveAll(benDetailsList);
+
+							// Write anthropometry (height/weight/bmi/temperature) to i_beneficiarydetails.otherFields.
+							// i_beneficiarydetails_rmnch has no these columns; FLW-API getBeneficiaryData reads from otherFields.
+							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
+								if (obj.getBenRegId() != null && hasAnthropometryData(obj)) {
+									try {
+										MBeneficiarydetail benDetail = benDetailRepo.findByBenRegId(obj.getBenRegId());
+										if (benDetail != null) {
+											String merged = mergeAnthropometry(benDetail.getOtherFields(), obj);
+											benDetailRepo.updateOtherFieldsByBenRegId(obj.getBenRegId(), merged);
+										}
+									} catch (Exception ex) {
+										logger.warn("Failed to update otherFields for benRegId: " + obj.getBenRegId() + " - " + ex.getMessage());
+									}
+								}
+							}
 
 						// born birth details
 						if (jsnOBJ != null && jsnOBJ.has("bornBirthDeatils")) {
@@ -543,6 +564,28 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 				? obj.get(key).getAsInt()
 				: defaultVal;
 	}
+
+	private boolean hasAnthropometryData(RMNCHBeneficiaryDetailsRmnch obj) {
+		return obj.getHeight() != null || obj.getWeight() != null
+				|| obj.getBmi() != null || obj.getTemperature() != null;
+	}
+
+	private String mergeAnthropometry(String existingOtherFields, RMNCHBeneficiaryDetailsRmnch obj) {
+		JsonObject json = new JsonObject();
+		if (existingOtherFields != null && !existingOtherFields.isBlank()) {
+			try {
+				json = new JsonParser().parse(existingOtherFields).getAsJsonObject();
+			} catch (Exception ignored) {
+			}
+		}
+		if (obj.getHeight() != null) json.addProperty("height", obj.getHeight());
+		if (obj.getWeight() != null) json.addProperty("weight", obj.getWeight());
+		if (obj.getBmi() != null) json.addProperty("bmi", obj.getBmi());
+		// mobile sends "temperature"; FLW-API getBeneficiaryData reads "temperatureValue"
+		if (obj.getTemperature() != null) json.addProperty("temperatureValue", obj.getTemperature());
+		return new Gson().toJson(json);
+	}
+
 	@Override
 	public String getBenData(String requestOBJ, String authorisation) throws Exception {
 		String outputResponse = null;
