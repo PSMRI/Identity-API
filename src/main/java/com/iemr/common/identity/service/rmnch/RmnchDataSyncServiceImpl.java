@@ -75,6 +75,7 @@ import com.iemr.common.identity.repo.rmnch.RMNCHHouseHoldDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenMappingRepo;
 import com.iemr.common.identity.domain.MBeneficiarydetail;
 import com.iemr.common.identity.repo.BenDetailRepo;
+import com.iemr.common.identity.utils.redis.RedisStorage;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenRegIdMapRepo;
 import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
@@ -121,6 +122,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 	@Autowired
 	private BenDetailRepo benDetailRepo;
+	@Autowired
+	private RedisStorage redisStorage;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
@@ -132,6 +135,20 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		ArrayList<Long> bornBirthDeatilsIds = new ArrayList<>();
 		ArrayList<Long> cBACDetailsIds = new ArrayList<>();
 		ArrayList<Long> houseHoldDetailsIds = new ArrayList<>();
+
+		// Read camp vanID/parkingPlaceID from Redis (set by MMU-API on van login)
+		Integer campVanID = null;
+		Integer campParkingPlaceID = null;
+		try {
+			String vanVal = redisStorage.getObject("camp:vanID", false, 0);
+			String ppVal = redisStorage.getObject("camp:parkingPlaceID", false, 0);
+			if (vanVal != null && !vanVal.isBlank()) campVanID = Integer.parseInt(vanVal);
+			if (ppVal != null && !ppVal.isBlank()) campParkingPlaceID = Integer.parseInt(ppVal);
+		} catch (Exception ignored) {
+			// no camp configured — vanID stamping skipped
+		}
+		final Integer vanID = campVanID;
+		final Integer parkingPlaceID = campParkingPlaceID;
 
 		try {
 			if (requestOBJ != null && !requestOBJ.isEmpty()) {
@@ -182,6 +199,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											sb.append(benID.toString()).append(",");
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
+								}
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
 								}
 								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
 									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
@@ -249,7 +270,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									if (temp != null)
 										obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
 								}
-
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 							bornBirthList = (ArrayList<RMNCHBornBirthDetails>) rMNCHBornBirthDetailsRepo
 									.saveAll(bornBirthList);
@@ -275,7 +299,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									if (temp != null)
 										obj.setCBACDetailsid(temp.getCBACDetailsid());
 								}
-
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 
 							cbacList = (ArrayList<RMNCHCBACdetails>) rMNCHCBACDetailsRepo.saveAll(cbacList);
@@ -296,7 +323,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									if (temp != null)
 										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
 								}
-
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
