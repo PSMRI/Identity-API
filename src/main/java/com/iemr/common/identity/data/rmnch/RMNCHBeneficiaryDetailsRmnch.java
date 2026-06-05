@@ -550,4 +550,19 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	private Boolean isDeactivate;
 
+	// Anthropometry fields sent by Stop TB mobile app via beneficiaryDetails payload.
+	// i_beneficiarydetails_rmnch has no these columns — stored in i_beneficiarydetails.otherFields instead.
+	@Expose
+	@Transient
+	private Double height;
+	@Expose
+	@Transient
+	private Double weight;
+	@Expose
+	@Transient
+	private Double bmi;
+	@Expose
+	@Transient
+	private Double temperature; // stored as "temperatureValue" in otherFields to match getBeneficiaryData key
+
 }
