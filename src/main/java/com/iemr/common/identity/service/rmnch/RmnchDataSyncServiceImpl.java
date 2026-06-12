@@ -131,8 +131,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		Integer campVanID = null;
 		Integer campParkingPlaceID = null;
 		try {
-			String vanVal = redisStorage.getObject("camp:vanID", false, 0);
-			String ppVal = redisStorage.getObject("camp:parkingPlaceID", false, 0);
+			String vanVal = redisStorage.getRaw("camp:vanID");
+			String ppVal = redisStorage.getRaw("camp:parkingPlaceID");
 			if (vanVal != null && !vanVal.isBlank()) campVanID = Integer.parseInt(vanVal);
 			if (ppVal != null && !ppVal.isBlank()) campParkingPlaceID = Integer.parseInt(ppVal);
 		} catch (Exception ignored) {
