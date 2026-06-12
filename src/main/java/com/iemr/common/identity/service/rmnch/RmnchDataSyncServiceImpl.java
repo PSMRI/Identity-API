@@ -277,7 +277,6 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 
 
-	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	public String saveBeneficiaryDetailsAfterRegistration(
 			Long beneficiaryID,
 			Long beneficiaryRegID,
