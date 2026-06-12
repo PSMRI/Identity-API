@@ -350,7 +350,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 		} catch (Exception e) {
 			logger.error("Error: ", e);
-			throw e;
+			return "Error save beneficiary in rmnch :"+e.getMessage();
 		}
 
 		return "Saved RMNCH for beneficiaryID: " + beneficiaryID;

@@ -321,9 +321,7 @@ public class IdentityController {
 
 
 	@PostMapping("/getRmnchDataByBenRedID")
-	public ResponseEntity<RMNCHBeneficiaryDetailsRmnch> getRmnchDataByBenID(
-			@RequestBody BigInteger object) {
-
+	public ResponseEntity<RMNCHBeneficiaryDetailsRmnch> getRmnchDataByBenID(@RequestBody BigInteger object) {
 		try {
 			RMNCHBeneficiaryDetailsRmnch data = svc.getRmnchDataByBenID(object);
 			return ResponseEntity.ok(data);
