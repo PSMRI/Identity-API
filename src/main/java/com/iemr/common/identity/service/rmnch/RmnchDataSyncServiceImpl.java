@@ -288,14 +288,18 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 			// ✅ use find instead of get
 			if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID)).isEmpty()){
-				RMNCHBeneficiaryDetailsRmnch entity =
-						rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID)).get(0);
+				List<RMNCHBeneficiaryDetailsRmnch> list =
+						rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
+
+				RMNCHBeneficiaryDetailsRmnch entity;
 
 				boolean isNew = false;
 
-				if (entity == null) {
+				if (list.isEmpty()) {
 					entity = new RMNCHBeneficiaryDetailsRmnch();
 					isNew = true;
+				} else {
+					entity = list.get(0);
 				}
 
 				String createdBy = getString(requestObj, "createdBy", "system");
@@ -340,8 +344,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 					));
 				}
 
-				rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
+				RMNCHBeneficiaryDetailsRmnch saved =
+						rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
 
+				logger.info("Saved Entity Id : {}", saved.getBeneficiaryDetails_RmnchId());
 			}
 
 
