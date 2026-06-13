@@ -276,19 +276,27 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	}
 
 
-
+	@Override
 	public String saveBeneficiaryDetailsAfterRegistration(
 			Long beneficiaryID,
 			Long beneficiaryRegID,
 			String comingRequest) {
 
+		logger.info("Method started. beneficiaryID={}, beneficiaryRegID={}",
+				beneficiaryID, beneficiaryRegID);
+
 		try {
 			JsonObject requestObj = new Gson().fromJson(comingRequest, JsonObject.class);
+			logger.info("Request Parsed Successfully");
 
-			// ✅ use find instead of get
-			if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID)).isEmpty()){
-				List<RMNCHBeneficiaryDetailsRmnch> list =
-						rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
+			List<RMNCHBeneficiaryDetailsRmnch> list =
+					rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(BigInteger.valueOf(beneficiaryRegID));
+
+			logger.info("Records found for RegID {} : {}", beneficiaryRegID, list.size());
+
+			if (!list.isEmpty()) {
+
+				logger.info("Entering save/update block");
 
 				RMNCHBeneficiaryDetailsRmnch entity;
 
@@ -297,65 +305,71 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 				if (list.isEmpty()) {
 					entity = new RMNCHBeneficiaryDetailsRmnch();
 					isNew = true;
+					logger.info("Creating new entity");
 				} else {
 					entity = list.get(0);
+					logger.info("Updating existing entity. ID={}",
+							entity.getBeneficiaryDetails_RmnchId());
 				}
 
 				String createdBy = getString(requestObj, "createdBy", "system");
+				logger.info("createdBy={}", createdBy);
 
 				entity.setBenficieryid(BigInteger.valueOf(beneficiaryID));
 				entity.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
 
-				// ✅ Only set created fields for new record
+				logger.info("Basic details set");
+
 				if (isNew) {
 					entity.setCreatedBy(createdBy);
 					entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+					logger.info("Created fields set");
 				} else {
 					entity.setUpdatedBy(createdBy);
 					entity.setUpdatedDate(new Timestamp(System.currentTimeMillis()));
+					logger.info("Updated fields set");
 				}
 
 				entity.setVanID(getInt(requestObj, "vanID", null));
 				entity.setParkingPlaceID(getInt(requestObj, "parkingPlaceID", null));
 				entity.setProviderServiceMapID(getInt(requestObj, "providerServiceMapID", null));
-				entity.setGenderId(getInt(requestObj, "genderID", null));
 
-				entity.setReproductiveStatusId(
-						getInt(requestObj, "reproductiveStatusId",
-								getInt(requestObj, "maritalStatusID", null))
-				);
-
-				entity.setReproductiveStatus(
-						getString(requestObj, "reproductiveStatus", null)
-				);
+				logger.info("Location details set");
 
 				entity.setFirstName(getString(requestObj, "firstName", null));
 				entity.setLastName(getString(requestObj, "lastName", null));
-				entity.setFatherName(getString(requestObj, "fatherName", null));
-				entity.setSpousename(getString(requestObj, "spouseName", null));
-				entity.setMaritalstatusId(getInt(requestObj, "maritalStatusID", null));
-				entity.setMaritalstatus(getString(requestObj, "maritalStatusName", null));
 
-				// DOB
+				logger.info("Personal details set. FirstName={}, LastName={}",
+						entity.getFirstName(), entity.getLastName());
+
 				if (requestObj.has("dOB") && !requestObj.get("dOB").isJsonNull()) {
+					logger.info("DOB found in request : {}",
+							requestObj.get("dOB").getAsString());
+
 					entity.setDob(Timestamp.valueOf(
-							requestObj.get("dOB").getAsString().replace("T", " ").replace("Z", "")
+							requestObj.get("dOB").getAsString()
+									.replace("T", " ")
+									.replace("Z", "")
 					));
 				}
+
+				logger.info("Before save");
 
 				RMNCHBeneficiaryDetailsRmnch saved =
 						rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
 
-				logger.info("Saved Entity Id : {}", saved.getBeneficiaryDetails_RmnchId());
+				logger.info("After save. Saved ID={}",
+						saved.getBeneficiaryDetails_RmnchId());
+
+			} else {
+				logger.info("No record found for beneficiaryRegID={}", beneficiaryRegID);
 			}
 
-
-
-			logger.info("Saved RMNCH for benRegID: " + beneficiaryRegID);
+			logger.info("Method completed successfully");
 
 		} catch (Exception e) {
-			logger.error("Error: ", e);
-			return "Error save beneficiary in rmnch :"+e.getMessage();
+			logger.error("Exception occurred in saveBeneficiaryDetailsAfterRegistration", e);
+			return "Error save beneficiary in rmnch :" + e.getMessage();
 		}
 
 		return "Saved RMNCH for beneficiaryID: " + beneficiaryID;
