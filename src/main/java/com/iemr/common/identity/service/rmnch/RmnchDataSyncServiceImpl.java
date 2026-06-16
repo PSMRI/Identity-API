@@ -247,10 +247,14 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
 
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
-								RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
-										.getByHouseHoldID(obj.getHouseoldId()).get(0);
-								if (temp != null)
-									obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+								if(!rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
+									RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
+											.getByHouseHoldID(obj.getHouseoldId()).get(0);
+									if (temp != null)
+										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+								}
+
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
