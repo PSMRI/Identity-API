@@ -248,7 +248,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
 								RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
-										.getByHouseHoldID(obj.getHouseoldId());
+										.getByHouseHoldID(obj.getHouseoldId()).get(0);
 								if (temp != null)
 									obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
 							}
@@ -583,7 +583,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
 							benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
-									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId());
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
 
 					}
 					if (benDetailsRMNCHOBJ == null)
