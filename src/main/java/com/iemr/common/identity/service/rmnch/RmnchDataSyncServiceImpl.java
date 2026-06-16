@@ -172,21 +172,24 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
 								}
-								RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
-										rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId());
-								if (rmnchmBeneficiarydetail != null) {
-									rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
-									rmnchmBeneficiarydetail.setLastName(obj.getLastName());
-									rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
-									rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
-									rmnchmBeneficiarydetail.setDob(obj.getDob());
-									rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
-									rmnchmBeneficiarydetail.setGender(obj.getGender());
-									rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
-									rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
-									rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
-									benDetailsList.add(rmnchmBeneficiarydetail);
+								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
+									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
+											rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
+									if (rmnchmBeneficiarydetail != null) {
+										rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
+										rmnchmBeneficiarydetail.setLastName(obj.getLastName());
+										rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
+										rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
+										rmnchmBeneficiarydetail.setDob(obj.getDob());
+										rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
+										rmnchmBeneficiarydetail.setGender(obj.getGender());
+										rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
+										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
+										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+										benDetailsList.add(rmnchmBeneficiarydetail);
+									}
 								}
+
 
 							}
 
@@ -264,7 +267,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		} catch (
 
 		Exception e) {
+			logger.error("Full Exception", e);
+
 			throw new Exception(e); // ✅ original exception wrap karo
+
 
 		}
 		resultMap.put("beneficiaryDetails", beneficiaryDetailsIds);
