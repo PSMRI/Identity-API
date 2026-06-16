@@ -117,6 +117,11 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private BenDetailRepo benDetailRepo;
 	@Autowired
 	private RedisStorage redisStorage;
+
+	// When true, sync fails loudly if camp is not configured instead of silently
+	// skipping vanID stamping
+	@Value("${stoptb.enforce.vanid:false}")
+	private boolean enforceVanID;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ) throws Exception {
@@ -138,6 +143,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 			if (ppVal != null && !ppVal.isBlank()) campParkingPlaceID = Integer.parseInt(ppVal);
 		} catch (Exception ignored) {
 			// no camp configured — vanID stamping skipped
+		}
+		if (campVanID == null && enforceVanID) {
+			throw new Exception(
+					"Camp not configured: vanID missing. Please select van/service point in MMU before syncing data.");
 		}
 		final Integer vanID = campVanID;
 		final Integer parkingPlaceID = campParkingPlaceID;
