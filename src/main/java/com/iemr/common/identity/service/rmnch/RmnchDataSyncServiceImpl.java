@@ -333,7 +333,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
           logger.info("Save abha id in health mapping:"+responseStr.toString());
 		  return responseStr;
 	  }catch (Exception e){
-		  logger.info("Error Save Health Id");
+		  logger.info("Error Save Health Id"+e);
 		  return "Error Save Health Id: "+e.getMessage();
 	  }
 
