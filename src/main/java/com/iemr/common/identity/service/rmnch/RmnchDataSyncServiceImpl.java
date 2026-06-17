@@ -24,6 +24,7 @@ package com.iemr.common.identity.service.rmnch;
 import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -302,7 +303,17 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
       try {
 		  RestTemplate restTemplate = new RestTemplate();
+		  String formattedDob = dob;
 
+		  try {
+			  if (dob != null && dob.contains(" ")) {
+				  Timestamp timestamp = Timestamp.valueOf(dob);
+				  formattedDob = new SimpleDateFormat("dd-MM-yyyy")
+						  .format(timestamp);
+			  }
+		  } catch (Exception ex) {
+			  logger.warn("DOB format conversion failed, sending original DOB : {}", dob);
+		  }
 		  logger.info("Authorization Token : {}", authorization);
 
 		  Map<String, Object> requestMap = new HashMap<>();
@@ -326,7 +337,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		  abhaProfile.put("firstName", firstName);
 		  abhaProfile.put("middleName", "");
 		  abhaProfile.put("lastName", lastName);
-		  abhaProfile.put("dob", dob);
+		  abhaProfile.put("dob", formattedDob);
+
 
 		  requestMap.put("ABHAProfile", abhaProfile);
 
