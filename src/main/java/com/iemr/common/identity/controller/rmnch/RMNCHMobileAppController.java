@@ -59,7 +59,7 @@ public class RMNCHMobileAppController {
 
 	@PostMapping(value = "/syncDataToAmrit", consumes = "application/json", produces = "application/json")
 	@Operation(summary = "Sync data to AMRIT for already regestered beneficiary with AMRIT beneficiary id ")
-	public String syncDataToAmrit(@RequestBody String requestOBJ,@RequestHeader(value = "Authorization") String authorization) {
+	public String syncDataToAmrit(@RequestBody String requestOBJ,@RequestHeader(value = "jwttoken") String authorization) {
 		OutputResponse response = new OutputResponse();
 		try {
 			if (requestOBJ != null) {

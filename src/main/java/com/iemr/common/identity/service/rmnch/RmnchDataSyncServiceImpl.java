@@ -328,6 +328,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		  HashMap<String, Object> header = new HashMap<>();
 		  header.put("Authorization", authorization);
 
+
 		  String responseStr = utils.post(
 				  fhirUrl+ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary"),
 				  new Gson().toJson(requestMap),
