@@ -875,20 +875,24 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             //benMapOBJ = mappingRepo.getMapping(getBigIntegerValueFromObject(benMapArr[9]), (Integer) benMapArr[8]);
 
             BigInteger benRegId = new BigInteger(benMapArr[5].toString());
-            RMNCHBeneficiaryDetailsRmnch obj = rMNCHBeneficiaryDetailsRmnchRepo
-                    .getByRegID(benRegId);
+            if(!rMNCHBeneficiaryDetailsRmnchRepo
+                    .getByRegID(benRegId).isEmpty()){
+                RMNCHBeneficiaryDetailsRmnch obj = rMNCHBeneficiaryDetailsRmnchRepo
+                        .getByRegID(benRegId).get(0);
 
-            if (obj != null) {
-                if (obj.getHouseoldId() != null) {
-                    mapping.setHouseHoldID(obj.getHouseoldId());
-                }
-                if (obj.getGuidelineId() != null) {
-                    mapping.setGuideLineID(obj.getGuidelineId());
-                }
-                if (obj.getRchid() != null) {
-                    mapping.setRchID(obj.getRchid());
+                if (obj != null) {
+                    if (obj.getHouseoldId() != null) {
+                        mapping.setHouseHoldID(obj.getHouseoldId());
+                    }
+                    if (obj.getGuidelineId() != null) {
+                        mapping.setGuideLineID(obj.getGuidelineId());
+                    }
+                    if (obj.getRchid() != null) {
+                        mapping.setRchID(obj.getRchid());
+                    }
                 }
             }
+
 
         }
         return mapping;

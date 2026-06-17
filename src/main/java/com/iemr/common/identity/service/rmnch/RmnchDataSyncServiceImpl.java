@@ -176,10 +176,13 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
-										.getByRegID(benRegID);
-								if (temp != null) {
-									obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+								if(!rMNCHBeneficiaryDetailsRmnchRepo
+										.getByRegID(benRegID).isEmpty()){
+									RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
+											.getByRegID(benRegID).get(0);
+									if (temp != null) {
+										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+									}
 								}
 
 								if (obj.getRelatedBeneficiaryIds() != null
@@ -194,24 +197,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
 								}
-								if (obj.getVanID() == null && vanID != null) {
-									obj.setVanID(vanID);
-									obj.setParkingPlaceID(parkingPlaceID);
-								}
-								RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
-										rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId());
-								if (rmnchmBeneficiarydetail != null) {
-									rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
-									rmnchmBeneficiarydetail.setLastName(obj.getLastName());
-									rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
-									rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
-									rmnchmBeneficiarydetail.setDob(obj.getDob());
-									rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
-									rmnchmBeneficiarydetail.setGender(obj.getGender());
-									rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
-									rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
-									rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
-									benDetailsList.add(rmnchmBeneficiarydetail);
+								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
+									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
+											rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
+									if (rmnchmBeneficiarydetail != null) {
+										rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
+										rmnchmBeneficiarydetail.setLastName(obj.getLastName());
+										rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
+										rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
+										rmnchmBeneficiarydetail.setDob(obj.getDob());
+										rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
+										rmnchmBeneficiarydetail.setGender(obj.getGender());
+										rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
+										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
+										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+										benDetailsList.add(rmnchmBeneficiarydetail);
+									}
 								}
 
 							}
@@ -297,13 +298,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
 
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
-								RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
-										.getByHouseHoldID(obj.getHouseoldId());
-								if (temp != null)
-									obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
-								if (obj.getVanID() == null && vanID != null) {
-									obj.setVanID(vanID);
-									obj.setParkingPlaceID(parkingPlaceID);
+								if(!rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
+									RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
+											.getByHouseHoldID(obj.getHouseoldId()).get(0);
+									if (temp != null)
+										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
 								}
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
@@ -492,8 +492,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benID = rMNCHMBenRegIdMapRepo.getBenIdFromRegID(m.getBenRegId().longValue());
 
 					if (m.getBenRegId() != null) {
-						benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
-								.getByRegID(m.getBenRegId());
+						if(!rMNCHBeneficiaryDetailsRmnchRepo
+								.getByRegID(m.getBenRegId()).isEmpty()){
+							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
+									.getByRegID(m.getBenRegId()).get(0);
+						}
+
 						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
 
 						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
@@ -517,8 +521,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
-							benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
-									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId());
+							if(!rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
+								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+
+							}
 
 					}
 					if (benDetailsRMNCHOBJ == null)
