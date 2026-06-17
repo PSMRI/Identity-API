@@ -340,13 +340,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 		  HttpHeaders headers = new HttpHeaders();
 		  headers.setContentType(MediaType.APPLICATION_JSON);
-
 		  // Agar token me Bearer nahi aa raha hai
-		  if (authorization != null && !authorization.startsWith("Bearer ")) {
-			  authorization = "Bearer " + authorization;
-		  }
 
-		  headers.set("Authorization", authorization);
+		  headers.set("Jwttoken", authorization);
 
 		  HttpEntity<String> entity =
 				  new HttpEntity<>(requestBody, headers);
