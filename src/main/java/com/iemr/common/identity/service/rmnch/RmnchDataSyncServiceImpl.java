@@ -33,8 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.iemr.common.identity.utils.OutputResponse;
-import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,8 +76,6 @@ import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
 import com.iemr.common.identity.utils.http.HttpUtils;
 import com.iemr.common.identity.utils.mapper.InputMapper;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
 @Qualifier("rmnchServiceImpl")
@@ -115,7 +111,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
-	public String syncDataToAmrit(String requestOBJ) throws Exception {
+	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
+
 
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
@@ -133,6 +130,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 				// other tables data saving
 				// ben details RMNCH extra fields details
+				logger.info("Request object of syncDataToAmrit: "+jsnOBJ);
+
 
 				BigInteger benRegID = null;
 
@@ -187,6 +186,14 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
 										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
 										benDetailsList.add(rmnchmBeneficiarydetail);
+										if (jsnOBJ.has("abhaId") && !jsnOBJ.get("abhaId").isJsonNull()) {
+											String abhaId = jsnOBJ.get("abhaId").getAsString();
+											if(!abhaId.isEmpty() || abhaId!=null){
+												mapHealthIDToBeneficiary(authorization,rmnchmBeneficiarydetail.getBenRegId().longValue(),rmnchmBeneficiarydetail.getBenficieryid().longValue(),abhaId,rmnchmBeneficiarydetail.getCreatedBy(),rmnchmBeneficiarydetail.getFirstName(),rmnchmBeneficiarydetail.getLastName(),rmnchmBeneficiarydetail.getDob().toString(),rmnchmBeneficiarydetail.getProviderServiceMapID());
+
+											}
+										}
+
 									}
 								}
 
@@ -283,6 +290,56 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		resultMap.put("houseHoldDetails", houseHoldDetailsIds);
 
 		return new Gson().toJson(resultMap);
+	}
+
+	public String mapHealthIDToBeneficiary(String authorization,
+										   Long benRegID,
+										   Long beneficiaryID,
+										   String abhaId,
+										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
+      try {
+		  Map<String, Object> requestMap = new HashMap<>();
+
+		  requestMap.put("beneficiaryRegID", benRegID);
+		  requestMap.put("beneficiaryID", beneficiaryID);
+		  requestMap.put("healthIdNumber", abhaId);
+
+		  requestMap.put("createdBy", createdBy);
+		  requestMap.put("providerServiceMapId", providerServiceMapId);
+		  requestMap.put("isNew", false);
+
+		  // ABHA Profile
+		  Map<String, Object> abhaProfile = new HashMap<>();
+		  abhaProfile.put("ABHANumber", abhaId);
+
+		  List<String> phrAddress = new ArrayList<>();
+		  phrAddress.add(abhaId + "@abdm");
+
+		  abhaProfile.put("phrAddress", phrAddress);
+		  abhaProfile.put("firstName", firstName);
+		  abhaProfile.put("middleName", "");
+		  abhaProfile.put("lastName", lastName);
+		  abhaProfile.put("dob", dob);
+
+		  requestMap.put("ABHAProfile", abhaProfile);
+
+		  HttpUtils utils = new HttpUtils();
+
+		  HashMap<String, Object> header = new HashMap<>();
+		  header.put("Authorization", authorization);
+
+		  String responseStr = utils.post(
+				  ConfigProperties.getPropertyByName("fhir-url")
+						  + ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary"),
+				  new Gson().toJson(requestMap),
+				  header);
+          logger.info("Save abha id in health mapping:"+responseStr.toString());
+		  return responseStr;
+	  }catch (Exception e){
+		  logger.info("Error Save Health Id");
+		  return "Error Save Health Id: "+e.getMessage();
+	  }
+
 	}
 
 

@@ -59,11 +59,11 @@ public class RMNCHMobileAppController {
 
 	@PostMapping(value = "/syncDataToAmrit", consumes = "application/json", produces = "application/json")
 	@Operation(summary = "Sync data to AMRIT for already regestered beneficiary with AMRIT beneficiary id ")
-	public String syncDataToAmrit(@RequestBody String requestOBJ) {
+	public String syncDataToAmrit(@RequestBody String requestOBJ,@RequestHeader(value = "Authorization") String authorization) {
 		OutputResponse response = new OutputResponse();
 		try {
 			if (requestOBJ != null) {
-				String s = rmnchDataSyncService.syncDataToAmrit(requestOBJ);
+				String s = rmnchDataSyncService.syncDataToAmrit(requestOBJ,authorization);
 				response.setResponse(s);
 			} else
 				response.setError(5000, "Invalid/NULL request obj");
