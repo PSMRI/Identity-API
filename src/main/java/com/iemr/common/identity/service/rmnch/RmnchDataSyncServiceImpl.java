@@ -40,6 +40,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +77,8 @@ import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
 import com.iemr.common.identity.utils.http.HttpUtils;
 import com.iemr.common.identity.utils.mapper.InputMapper;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @Qualifier("rmnchServiceImpl")
@@ -298,8 +301,11 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										   String abhaId,
 										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
       try {
+		  RestTemplate restTemplate = new RestTemplate();
+
+		  logger.info("Authorization Token : {}", authorization);
+
 		  Map<String, Object> requestMap = new HashMap<>();
-		  logger.info("authorization:"+authorization);
 
 		  requestMap.put("beneficiaryRegID", benRegID);
 		  requestMap.put("beneficiaryID", beneficiaryID);
@@ -324,21 +330,50 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 		  requestMap.put("ABHAProfile", abhaProfile);
 
-		  HttpUtils utils = new HttpUtils();
+		  String requestBody = new Gson().toJson(requestMap);
 
-		  HashMap<String, Object> header = new HashMap<>();
-		  header.put("Authorization", authorization);
+		  String url = fhirUrl
+				  + ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary");
 
+		  logger.info("Calling URL : {}", url);
+		  logger.info("Request Body : {}", requestBody);
 
-		  String responseStr = utils.post(
-				  fhirUrl+ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary"),
-				  new Gson().toJson(requestMap),
-				  header);
-          logger.info("Save abha id in health mapping:"+responseStr.toString());
-		  return responseStr;
-	  }catch (Exception e){
-		  logger.info("Error Save Health Id"+e);
-		  return "Error Save Health Id: "+e.getMessage();
+		  HttpHeaders headers = new HttpHeaders();
+		  headers.setContentType(MediaType.APPLICATION_JSON);
+
+		  // Agar token me Bearer nahi aa raha hai
+		  if (authorization != null && !authorization.startsWith("Bearer ")) {
+			  authorization = "Bearer " + authorization;
+		  }
+
+		  headers.set("Authorization", authorization);
+
+		  HttpEntity<String> entity =
+				  new HttpEntity<>(requestBody, headers);
+
+		  ResponseEntity<String> response = restTemplate.exchange(
+				  url,
+				  HttpMethod.POST,
+				  entity,
+				  String.class
+		  );
+
+		  logger.info("ABHA Mapping Response : {}", response.getBody());
+
+		  return response.getBody();
+
+	  } catch (HttpClientErrorException e) {
+
+		  logger.error("HTTP Error Status : {}", e.getStatusCode());
+		  logger.error("HTTP Error Response : {}", e.getResponseBodyAsString(), e);
+
+		  return "HTTP Error : " + e.getStatusCode();
+
+	  } catch (Exception e) {
+
+		  logger.error("Error while saving Health ID Mapping", e);
+
+		  return "Error Save Health Id : " + e.getMessage();
 	  }
 
 	}
