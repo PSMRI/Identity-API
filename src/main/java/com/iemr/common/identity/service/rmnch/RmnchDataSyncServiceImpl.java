@@ -299,6 +299,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
       try {
 		  Map<String, Object> requestMap = new HashMap<>();
+		  logger.info("authorization:"+authorization);
 
 		  requestMap.put("beneficiaryRegID", benRegID);
 		  requestMap.put("beneficiaryID", beneficiaryID);
