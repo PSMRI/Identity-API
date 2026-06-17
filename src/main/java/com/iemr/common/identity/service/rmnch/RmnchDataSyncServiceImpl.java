@@ -109,6 +109,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHBenContactRepo rMNCHBenContactRepo;
 	@Autowired
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
+
+	@Value("${fhir-url}")
+	private String fhirUrl;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
@@ -326,8 +329,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		  header.put("Authorization", authorization);
 
 		  String responseStr = utils.post(
-				  ConfigProperties.getPropertyByName("fhir-url")
-						  + ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary"),
+				  fhirUrl+ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary"),
 				  new Gson().toJson(requestMap),
 				  header);
           logger.info("Save abha id in health mapping:"+responseStr.toString());
