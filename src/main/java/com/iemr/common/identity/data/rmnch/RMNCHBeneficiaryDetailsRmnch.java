@@ -550,4 +550,7 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	private Boolean isDeactivate;
 
+	@Expose
+	@Transient
+	private String abhaId;
 }
