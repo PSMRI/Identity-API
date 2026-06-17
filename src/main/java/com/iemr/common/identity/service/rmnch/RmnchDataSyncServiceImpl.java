@@ -586,8 +586,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
-							benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
-									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							if(!rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
+								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							}
+
 
 					}
 					if (benDetailsRMNCHOBJ == null)
