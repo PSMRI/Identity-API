@@ -574,4 +574,43 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Column(name = "gpsUnavailableReason")
 	private String gpsUnavailableReason;
 
+	@Expose
+	@Column(name = "gpsLatitude")
+	private Double gpsLatitude;
+
+	@Expose
+	@Column(name = "gpsLongitude")
+	private Double gpsLongitude;
+
+	@Expose
+	@Column(name = "digipin")
+	private String digipin;
+
+	@Expose
+	@Column(name = "gpsTimestamp")
+	private Timestamp gpsTimestamp;
+
+	@Expose
+	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+	private Boolean isGpsUnavailable = false;
+
+	@Expose
+	@Column(name = "gpsUnavailableReason")
+	private String gpsUnavailableReason;
+
+	// Anthropometry fields sent by Stop TB mobile app via beneficiaryDetails payload.
+	// i_beneficiarydetails_rmnch has no these columns — stored in i_beneficiarydetails.otherFields instead.
+	@Expose
+	@Transient
+	private Double height;
+	@Expose
+	@Transient
+	private Double weight;
+	@Expose
+	@Transient
+	private Double bmi;
+	@Expose
+	@Transient
+	private Double temperature; // stored as "temperatureValue" in otherFields to match getBeneficiaryData key
+
 }
