@@ -348,6 +348,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											.getByHouseHoldID(obj.getHouseoldId()).get(0);
 									if (temp != null)
 										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+									if (hhTimestampMap.containsKey(obj.getHouseoldId()))
+										obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
 								}
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
