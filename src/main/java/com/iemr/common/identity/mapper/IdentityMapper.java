@@ -1,24 +1,24 @@
 /*
-* AMRIT – Accessible Medical Records via Integrated Technology 
-* Integrated EHR (Electronic Health Records) Solution 
-*
-* Copyright (C) "Piramal Swasthya Management and Research Institute" 
-*
-* This file is part of AMRIT.
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see https://www.gnu.org/licenses/.
-*/
+ * AMRIT – Accessible Medical Records via Integrated Technology
+ * Integrated EHR (Electronic Health Records) Solution
+ *
+ * Copyright (C) "Piramal Swasthya Management and Research Institute"
+ *
+ * This file is part of AMRIT.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see https://www.gnu.org/licenses/.
+ */
 package com.iemr.common.identity.mapper;
 
 import java.sql.Timestamp;
@@ -66,7 +66,7 @@ public interface IdentityMapper {
 
 	MBeneficiarymapping identityDTOToMBeneficiarymapping(IdentityDTO dto);
 
-	
+
 
 	@Mapping(source = "defaultNo", target = "shareAnonymousWithGovt")
 	@Mapping(source = "defaultNo", target = "shareAnonymousWithMedicalCommunity")
@@ -93,7 +93,7 @@ public interface IdentityMapper {
 
 	MBeneficiaryconsent identityDTOToDefaultMBeneficiaryconsent(IdentityDTO dto, Boolean defaultYes, Boolean defaultNo);
 
-	
+
 
 //	@Mapping(source = "dto.areaId", target = "areaId")
 //	@Mapping(source = "dto.beneficiaryRegId", target = "beneficiaryRegID")
@@ -144,7 +144,7 @@ public interface IdentityMapper {
 //	@Mapping(source = "dto.vanID", target = "vanID")
 //	@Mapping(source = "dto.parkingPlaceId", target = "parkingPlaceID")
 //	MBeneficiarydetail identityDTOToMBeneficiarydetail(IdentityDTO dto);
-	
+
 
 	@Mapping(source = "benFamilyDTO.isEmergencyContact", target = "isEmergencyContact")
 	@Mapping(source = "benFamilyDTO.relationshipToSelf", target = "relationshipToSelf")
@@ -152,7 +152,7 @@ public interface IdentityMapper {
 	@Mapping(source = "createdBy", target = "createdBy")
 	@Mapping(source = "createdDate", target = "createdDate")
 	MBeneficiaryfamilymapping identityDTOToMBeneficiaryfamilymapping(BenFamilyDTO benFamilyDTO, String createdBy,
-			Timestamp createdDate);
+	                                                                 Timestamp createdDate);
 
 	List<MBeneficiaryfamilymapping> identityDTOListToMBeneficiaryfamilymappingList(List<BenFamilyDTO> list);
 
@@ -210,6 +210,12 @@ public interface IdentityMapper {
 	@Mapping(target = "currentAddress.village", source = "map.MBeneficiaryaddress.currVillage")
 	@Mapping(target = "currentAddress.addressValue", source = "map.MBeneficiaryaddress.currAddressValue")
 	@Mapping(target = "currentAddress.pinCode", source = "map.MBeneficiaryaddress.currPinCode")
+	@Mapping(target = "currentAddress.gpsLatitude", source = "map.MBeneficiaryaddress.gpsLatitude")
+	@Mapping(target = "currentAddress.gpsLongitude", source = "map.MBeneficiaryaddress.gpsLongitude")
+	@Mapping(target = "currentAddress.digipin", source = "map.MBeneficiaryaddress.digipin")
+	@Mapping(target = "currentAddress.gpsTimestamp", source = "map.MBeneficiaryaddress.gpsTimestamp")
+	@Mapping(target = "currentAddress.isGpsUnavailable", source = "map.MBeneficiaryaddress.isGpsUnavailable")
+	@Mapping(target = "currentAddress.gpsUnavailableReason", source = "map.MBeneficiaryaddress.gpsUnavailableReason")
 	@Mapping(target = "emergencyAddress.addrLine1", source = "map.MBeneficiaryaddress.emerAddrLine1")
 	@Mapping(target = "emergencyAddress.addrLine2", source = "map.MBeneficiaryaddress.emerAddrLine2")
 	@Mapping(target = "emergencyAddress.addrLine3", source = "map.MBeneficiaryaddress.emerAddrLine3")
@@ -296,13 +302,13 @@ public interface IdentityMapper {
 	@Mapping(target = "beneficiaryDetails.title", source = "map.MBeneficiarydetail.title")
 	@Mapping(target = "beneficiaryDetails.zoneId", source = "map.MBeneficiarydetail.zoneId")
 	@Mapping(target = "contacts", expression = "java( map != null && map.getMBeneficiarycontact() != null && "
-            + "map.getMBeneficiarydetail() != null ? "
-            + "Phone.createContactList(map.getMBeneficiarycontact(), "
-            + "(benRegId != null ? benRegId.toString() : null), "
-            + "(map.getMBeneficiarydetail().getFirstName() != null ? map.getMBeneficiarydetail().getFirstName() : \"\") + \" \" + "
-            + "(map.getMBeneficiarydetail().getMiddleName() != null ? map.getMBeneficiarydetail().getMiddleName() : \"\") + \" \" + "
-            + "(map.getMBeneficiarydetail().getLastName() != null ? map.getMBeneficiarydetail().getLastName() : \"\") "
-            + ") : null)")
+			+ "map.getMBeneficiarydetail() != null ? "
+			+ "Phone.createContactList(map.getMBeneficiarycontact(), "
+			+ "(map.getBenRegId() != null ? map.getBenRegId().toString() : null), "
+			+ "(map.getMBeneficiarydetail().getFirstName() != null ? map.getMBeneficiarydetail().getFirstName() : \"\") + \" \" + "
+			+ "(map.getMBeneficiarydetail().getMiddleName() != null ? map.getMBeneficiarydetail().getMiddleName() : \"\") + \" \" + "
+			+ "(map.getMBeneficiarydetail().getLastName() != null ? map.getMBeneficiarydetail().getLastName() : \"\") "
+			+ ") : null)")
 
 	@Mapping(target = "permanentAddress.zoneID", source = "map.MBeneficiaryaddress.permZoneID")
 	@Mapping(target = "permanentAddress.zoneName", source = "map.MBeneficiaryaddress.permZone")
@@ -334,13 +340,13 @@ public interface IdentityMapper {
 	@Mapping(target = "accountNo", source = "map.MBeneficiaryAccount.accountNo")
 	@Mapping(target = "benAccountID", source = "map.benAccountID")
 	@Mapping(target = "ageAtMarriage", expression = "java(map != null && map.getMBeneficiarydetail() != null ? "
-            + "MBeneficiarydetail.getAgeAtMarriageCalc(map.getMBeneficiarydetail().getDob(), "
-            + "map.getMBeneficiarydetail().getMarriageDate(), "
-            + "map.getMBeneficiarydetail().getAgeAtMarriage()) : null)")
+			+ "MBeneficiarydetail.getAgeAtMarriageCalc(map.getMBeneficiarydetail().getDob(), "
+			+ "map.getMBeneficiarydetail().getMarriageDate(), "
+			+ "map.getMBeneficiarydetail().getAgeAtMarriage()) : null)")
 	@Mapping(target = "marriageDate", expression = "java(map != null && map.getMBeneficiarydetail() != null ? "
-            + "MBeneficiarydetail.getMarriageDateCalc(map.getMBeneficiarydetail().getDob(), "
-            + "map.getMBeneficiarydetail().getMarriageDate(), "
-            + "map.getMBeneficiarydetail().getAgeAtMarriage()) : null)")
+			+ "MBeneficiarydetail.getMarriageDateCalc(map.getMBeneficiarydetail().getDob(), "
+			+ "map.getMBeneficiarydetail().getMarriageDate(), "
+			+ "map.getMBeneficiarydetail().getAgeAtMarriage()) : null)")
 
 	@Mapping(target = "literacyStatus", source = "map.MBeneficiarydetail.literacyStatus")
 	@Mapping(target = "motherName", source = "map.MBeneficiarydetail.motherName")
@@ -481,7 +487,7 @@ public interface IdentityMapper {
 	@Mapping(source = "dto.createdDate", target = "createdDate")
 	@Mapping(source = "dto.vanID", target = "vanID")
 	@Mapping(source = "dto.parkingPlaceId", target = "parkingPlaceID")
-	// End
+		// End
 	MBeneficiaryAccount identityDTOToMBeneficiaryAccount(IdentityDTO dto);
 
 	@InheritInverseConfiguration
@@ -490,7 +496,7 @@ public interface IdentityMapper {
 	@Mapping(source = "dto.benImage", target = "benImage")
 	@Mapping(source = "dto.agentName", target = "createdBy")
 	@Mapping(source = "dto.createdDate", target = "createdDate")
-	
+
 	@Mapping(source = "dto.vanID", target = "vanID")
 	@Mapping(source = "dto.parkingPlaceId", target = "parkingPlaceID")
 
