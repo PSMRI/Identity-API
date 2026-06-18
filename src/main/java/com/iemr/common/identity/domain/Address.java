@@ -23,6 +23,8 @@ package com.iemr.common.identity.domain;
 
 import lombok.Data;
 
+import java.sql.Timestamp;
+
 public @Data class Address {
 	private String addrLine1;
 	private String addrLine2;
@@ -51,4 +53,10 @@ public @Data class Address {
 
 	private Integer vanID;
 	private Integer parkingPlaceID;
+	private Double gpsLatitude;
+	private Double gpsLongitude;
+	private String digipin;
+	private Timestamp gpsTimestamp;
+	private Boolean isGpsUnavailable;
+	private String gpsUnavailableReason;
 }

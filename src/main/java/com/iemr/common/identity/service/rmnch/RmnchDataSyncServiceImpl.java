@@ -23,6 +23,7 @@ package com.iemr.common.identity.service.rmnch;
 
 import java.math.BigInteger;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,20 +32,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -172,15 +171,47 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 //						benRegID = rMNCHMBenRegIdMapRepo.getRegID(benDetailsExtraList.get(0).getBenficieryid());
 //
 //						if (benRegID != null) {
-						
+
+							// Build GPS lookup map from i_bendemographics in raw JSON
+							Map<BigInteger, JsonObject> benGpsMap = new HashMap<>();
+							JsonArray benJsonArr = jsnOBJ.getAsJsonArray("beneficiaryDetails");
+							for (JsonElement el : benJsonArr) {
+								JsonObject benJson = el.getAsJsonObject();
+								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()
+										&& benJson.has("i_bendemographics")
+										&& !benJson.get("i_bendemographics").isJsonNull()) {
+									benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
+											benJson.getAsJsonObject("i_bendemographics"));
+								}
+							}
+
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
-										.getByRegID(benRegID);
-								if (temp != null) {
-									obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+								// Extract GPS from i_bendemographics
+								JsonObject demog = benGpsMap.get(obj.getBenficieryid());
+								if (demog != null) {
+									if (demog.has("latitude") && !demog.get("latitude").isJsonNull())
+										obj.setGpsLatitude(demog.get("latitude").getAsDouble());
+									if (demog.has("longitude") && !demog.get("longitude").isJsonNull())
+										obj.setGpsLongitude(demog.get("longitude").getAsDouble());
+									if (demog.has("digipin") && !demog.get("digipin").isJsonNull())
+										obj.setDigipin(demog.get("digipin").getAsString());
+									if (demog.has("gpsTimestamp") && !demog.get("gpsTimestamp").isJsonNull())
+										obj.setGpsTimestamp(new Timestamp(demog.get("gpsTimestamp").getAsLong()));
+									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
+										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
 								}
+								if(!rMNCHBeneficiaryDetailsRmnchRepo
+										.getByRegID(benRegID).isEmpty()){
+									RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
+											.getByRegID(benRegID).get(0);
+									if (temp != null) {
+										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+									}
+								}
+
+
 
 								if (obj.getRelatedBeneficiaryIds() != null
 										&& obj.getRelatedBeneficiaryIds().length > 0) {
@@ -194,24 +225,26 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
 								}
-								if (obj.getVanID() == null && vanID != null) {
-									obj.setVanID(vanID);
-									obj.setParkingPlaceID(parkingPlaceID);
-								}
-								RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
-										rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId());
-								if (rmnchmBeneficiarydetail != null) {
-									rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
-									rmnchmBeneficiarydetail.setLastName(obj.getLastName());
-									rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
-									rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
-									rmnchmBeneficiarydetail.setDob(obj.getDob());
-									rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
-									rmnchmBeneficiarydetail.setGender(obj.getGender());
-									rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
-									rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
-									rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
-									benDetailsList.add(rmnchmBeneficiarydetail);
+					if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
+						RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
+								rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
+						if (obj.getVanID() == null && vanID != null) {
+							obj.setVanID(vanID);
+							obj.setParkingPlaceID(parkingPlaceID);
+						}
+						if (rmnchmBeneficiarydetail != null) {
+							rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
+							rmnchmBeneficiarydetail.setLastName(obj.getLastName());
+							rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
+							rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
+							rmnchmBeneficiarydetail.setDob(obj.getDob());
+							rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
+							rmnchmBeneficiarydetail.setGender(obj.getGender());
+							rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
+							rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
+							rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+							benDetailsList.add(rmnchmBeneficiarydetail);
+						}
 								}
 
 							}
@@ -296,14 +329,35 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									.fromJson(jsnOBJ.get("houseHoldDetails"), RMNCHHouseHoldDetails[].class);
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
 
+							// Build gpsTimestamp map (sent as string, needs manual parse)
+							Map<Long, Long> hhTimestampMap = new HashMap<>();
+							JsonArray hhJsonArr = jsnOBJ.getAsJsonArray("houseHoldDetails");
+							for (JsonElement el : hhJsonArr) {
+								JsonObject hhJson = el.getAsJsonObject();
+								try {
+									if (hhJson.has("houseoldId") && !hhJson.get("houseoldId").isJsonNull()
+											&& hhJson.has("gpsTimestamp")
+											&& !hhJson.get("gpsTimestamp").isJsonNull()) {
+										hhTimestampMap.put(
+												Long.parseLong(hhJson.get("houseoldId").getAsString()),
+												hhJson.get("gpsTimestamp").getAsLong());
+									}
+								} catch (NumberFormatException ignored) {}
+							}
+
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
-								RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
-										.getByHouseHoldID(obj.getHouseoldId());
-								if (temp != null)
-									obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
-								if (obj.getVanID() == null && vanID != null) {
-									obj.setVanID(vanID);
-									obj.setParkingPlaceID(parkingPlaceID);
+						if(!rMNCHHouseHoldDetailsRepo
+								.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
+							RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(obj.getHouseoldId()).get(0);
+							if (temp != null)
+								obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+							if (obj.getVanID() == null && vanID != null) {
+								obj.setVanID(vanID);
+								obj.setParkingPlaceID(parkingPlaceID);
+							}
+							if (hhTimestampMap.containsKey(obj.getHouseoldId()))
+								obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
 								}
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
@@ -321,7 +375,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		} catch (
 
 		Exception e) {
-			throw new Exception(e.getMessage());
+			throw new Exception(e); // ✅ original exception wrap karo
+
 		}
 		resultMap.put("beneficiaryDetails", beneficiaryDetailsIds);
 		resultMap.put("bornBirthDeatils", bornBirthDeatilsIds);
@@ -492,8 +547,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benID = rMNCHMBenRegIdMapRepo.getBenIdFromRegID(m.getBenRegId().longValue());
 
 					if (m.getBenRegId() != null) {
-						benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
-								.getByRegID(m.getBenRegId());
+						if(!rMNCHBeneficiaryDetailsRmnchRepo
+								.getByRegID(m.getBenRegId()).isEmpty()){
+							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
+									.getByRegID(m.getBenRegId()).get(0);
+						}
+
 						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
 
 						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
@@ -517,8 +576,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
-							benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
-									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId());
+							if(!rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
+								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							}
+
 
 					}
 					if (benDetailsRMNCHOBJ == null)
