@@ -550,4 +550,28 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	private Boolean isDeactivate;
 
+	@Expose
+	@Column(name = "gpsLatitude")
+	private Double gpsLatitude;
+
+	@Expose
+	@Column(name = "gpsLongitude")
+	private Double gpsLongitude;
+
+	@Expose
+	@Column(name = "digipin")
+	private String digipin;
+
+	@Expose
+	@Column(name = "gpsTimestamp")
+	private Timestamp gpsTimestamp;
+
+	@Expose
+	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+	private Boolean isGpsUnavailable = false;
+
+	@Expose
+	@Column(name = "gpsUnavailableReason")
+	private String gpsUnavailableReason;
+
 }

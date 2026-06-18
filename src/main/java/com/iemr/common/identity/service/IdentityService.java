@@ -1,23 +1,23 @@
 /*
-* AMRIT – Accessible Medical Records via Integrated Technology 
-* Integrated EHR (Electronic Health Records) Solution 
-*
-* Copyright (C) "Piramal Swasthya Management and Research Institute" 
-*
-* This file is part of AMRIT.
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see https://www.gnu.org/licenses/.
+ * AMRIT – Accessible Medical Records via Integrated Technology
+ * Integrated EHR (Electronic Health Records) Solution
+ *
+ * Copyright (C) "Piramal Swasthya Management and Research Institute"
+ *
+ * This file is part of AMRIT.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see https://www.gnu.org/licenses/.
  */
 package com.iemr.common.identity.service;
 
@@ -229,7 +229,7 @@ public class IdentityService {
                         if (list3.get(i) == null || list3.get(i).getBeneficiaryDetails() == null
                                 || list3.get(i).getBeneficiaryDetails().getFirstName() == null
                                 || !list3.get(i).getBeneficiaryDetails().getFirstName()
-                                        .equalsIgnoreCase(searchDTO.getFirstName())) {
+                                .equalsIgnoreCase(searchDTO.getFirstName())) {
                             list3.remove(i);
                             i--;
 
@@ -241,7 +241,7 @@ public class IdentityService {
                         if (list3.get(i) == null || list3.get(i).getBeneficiaryDetails() == null
                                 || list3.get(i).getBeneficiaryDetails().getLastName() == null
                                 || !list3.get(i).getBeneficiaryDetails().getLastName()
-                                        .equalsIgnoreCase(searchDTO.getLastName())) {
+                                .equalsIgnoreCase(searchDTO.getLastName())) {
                             list3.remove(i);
                             i--;
 
@@ -286,7 +286,7 @@ public class IdentityService {
                         if (list3.get(i) == null || list3.get(i).getCurrentAddress() == null
                                 || list3.get(i).getCurrentAddress().getDistrictId() == null
                                 || !list3.get(i).getCurrentAddress().getDistrictId()
-                                        .equals(searchDTO.getCurrentAddress().getDistrictId())) {
+                                .equals(searchDTO.getCurrentAddress().getDistrictId())) {
 
                             list3.remove(i);
                             i--;
@@ -298,7 +298,7 @@ public class IdentityService {
                         if (list3.get(i) == null || list3.get(i).getCurrentAddress() == null
                                 || list3.get(i).getCurrentAddress().getVillageId() == null
                                 || !list3.get(i).getCurrentAddress().getVillageId()
-                                        .equals(searchDTO.getCurrentAddress().getVillageId())) {
+                                .equals(searchDTO.getCurrentAddress().getVillageId())) {
 
                             list3.remove(i);
                             i--;
@@ -515,7 +515,7 @@ public class IdentityService {
 
     /**
      *
-     * @param BenRegId
+     * @param benRegId
      * @return
      */
     public List<BeneficiariesDTO> getBeneficiariesByBenRegId(BigInteger benRegId)
@@ -591,104 +591,104 @@ public class IdentityService {
     }
 
 
-/**
- * Advanced search using Elasticsearch with fallback to database
- */
-public Map<String, Object> advancedSearchBeneficiariesES(
-        String firstName, String middleName, String lastName, Integer genderId, java.util.Date dob,
-        Integer stateId, Integer districtId, Integer blockId, Integer villageId,
-        String fatherName, String spouseName, String maritalStatus, String phoneNumber,
-        String beneficiaryId, String healthId, String aadharNo,
-        Integer userId, String auth, Boolean is1097) throws Exception {
-    
-    try {
-        logger.info("IdentityService.advancedSearchBeneficiariesES - start");
-        logger.info("ES enabled: {}", esEnabled);
-        
-        Map<String, Object> response = new HashMap<>();
-        
-        if (esEnabled) {
-            logger.info("Using Elasticsearch for advanced search");
-            
-            // Call Elasticsearch service
-            List<Map<String, Object>> esResults = elasticsearchService.advancedSearch(
-                firstName, middleName, lastName, genderId, dob, stateId, districtId, 
-                blockId, villageId, fatherName, spouseName, maritalStatus, phoneNumber, 
-                beneficiaryId, healthId, aadharNo, userId
-            );
-            
-            response.put("data", esResults);
-            response.put("count", esResults.size());
-            response.put("source", "elasticsearch");
-            
-            logger.info("ES returned {} results", esResults.size());
-            
-        } else {
-            logger.info("ES disabled - using database for advanced search");
-            
-            IdentitySearchDTO searchDTO = new IdentitySearchDTO();
-            searchDTO.setFirstName(firstName);
-            searchDTO.setLastName(lastName);
-            searchDTO.setGenderId(genderId);
-            searchDTO.setDob(dob != null ? new Timestamp(dob.getTime()) : null);
-            searchDTO.setFatherName(fatherName);
-            searchDTO.setSpouseName(spouseName);
-            searchDTO.setContactNumber(phoneNumber);
-            
-            if (beneficiaryId != null && !beneficiaryId.trim().isEmpty()) {
-                try {
-                    searchDTO.setBeneficiaryId(new BigInteger(beneficiaryId));
-                } catch (NumberFormatException e) {
-                    logger.warn("Invalid beneficiaryId format: {}", beneficiaryId);
+    /**
+     * Advanced search using Elasticsearch with fallback to database
+     */
+    public Map<String, Object> advancedSearchBeneficiariesES(
+            String firstName, String middleName, String lastName, Integer genderId, Date dob,
+            Integer stateId, Integer districtId, Integer blockId, Integer villageId,
+            String fatherName, String spouseName, String maritalStatus, String phoneNumber,
+            String beneficiaryId, String healthId, String aadharNo,
+            Integer userId, String auth, Boolean is1097) throws Exception {
+
+        try {
+            logger.info("IdentityService.advancedSearchBeneficiariesES - start");
+            logger.info("ES enabled: {}", esEnabled);
+
+            Map<String, Object> response = new HashMap<>();
+
+            if (esEnabled) {
+                logger.info("Using Elasticsearch for advanced search");
+
+                // Call Elasticsearch service
+                List<Map<String, Object>> esResults = elasticsearchService.advancedSearch(
+                        firstName, middleName, lastName, genderId, dob, stateId, districtId,
+                        blockId, villageId, fatherName, spouseName, maritalStatus, phoneNumber,
+                        beneficiaryId, healthId, aadharNo, userId
+                );
+
+                response.put("data", esResults);
+                response.put("count", esResults.size());
+                response.put("source", "elasticsearch");
+
+                logger.info("ES returned {} results", esResults.size());
+
+            } else {
+                logger.info("ES disabled - using database for advanced search");
+
+                IdentitySearchDTO searchDTO = new IdentitySearchDTO();
+                searchDTO.setFirstName(firstName);
+                searchDTO.setLastName(lastName);
+                searchDTO.setGenderId(genderId);
+                searchDTO.setDob(dob != null ? new Timestamp(dob.getTime()) : null);
+                searchDTO.setFatherName(fatherName);
+                searchDTO.setSpouseName(spouseName);
+                searchDTO.setContactNumber(phoneNumber);
+
+                if (beneficiaryId != null && !beneficiaryId.trim().isEmpty()) {
+                    try {
+                        searchDTO.setBeneficiaryId(new BigInteger(beneficiaryId));
+                    } catch (NumberFormatException e) {
+                        logger.warn("Invalid beneficiaryId format: {}", beneficiaryId);
+                    }
                 }
+
+                if (stateId != null || districtId != null || blockId != null || villageId != null) {
+                    Address addressDTO = new Address();
+                    addressDTO.setStateId(stateId);
+                    addressDTO.setDistrictId(districtId);
+                    addressDTO.setSubDistrictId(blockId);
+                    addressDTO.setVillageId(villageId);
+                    searchDTO.setCurrentAddress(addressDTO);
+                }
+
+                List<BeneficiariesDTO> dbResults = this.getBeneficiaries(searchDTO);
+
+                List<Map<String, Object>> formattedResults = dbResults.stream()
+                        .map(this::convertBeneficiaryDTOToMap)
+                        .collect(Collectors.toList());
+
+                response.put("data", formattedResults);
+                response.put("count", formattedResults.size());
+                response.put("source", "database");
+
+                logger.info("Database returned {} results", formattedResults.size());
             }
-            
-            if (stateId != null || districtId != null || blockId != null || villageId != null) {
-                Address addressDTO = new Address();
-                addressDTO.setStateId(stateId);
-                addressDTO.setDistrictId(districtId);
-                addressDTO.setSubDistrictId(blockId);
-                addressDTO.setVillageId(villageId);
-                searchDTO.setCurrentAddress(addressDTO);
-            }
-            
-            List<BeneficiariesDTO> dbResults = this.getBeneficiaries(searchDTO);
-            
-            List<Map<String, Object>> formattedResults = dbResults.stream()
-                .map(this::convertBeneficiaryDTOToMap)
-                .collect(Collectors.toList());
-            
-            response.put("data", formattedResults);
-            response.put("count", formattedResults.size());
-            response.put("source", "database");
-            
-            logger.info("Database returned {} results", formattedResults.size());
+
+            logger.info("IdentityService.advancedSearchBeneficiariesES - end");
+            return response;
+
+        } catch (Exception e) {
+            logger.error("Advanced search failed: {}", e.getMessage(), e);
+            throw new Exception("Error in advanced search: " + e.getMessage(), e);
         }
-        
-        logger.info("IdentityService.advancedSearchBeneficiariesES - end");
-        return response;
-        
-    } catch (Exception e) {
-        logger.error("Advanced search failed: {}", e.getMessage(), e);
-        throw new Exception("Error in advanced search: " + e.getMessage(), e);
+    }/**
+     * Convert BeneficiariesDTO to Map format
+     */
+    private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(dto);
+            return mapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            logger.error("Error converting DTO to map", e);
+            return new HashMap<>();
+        }
     }
-}/**
- * Convert BeneficiariesDTO to Map format
- */
-private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
-    try {
-        ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(dto);
-        return mapper.readValue(json, Map.class);
-    } catch (Exception e) {
-        logger.error("Error converting DTO to map", e);
-        return new HashMap<>();
-    }
-}
 
 
 
- /**
+    /**
      * *
      *
      * Search beneficiary by healthID / ABHA address
@@ -763,7 +763,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             List<MBeneficiarydetail> benDetailsList = detailRepo.searchByFamilyId(familyId);
 
             if (benDetailsList == null || benDetailsList.isEmpty()) {
-                return beneficiaryList; 
+                return beneficiaryList;
             }else {
                 // considering as of now family creation is possible through facility modules
                 // only
@@ -789,7 +789,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
     }
 
     public List<BeneficiariesDTO> searchBeneficiaryByVillageIdAndLastModifyDate(List<Integer> villageIDs,
-            Timestamp lastModifiedDate) {
+                                                                                Timestamp lastModifiedDate) {
 
         List<BeneficiariesDTO> beneficiaryList = new ArrayList<>();
         try {
@@ -833,7 +833,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
 
             // find benmap ids
             if (benIdentityList == null || benIdentityList.isEmpty()) {
-                return beneficiaryList; 
+                return beneficiaryList;
             }else {
                 for (MBeneficiaryidentity identityObj : benIdentityList) {
                     benMapObjArr.addAll(
@@ -1114,7 +1114,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                     benMapping.getMBeneficiaryaddress().getBenAddressID(), benMapping.getVanID());
             // next statement is new one, setting correct beneficiaryDetailsId
             if (benAddressID != null) {
-                mbAddr.setBenAddressID(benAddressID); 
+                mbAddr.setBenAddressID(benAddressID);
             }else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
@@ -1141,7 +1141,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                     benMapping.getMBeneficiarycontact().getBenContactsID(), benMapping.getVanID());
             // next statement is new one, setting correct beneficiaryDetailsId
             if (benContactsID != null) {
-                benCon.setBenContactsID(benContactsID); 
+                benCon.setBenContactsID(benContactsID);
             }else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
@@ -1259,7 +1259,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                     benMapping.getMBeneficiaryAccount().getBenAccountID(), benMapping.getVanID());
             // next statement is new one, setting correct beneficiaryDetailsId
             if (benAccountID != null) {
-                beneficiaryAccount.setBenAccountID(benAccountID); 
+                beneficiaryAccount.setBenAccountID(benAccountID);
             }else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
@@ -1284,7 +1284,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
                     benMapping.getMBeneficiaryImage().getBenImageId(), benMapping.getVanID());
             // next statement is new one, setting correct beneficiaryDetailsId
             if (benImageId != null) {
-                beneficiaryImage.setBenImageId(benImageId); 
+                beneficiaryImage.setBenImageId(benImageId);
             }else {
                 throw new MissingMandatoryFieldsException("Either of vanSerialNO or vanID is missing.");
             }
@@ -1304,11 +1304,11 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             logger.info("Triggering Elasticsearch sync for benRegId: {}", identity.getBeneficiaryRegId());
             syncService.syncBeneficiaryAsync(identity.getBeneficiaryRegId());
         }
-    
-    logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
-}
 
-      
+        logger.info("IdentityService.editIdentity - end. id = " + benMapping.getBenMapId());
+    }
+
+
 
     private MBeneficiarydetail convertIdentityEditDTOToMBeneficiarydetail(IdentityEditDTO dto) {
         MBeneficiarydetail beneficiarydetail = new MBeneficiarydetail();
@@ -1819,6 +1819,12 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             beneficiaryAddress.setCurrServicePointId(dto.getCurrentAddress().getServicePointID());
             beneficiaryAddress.setCurrServicePoint(dto.getCurrentAddress().getServicePointName());
             beneficiaryAddress.setCurrHabitation(dto.getCurrentAddress().getHabitation());
+            beneficiaryAddress.setGpsLatitude(dto.getCurrentAddress().getGpsLatitude());
+            beneficiaryAddress.setGpsLongitude(dto.getCurrentAddress().getGpsLongitude());
+            beneficiaryAddress.setDigipin(dto.getCurrentAddress().getDigipin());
+            beneficiaryAddress.setGpsTimestamp(dto.getCurrentAddress().getGpsTimestamp());
+            beneficiaryAddress.setIsGpsUnavailable(dto.getCurrentAddress().getIsGpsUnavailable());
+            beneficiaryAddress.setGpsUnavailableReason(dto.getCurrentAddress().getGpsUnavailableReason());
         }
         if (dto.getEmergencyAddress() != null) {
             beneficiaryAddress.setEmerAddrLine1(dto.getEmergencyAddress().getAddrLine1());
@@ -1929,7 +1935,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
      * Get partial details of beneficiaries (first name middle name and last
      * name) list on benId's list
      *
-     * @param BenRegIds
+     * @param benRegIds
      * @return {@link List} Beneficiaries
      */
     public List<BeneficiariesPartialDTO> getBeneficiariesPartialDeatilsByBenRegIdList(List<BigInteger> benRegIds) {

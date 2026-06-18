@@ -23,6 +23,7 @@ package com.iemr.common.identity.service.rmnch;
 
 import java.math.BigInteger;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +43,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -140,10 +142,37 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 //						benRegID = rMNCHMBenRegIdMapRepo.getRegID(benDetailsExtraList.get(0).getBenficieryid());
 //
 //						if (benRegID != null) {
-						
+
+							// Build GPS lookup map from i_bendemographics in raw JSON
+							Map<BigInteger, JsonObject> benGpsMap = new HashMap<>();
+							JsonArray benJsonArr = jsnOBJ.getAsJsonArray("beneficiaryDetails");
+							for (JsonElement el : benJsonArr) {
+								JsonObject benJson = el.getAsJsonObject();
+								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()
+										&& benJson.has("i_bendemographics")
+										&& !benJson.get("i_bendemographics").isJsonNull()) {
+									benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
+											benJson.getAsJsonObject("i_bendemographics"));
+								}
+							}
+
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
+								// Extract GPS from i_bendemographics
+								JsonObject demog = benGpsMap.get(obj.getBenficieryid());
+								if (demog != null) {
+									if (demog.has("latitude") && !demog.get("latitude").isJsonNull())
+										obj.setGpsLatitude(demog.get("latitude").getAsDouble());
+									if (demog.has("longitude") && !demog.get("longitude").isJsonNull())
+										obj.setGpsLongitude(demog.get("longitude").getAsDouble());
+									if (demog.has("digipin") && !demog.get("digipin").isJsonNull())
+										obj.setDigipin(demog.get("digipin").getAsString());
+									if (demog.has("gpsTimestamp") && !demog.get("gpsTimestamp").isJsonNull())
+										obj.setGpsTimestamp(new Timestamp(demog.get("gpsTimestamp").getAsLong()));
+									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
+										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
+								}
 								if(!rMNCHBeneficiaryDetailsRmnchRepo
 										.getByRegID(benRegID).isEmpty()){
 									RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
@@ -240,6 +269,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									.fromJson(jsnOBJ.get("houseHoldDetails"), RMNCHHouseHoldDetails[].class);
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
 
+							// Build gpsTimestamp map (sent as string, needs manual parse)
+							Map<Long, Long> hhTimestampMap = new HashMap<>();
+							JsonArray hhJsonArr = jsnOBJ.getAsJsonArray("houseHoldDetails");
+							for (JsonElement el : hhJsonArr) {
+								JsonObject hhJson = el.getAsJsonObject();
+								try {
+									if (hhJson.has("houseoldId") && !hhJson.get("houseoldId").isJsonNull()
+											&& hhJson.has("gpsTimestamp")
+											&& !hhJson.get("gpsTimestamp").isJsonNull()) {
+										hhTimestampMap.put(
+												Long.parseLong(hhJson.get("houseoldId").getAsString()),
+												hhJson.get("gpsTimestamp").getAsLong());
+									}
+								} catch (NumberFormatException ignored) {}
+							}
+
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
 								if(!rMNCHHouseHoldDetailsRepo
 										.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
@@ -247,6 +292,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											.getByHouseHoldID(obj.getHouseoldId()).get(0);
 									if (temp != null)
 										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+									if (hhTimestampMap.containsKey(obj.getHouseoldId()))
+										obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
 								}
 
 							}
