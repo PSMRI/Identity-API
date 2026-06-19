@@ -214,4 +214,8 @@ public class RMNCHMBeneficiarydetail {
 	@Expose
 	@Transient
 	private Integer ProviderServiceMapID;
+
+	@Expose
+	@Transient
+	private String abhaId;
 }

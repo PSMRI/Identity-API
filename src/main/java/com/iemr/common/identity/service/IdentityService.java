@@ -809,6 +809,16 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
         return beneficiaryList;
     }
 
+
+    public RMNCHBeneficiaryDetailsRmnch getRmnchDataByBenID(BigInteger benID) {
+        RMNCHBeneficiaryDetailsRmnch rmnchBeneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
+
+        if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID).isEmpty()){
+            rmnchBeneficiaryDetailsRmnch = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID).get(0);
+        }
+        return rmnchBeneficiaryDetailsRmnch;
+    }
+
     public Long countBeneficiaryByVillageIdAndLastModifyDate(List<Integer> villageIDs, Timestamp lastModifiedDate) {
         Long beneficiaryCount = 0L;
         try {
@@ -1993,6 +2003,7 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
      * @return
      */
     private BeneficiariesDTO getBeneficiariesDTO(MBeneficiarymapping benMap) {
+        RMNCHBeneficiaryDetailsRmnch rmnchBeneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
         BeneficiariesDTO bdto = mapper.mBeneficiarymappingToBeneficiariesDTO(benMap);
         if (null != benMap && null != benMap.getMBeneficiarydetail()
                 && !StringUtils.isEmpty(benMap.getMBeneficiarydetail().getFaceEmbedding())) {
@@ -2008,6 +2019,13 @@ private Map<String, Object> convertBeneficiaryDTOToMap(BeneficiariesDTO dto) {
             bdto.setFaceEmbedding(floatList);
         }
         // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
+
+        if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).isEmpty() ){
+            rmnchBeneficiaryDetailsRmnch = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).get(0);
+            bdto.setReproductiveStatus(rmnchBeneficiaryDetailsRmnch.getReproductiveStatus());
+            bdto.setReproductiveStatusId(rmnchBeneficiaryDetailsRmnch.getReproductiveStatusId());
+        }
+
         bdto.setBeneficiaryFamilyTags(
                 mapper.mapToMBeneficiaryfamilymappingWithBenFamilyDTOList(benMap.getMBeneficiaryfamilymappings()));
         bdto.setBeneficiaryIdentites(
