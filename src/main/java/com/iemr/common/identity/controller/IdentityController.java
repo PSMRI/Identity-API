@@ -594,7 +594,7 @@ public class IdentityController {
 			+ "  \"createdDate\": \"Timestamp\"\r\n" + "  \"faceEmbedding\": [\"Float\"]\r\n" + "}") @RequestBody String identityData) throws IEMRException {
 		logger.info("IdentityController.createIdentity - start");
 	
-		IdentityDTO identity = new Gson().fromJson(identityData, IdentityDTO.class);
+		IdentityDTO identity = InputMapper.getInstance().gson().fromJson(identityData, IdentityDTO.class);
 		logger.info("identity hit: " + identity);
 		BeneficiaryCreateResp map;
 		map = svc.createIdentity(identity);
