@@ -49,8 +49,9 @@ public class TokenDenylist {
 	        	String key = getKey(jti);  // Use helper method to get the key
 	            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
 	        } catch (Exception e) {
-	            logger.error("Failed to check denylist status for jti: " + jti, e);
-	            throw new TokenDenylistException("Unable to verify token denylist status", e);
+	            // Fail open: a Redis blip must not lock out a validly authenticated user.
+	            logger.error("Failed to check denylist status for jti: " + jti + ". Treating as not denylisted.", e);
+	            return false;
 	        }
 	    }
 
