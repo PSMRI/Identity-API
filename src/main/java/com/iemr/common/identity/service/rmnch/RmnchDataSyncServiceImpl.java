@@ -192,6 +192,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
 										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
 										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+										if(obj.getFamilyId()!=null && !obj.getFamilyId().isEmpty()){
+											rmnchmBeneficiarydetail.setFamilyId(obj.getFamilyId());
+
+										}
 										benDetailsList.add(rmnchmBeneficiarydetail);
 										if (obj.getAbhaId()!=null && !obj.getAbhaId().isEmpty()) {
 											mapHealthIDToBeneficiary(authorization,obj.getBenRegId().longValue(),obj.getBenficieryid().longValue(),obj.getAbhaId(),obj.getCreatedBy(),obj.getFirstName(),obj.getLastName(),obj.getDob().toString(),obj.getProviderServiceMapID());

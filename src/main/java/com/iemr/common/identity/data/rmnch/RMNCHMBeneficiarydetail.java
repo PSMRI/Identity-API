@@ -218,4 +218,8 @@ public class RMNCHMBeneficiarydetail {
 	@Expose
 	@Transient
 	private String abhaId;
+
+	@Expose
+	@Column(name = "familyid")
+	private String familyId;
 }

@@ -553,4 +553,8 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	@Transient
 	private String abhaId;
+
+	@Expose
+	@Transient
+	private String familyId;
 }
