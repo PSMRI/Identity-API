@@ -356,7 +356,6 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 		  HttpHeaders headers = new HttpHeaders();
 		  headers.setContentType(MediaType.APPLICATION_JSON);
-		  // Agar token me Bearer nahi aa raha hai
 
 		  headers.set("Jwttoken", authorization);
 
