@@ -42,12 +42,10 @@ public interface FamilyTagRepo extends CrudRepository<BenFamilyMapping,Long> {
 	public int untagFamily(@Param("benFamilyTagId") List<Long> benFamilyTagId,@Param("modifiedBy") String modifiedBy);
 	
 	
-	@Query("SELECT obj FROM BenFamilyMapping obj WHERE obj.familyName =:familyName AND obj.villageId =:villageId AND (obj.noOfmembers is not null "
-			+ " AND obj.noOfmembers >0)")
+	@Query("SELECT obj FROM BenFamilyMapping obj WHERE obj.familyName LIKE CONCAT(:familyName, '%') AND (:villageId IS NULL OR obj.villageId =:villageId) AND (obj.deleted IS NULL OR obj.deleted = false)")
 	List<BenFamilyMapping> searchFamily(@Param("familyName") String familyName,@Param("villageId") Integer villageId);
-	
-	@Query("SELECT obj FROM BenFamilyMapping obj WHERE obj.familyName =:familyName AND obj.villageId =:villageId AND obj.familyId =:familyId AND (obj.noOfmembers is not null "
-			+ " AND obj.noOfmembers >0)")
+
+	@Query("SELECT obj FROM BenFamilyMapping obj WHERE obj.familyName LIKE CONCAT(:familyName, '%') AND (:villageId IS NULL OR obj.villageId =:villageId) AND obj.familyId =:familyId AND (obj.deleted IS NULL OR obj.deleted = false)")
 	List<BenFamilyMapping> searchFamilyWithFamilyId(@Param("familyName") String familyName,@Param("villageId") Integer villageId,@Param("familyId") String familyId);
 	
 	@Query("SELECT obj FROM BenFamilyMapping obj WHERE obj.familyId =:familyId")

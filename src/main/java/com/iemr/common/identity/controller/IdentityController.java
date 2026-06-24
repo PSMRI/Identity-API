@@ -24,15 +24,19 @@ package com.iemr.common.identity.controller;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.iemr.common.identity.data.rmnch.RMNCHBeneficiaryDetailsRmnch;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,11 +48,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSyntaxException;
 import com.iemr.common.identity.dto.BenIdImportDTO;
 import com.iemr.common.identity.dto.BeneficiariesDTO;
 import com.iemr.common.identity.dto.BeneficiariesPartialDTO;
@@ -311,6 +317,17 @@ public class IdentityController {
 					5000, "failure", "");
 		}
 		return response;
+	}
+
+
+	@PostMapping("/getRmnchDataByBenRedID")
+	public ResponseEntity<RMNCHBeneficiaryDetailsRmnch> getRmnchDataByBenID(@RequestBody BigInteger object) {
+		try {
+			RMNCHBeneficiaryDetailsRmnch data = svc.getRmnchDataByBenID(object);
+			return ResponseEntity.ok(data);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+		}
 	}
 	// search beneficiary by lastModDate and districtID
 		@Operation(summary ="Get count of beneficiary by villageId and last modified date-time")
@@ -957,6 +974,7 @@ public class IdentityController {
 			@Param(value = "{\r\n" + "        \"vanID\": \"Integer\",\r\n"
 					+ "        \"benIDRequired\": \"Integer\"\r\n" + "       }") @RequestBody String regIDList) {
 		com.iemr.common.identity.utils.response.OutputResponse response = new com.iemr.common.identity.utils.response.OutputResponse();
+		logger.info("Test: inside saveGeneratedBenIDToLocalServer method with regIDList: " + regIDList);
 		try {
 			BenIdImportDTO[] benIdImportDTOArr = InputMapper.getInstance().gson().fromJson(regIDList,
 					BenIdImportDTO[].class);
@@ -964,6 +982,7 @@ public class IdentityController {
 			List<BenIdImportDTO> benIdImportDTOList = Arrays.asList(benIdImportDTOArr);
 
 			int i = svc.importBenIdToLocalServer(benIdImportDTOList);
+			logger.info("Number of unique benid imported to local server: " + i);
 			if (i > 0)
 				response.setResponse(i + " Unique benid imported to local server");
 			else {

@@ -214,4 +214,12 @@ public class RMNCHMBeneficiarydetail {
 	@Expose
 	@Transient
 	private Integer ProviderServiceMapID;
+
+	@Expose
+	@Transient
+	private String abhaId;
+
+	@Expose
+	@Column(name = "familyid")
+	private String familyId;
 }
