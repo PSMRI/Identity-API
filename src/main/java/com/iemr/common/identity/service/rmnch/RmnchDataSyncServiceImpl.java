@@ -223,9 +223,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBornBirthDetails obj : bornBirthList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								if(!rMNCHBornBirthDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								}
+
 							}
 							bornBirthList = (ArrayList<RMNCHBornBirthDetails>) rMNCHBornBirthDetailsRepo
 									.saveAll(bornBirthList);
@@ -246,9 +249,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								obj.setConfirmed_tb("Not checked");
 								obj.setConfirmed_ncd_diseases("Not checked");
 								obj.setDiagnosis_status("pending");
-								RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setCBACDetailsid(temp.getCBACDetailsid());
+								if(!rMNCHCBACDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setCBACDetailsid(temp.getCBACDetailsid());
+								}
+
 							}
 
 							cbacList = (ArrayList<RMNCHCBACdetails>) rMNCHCBACDetailsRepo.saveAll(cbacList);
@@ -667,10 +673,13 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
 									.getByRegID(m.getBenRegId()).get(0);
 						}
+                         if(!rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).get(0);
+						 }
+						 if(!rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).get(0);
 
-						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
-
-						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
+						 }
 						// 20-09-2021,start
 						NcdTbHrpData res = getHRP_NCD_TB_SuspectedStatus(m.getBenRegId().longValue(), authorisation,
 								benDetailsOBJ);
