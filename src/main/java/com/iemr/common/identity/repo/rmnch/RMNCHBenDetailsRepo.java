@@ -22,7 +22,9 @@
 package com.iemr.common.identity.repo.rmnch;
 
 import java.math.BigInteger;
+import java.util.List;
 
+import io.swagger.v3.oas.annotations.info.License;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -35,8 +37,16 @@ public interface RMNCHBenDetailsRepo extends CrudRepository<RMNCHMBeneficiarydet
 	@Query(" SELECT t FROM RMNCHMBeneficiarydetail t WHERE t.id = :vanSerialNo AND t.VanID = :vanID")
 	public RMNCHMBeneficiarydetail getByIdAndVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
 			@Param("vanID") int vanID);
-	
-	@Query(" SELECT t FROM RMNCHMBeneficiarydetail t WHERE t.id = " +
-			"(SELECT m.benDetailsId from RMNCHMBeneficiarymapping m where m.benRegId = :beneficiaryRegID)")
-	public RMNCHMBeneficiarydetail getByBenRegID(@Param("beneficiaryRegID") BigInteger beneficiaryRegID);
+
+	@Query("""
+       SELECT t
+       FROM RMNCHMBeneficiarydetail t
+       WHERE t.id IN (
+           SELECT m.benDetailsId
+           FROM RMNCHMBeneficiarymapping m
+           WHERE m.benRegId = :beneficiaryRegID
+       )
+       """)
+	List<RMNCHMBeneficiarydetail> getByBenRegID(
+			@Param("beneficiaryRegID") BigInteger beneficiaryRegID);
 }

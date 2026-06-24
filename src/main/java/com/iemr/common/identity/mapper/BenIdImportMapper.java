@@ -39,6 +39,7 @@ public interface BenIdImportMapper {
 	@Mapping(source = "beneficiaryId", target = "beneficiaryID")
 	@Mapping(source = "createdBy", target = "createdBy")
 	@Mapping(source = "createdDate", target = "createdDate")
+	@Mapping(source = "vanID", target = "vanID")
 	MBeneficiaryregidmapping benIdImportDTOToMBeneficiaryregidmapping(BenIdImportDTO dto);
 
 	ArrayList<MBeneficiaryregidmapping> benIdImportDTOToMBeneficiaryregidmappings(List<BenIdImportDTO> dto);

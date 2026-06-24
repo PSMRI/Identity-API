@@ -18,7 +18,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see https://www.gnu.org/licenses/.
-*/
+ */
 package com.iemr.common.identity.repo;
 
 import java.math.BigInteger;
@@ -36,42 +36,59 @@ import com.iemr.common.identity.domain.MBeneficiaryaddress;
 
 @Repository
 public interface BenAddressRepo extends CrudRepository<MBeneficiaryaddress, BigInteger> {
-	List<MBeneficiaryaddress> findByBenAddressIDOrderByBenAddressIDAsc(BigInteger benAddressID);
 
-	List<MBeneficiaryaddress> findByCurrPinCodeOrderByBenAddressIDAsc(String currPinCode);
+    List<MBeneficiaryaddress> findByBenAddressIDOrderByBenAddressIDAsc(BigInteger benAddressID);
 
-	List<MBeneficiaryaddress> findByPermPinCodeOrderByBenAddressIDAsc(String permPinCode);
+    List<MBeneficiaryaddress> findByCurrPinCodeOrderByBenAddressIDAsc(String currPinCode);
 
-	List<MBeneficiaryaddress> findByCurrStateAndCurrDistrictOrderByBenAddressIDAsc(String currState, String currDist);
+    List<MBeneficiaryaddress> findByPermPinCodeOrderByBenAddressIDAsc(String permPinCode);
 
-	List<MBeneficiaryaddress> findByCurrStateIdAndCurrDistrictIdOrderByBenAddressIDAsc(Integer currStateID,
-			Integer currDistID);
+    List<MBeneficiaryaddress> findByCurrStateAndCurrDistrictOrderByBenAddressIDAsc(String currState, String currDist);
 
-	List<MBeneficiaryaddress> findByPermStateAndPermDistrictOrderByBenAddressIDAsc(String permState, String permDist);
+    List<MBeneficiaryaddress> findByCurrStateIdAndCurrDistrictIdOrderByBenAddressIDAsc(Integer currStateID,
+            Integer currDistID);
 
-	List<MBeneficiaryaddress> findByPermStateIdAndPermDistrictIdOrderByBenAddressIDAsc(Integer permStateID,
-			Integer permDistID);
+    List<MBeneficiaryaddress> findByPermStateAndPermDistrictOrderByBenAddressIDAsc(String permState, String permDist);
 
-	List<MBeneficiaryaddress> findByEmerStateAndEmerDistrictOrderByBenAddressIDAsc(String emerState, String emerDist);
+    List<MBeneficiaryaddress> findByPermStateIdAndPermDistrictIdOrderByBenAddressIDAsc(Integer permStateID,
+            Integer permDistID);
 
-	List<MBeneficiaryaddress> findByEmerStateIdAndEmerDistrictIdOrderByBenAddressIDAsc(Integer emerStateID,
-			Integer emerDistID);
+    List<MBeneficiaryaddress> findByEmerStateAndEmerDistrictOrderByBenAddressIDAsc(String emerState, String emerDist);
 
-	List<MBeneficiaryaddress> findByCreatedDateBetweenOrderByBenAddressIDAsc(Timestamp fromDate, Timestamp toDate);
+    List<MBeneficiaryaddress> findByEmerStateIdAndEmerDistrictIdOrderByBenAddressIDAsc(Integer emerStateID,
+            Integer emerDistID);
 
-	@Query("select a from MBeneficiaryaddress a where a.currAddressValue = :address or "
-			+ "a.emerAddressValue = :address or a.permAddressValue = :address order by a.benAddressID asc")
-	List<MBeneficiaryaddress> findByAddress(String address);
+    List<MBeneficiaryaddress> findByCreatedDateBetweenOrderByBenAddressIDAsc(Timestamp fromDate, Timestamp toDate);
 
-	@Transactional
-	@Modifying
-	@Query(" UPDATE MBeneficiaryaddress set vanSerialNo = :benAddressID WHERE benAddressID = :benAddressID")
-	int updateVanSerialNo(@Param("benAddressID") BigInteger benAddressID);
+    @Query("select a from MBeneficiaryaddress a where a.currAddressValue = :address or "
+            + "a.emerAddressValue = :address or a.permAddressValue = :address order by a.benAddressID asc")
+    List<MBeneficiaryaddress> findByAddress(String address);
 
-	@Query("SELECT benAddressID FROM MBeneficiaryaddress WHERE vanSerialNo =:vanSerialNo AND vanID =:vanID ")
-	BigInteger findIdByVanSerialNoAndVanID(@Param("vanSerialNo") BigInteger vanSerialNo, @Param("vanID") Integer vanID);
+    @Transactional
+    @Modifying
+    @Query(" UPDATE MBeneficiaryaddress set vanSerialNo = :benAddressID WHERE benAddressID = :benAddressID")
+    int updateVanSerialNo(@Param("benAddressID") BigInteger benAddressID);
 
-	@Query("SELECT a FROM MBeneficiaryaddress a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
-	MBeneficiaryaddress getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
-			@Param("vanID") Integer vanID);
+    @Query("SELECT benAddressID FROM MBeneficiaryaddress WHERE vanSerialNo =:vanSerialNo AND vanID =:vanID ")
+    BigInteger findIdByVanSerialNoAndVanID(@Param("vanSerialNo") BigInteger vanSerialNo, @Param("vanID") Integer vanID);
+
+    @Query("SELECT a FROM MBeneficiaryaddress a WHERE a.vanSerialNo =:vanSerialNo AND a.vanID =:vanID ")
+    MBeneficiaryaddress getWithVanSerialNoVanID(@Param("vanSerialNo") BigInteger vanSerialNo,
+            @Param("vanID") Integer vanID);
+
+    /**
+     * Get user location details from m_userservicerolemapping
+     */
+    @Query(value = "SELECT "
+            + "ProviderServiceMapID, " +
+            "Blockid, " + 
+            "Villageid, " + 
+            "WorkingLocationID " +
+            "FROM db_iemr.m_userservicerolemapping "
+            + "WHERE UserID = :userId "
+            + "AND Deleted = false "
+            + "LIMIT 1",
+            nativeQuery = true)
+    List<Object[]> getUserLocation(@Param("userId") Integer userId);
+
 }

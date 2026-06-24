@@ -30,6 +30,7 @@ public class BenIdImportDTO {
 	private BigInteger beneficiaryId;
 	private String createdBy;
 	private Timestamp createdDate;
+	private BigInteger vanID;
 
 	public BigInteger getBenRegId() {
 		return benRegId;
@@ -63,4 +64,11 @@ public class BenIdImportDTO {
 		this.createdDate = createdDate;
 	}
 
+	public void setVanID(BigInteger vanID) {
+		this.vanID = vanID;
+	}
+
+	public BigInteger getVanID() {
+		return vanID;
+	}	
 }
