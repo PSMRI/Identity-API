@@ -2142,7 +2142,7 @@ public class IdentityService {
             List<Object[]> dataList = new ArrayList<>();
             Object[] objArr;
             String query = " INSERT INTO m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
-                    + " Provisioned, CreatedDate, CreatedBy, Reserved) VALUES (?,?,?,?,?,?) ";
+                    + " Provisioned, CreatedDate, CreatedBy, Reserved, vanID) VALUES (?,?,?,?,?,?,?) ";
             logger.info("query : " + query);
             for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
                 logger.info("inside for check->", obj);
