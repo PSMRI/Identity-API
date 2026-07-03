@@ -306,6 +306,21 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		return new Gson().toJson(resultMap);
 	}
 
+	/**
+	 * Splits a list into sub-lists (batches) of the given size.
+	 * Last batch may contain fewer elements.
+	 */
+	private <T> List<List<T>> partitionList(List<T> list, int batchSize) {
+		List<List<T>> batches = new ArrayList<>();
+		if (list == null || list.isEmpty()) {
+			return batches;
+		}
+		for (int i = 0; i < list.size(); i += batchSize) {
+			batches.add(new ArrayList<>(list.subList(i, Math.min(i + batchSize, list.size()))));
+		}
+		return batches;
+	}
+
 	public String mapHealthIDToBeneficiary(String authorization,
 										   Long benRegID,
 										   Long beneficiaryID,
