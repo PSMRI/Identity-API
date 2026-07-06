@@ -283,13 +283,16 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBornBirthDetails obj : bornBirthList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
-								if (obj.getVanID() == null && vanID != null) {
-									obj.setVanID(vanID);
-									obj.setParkingPlaceID(parkingPlaceID);
+								if(!rMNCHBornBirthDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+									if (obj.getVanID() == null && vanID != null) {
+										obj.setVanID(vanID);
+										obj.setParkingPlaceID(parkingPlaceID);
+									}
 								}
+
 							}
 							bornBirthList = (ArrayList<RMNCHBornBirthDetails>) rMNCHBornBirthDetailsRepo
 									.saveAll(bornBirthList);
@@ -552,8 +555,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
 									.getByRegID(m.getBenRegId()).get(0);
 						}
+                        if(!rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).get(0);
 
-						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
+						}
 
 						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
 						// 20-09-2021,start
