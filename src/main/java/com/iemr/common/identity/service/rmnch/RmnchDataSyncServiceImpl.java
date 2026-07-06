@@ -23,6 +23,8 @@ package com.iemr.common.identity.service.rmnch;
 
 import java.math.BigInteger;
 import java.sql.Date;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,13 +39,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -77,6 +78,8 @@ import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
 import com.iemr.common.identity.utils.http.HttpUtils;
 import com.iemr.common.identity.utils.mapper.InputMapper;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @Qualifier("rmnchServiceImpl")
@@ -111,9 +114,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	@Autowired
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
 
+	@Value("${fhir-url}")
+	private String fhirUrl;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
-	public String syncDataToAmrit(String requestOBJ) throws Exception {
+	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
+
 
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
@@ -131,6 +137,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 				// other tables data saving
 				// ben details RMNCH extra fields details
+				logger.info("Request object of syncDataToAmrit: "+jsnOBJ);
+
 
 				BigInteger benRegID = null;
 
@@ -147,11 +155,16 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
-										.getByRegID(benRegID);
-								if (temp != null) {
-									obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+								if(!rMNCHBeneficiaryDetailsRmnchRepo
+										.getByRegID(benRegID).isEmpty()){
+									RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
+											.getByRegID(benRegID).get(0);
+									if (temp != null) {
+										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+									}
 								}
+
+
 
 								if (obj.getRelatedBeneficiaryIds() != null
 										&& obj.getRelatedBeneficiaryIds().length > 0) {
@@ -165,21 +178,33 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
 								}
-								RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
-										rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId());
-								if (rmnchmBeneficiarydetail != null) {
-									rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
-									rmnchmBeneficiarydetail.setLastName(obj.getLastName());
-									rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
-									rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
-									rmnchmBeneficiarydetail.setDob(obj.getDob());
-									rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
-									rmnchmBeneficiarydetail.setGender(obj.getGender());
-									rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
-									rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
-									rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
-									benDetailsList.add(rmnchmBeneficiarydetail);
+								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
+									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
+											rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
+									if (rmnchmBeneficiarydetail != null) {
+										rmnchmBeneficiarydetail.setFirstName(obj.getFirstName());
+										rmnchmBeneficiarydetail.setLastName(obj.getLastName());
+										rmnchmBeneficiarydetail.setFatherName(obj.getFatherName());
+										rmnchmBeneficiarydetail.setMotherName(obj.getMotherName());
+										rmnchmBeneficiarydetail.setDob(obj.getDob());
+										rmnchmBeneficiarydetail.setSpousename(obj.getSpousename());
+										rmnchmBeneficiarydetail.setGender(obj.getGender());
+										rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
+										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
+										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+										if(obj.getFamilyId()!=null && !obj.getFamilyId().isEmpty()){
+											rmnchmBeneficiarydetail.setFamilyId(obj.getFamilyId());
+
+										}
+										benDetailsList.add(rmnchmBeneficiarydetail);
+										if (obj.getAbhaId()!=null && !obj.getAbhaId().isEmpty()) {
+											mapHealthIDToBeneficiary(authorization,obj.getBenRegId().longValue(),obj.getBenficieryid().longValue(),obj.getAbhaId(),obj.getCreatedBy(),obj.getFirstName(),obj.getLastName(),obj.getDob().toString(),obj.getProviderServiceMapID());
+
+										}
+
+									}
 								}
+
 
 							}
 
@@ -198,9 +223,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBornBirthDetails obj : bornBirthList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								if(!rMNCHBornBirthDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								}
+
 							}
 							bornBirthList = (ArrayList<RMNCHBornBirthDetails>) rMNCHBornBirthDetailsRepo
 									.saveAll(bornBirthList);
@@ -221,9 +249,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								obj.setConfirmed_tb("Not checked");
 								obj.setConfirmed_ncd_diseases("Not checked");
 								obj.setDiagnosis_status("pending");
-								RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setCBACDetailsid(temp.getCBACDetailsid());
+								if(!rMNCHCBACDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setCBACDetailsid(temp.getCBACDetailsid());
+								}
+
 							}
 
 							cbacList = (ArrayList<RMNCHCBACdetails>) rMNCHCBACDetailsRepo.saveAll(cbacList);
@@ -237,10 +268,14 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
 
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
-								RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
-										.getByHouseHoldID(obj.getHouseoldId());
-								if (temp != null)
-									obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+								if(!rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
+									RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
+											.getByHouseHoldID(obj.getHouseoldId()).get(0);
+									if (temp != null)
+										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+								}
+
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
@@ -257,7 +292,11 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		} catch (
 
 		Exception e) {
-			throw new Exception(e.getMessage());
+			logger.error("Full Exception", e);
+
+			throw new Exception(e); // ✅ original exception wrap karo
+
+
 		}
 		resultMap.put("beneficiaryDetails", beneficiaryDetailsIds);
 		resultMap.put("bornBirthDeatils", bornBirthDeatilsIds);
@@ -267,6 +306,243 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		return new Gson().toJson(resultMap);
 	}
 
+	/**
+	 * Splits a list into sub-lists (batches) of the given size.
+	 * Last batch may contain fewer elements.
+	 */
+	private <T> List<List<T>> partitionList(List<T> list, int batchSize) {
+		List<List<T>> batches = new ArrayList<>();
+		if (list == null || list.isEmpty()) {
+			return batches;
+		}
+		for (int i = 0; i < list.size(); i += batchSize) {
+			batches.add(new ArrayList<>(list.subList(i, Math.min(i + batchSize, list.size()))));
+		}
+		return batches;
+	}
+
+	public String mapHealthIDToBeneficiary(String authorization,
+										   Long benRegID,
+										   Long beneficiaryID,
+										   String abhaId,
+										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
+      try {
+		  RestTemplate restTemplate = new RestTemplate();
+		  String formattedDob = dob;
+
+		  try {
+			  if (dob != null && dob.contains(" ")) {
+				  Timestamp timestamp = Timestamp.valueOf(dob);
+				  formattedDob = new SimpleDateFormat("dd-MM-yyyy")
+						  .format(timestamp);
+			  }
+		  } catch (Exception ex) {
+			  logger.warn("DOB format conversion failed, sending original DOB : {}", dob);
+		  }
+		  logger.info("Authorization Token : {}", authorization);
+
+		  Map<String, Object> requestMap = new HashMap<>();
+
+		  requestMap.put("beneficiaryRegID", benRegID);
+		  requestMap.put("beneficiaryID", beneficiaryID);
+		  requestMap.put("healthIdNumber", abhaId);
+
+		  requestMap.put("createdBy", createdBy);
+		  requestMap.put("providerServiceMapId", providerServiceMapId);
+		  requestMap.put("isNew", false);
+
+		  // ABHA Profile
+		  Map<String, Object> abhaProfile = new HashMap<>();
+		  abhaProfile.put("ABHANumber", abhaId);
+
+		  List<String> phrAddress = new ArrayList<>();
+		  phrAddress.add(abhaId + "@abdm");
+
+		  abhaProfile.put("phrAddress", phrAddress);
+		  abhaProfile.put("firstName", firstName);
+		  abhaProfile.put("middleName", "");
+		  abhaProfile.put("lastName", lastName);
+		  abhaProfile.put("dob", formattedDob);
+
+
+		  requestMap.put("ABHAProfile", abhaProfile);
+
+		  String requestBody = new Gson().toJson(requestMap);
+
+		  String url = fhirUrl
+				  + ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary");
+
+		  logger.info("Calling URL : {}", url);
+		  logger.info("Request Body : {}", requestBody);
+
+		  HttpHeaders headers = new HttpHeaders();
+		  headers.setContentType(MediaType.APPLICATION_JSON);
+
+		  headers.set("Jwttoken", authorization);
+
+		  HttpEntity<String> entity =
+				  new HttpEntity<>(requestBody, headers);
+
+		  ResponseEntity<String> response = restTemplate.exchange(
+				  url,
+				  HttpMethod.POST,
+				  entity,
+				  String.class
+		  );
+
+		  logger.info("ABHA Mapping Response : {}", response.getBody());
+
+		  return response.getBody();
+
+	  } catch (HttpClientErrorException e) {
+
+		  logger.error("HTTP Error Status : {}", e.getStatusCode());
+		  logger.error("HTTP Error Response : {}", e.getResponseBodyAsString(), e);
+
+		  return "HTTP Error : " + e.getStatusCode();
+
+	  } catch (Exception e) {
+
+		  logger.error("Error while saving Health ID Mapping", e);
+
+		  return "Error Save Health Id : " + e.getMessage();
+	  }
+
+	}
+
+
+	@Override
+	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+	public String saveBeneficiaryDetailsAfterRegistration(
+			Long beneficiaryID,
+			Long beneficiaryRegID,
+			String comingRequest) {
+
+		logger.info("Method started. beneficiaryID={}, beneficiaryRegID={}",
+				beneficiaryID, beneficiaryRegID);
+
+		try {
+
+			JsonObject requestObj = new Gson().fromJson(comingRequest, JsonObject.class);
+			logger.info("Request Parsed Successfully");
+
+			List<RMNCHBeneficiaryDetailsRmnch> list =
+					rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(
+							BigInteger.valueOf(beneficiaryRegID));
+
+			logger.info("Records found for RegID {} : {}", beneficiaryRegID, list.size());
+
+			RMNCHBeneficiaryDetailsRmnch entity;
+			boolean isNew = list.isEmpty();
+
+			if (isNew) {
+				entity = new RMNCHBeneficiaryDetailsRmnch();
+				logger.info("Creating new RMNCH record");
+			} else {
+				entity = list.get(0);
+				logger.info("Updating existing RMNCH record. ID={}",
+						entity.getBeneficiaryDetails_RmnchId());
+			}
+
+			String createdBy = getString(requestObj, "createdBy", "system");
+
+			entity.setBenficieryid(BigInteger.valueOf(beneficiaryID));
+			entity.setBenRegId(BigInteger.valueOf(beneficiaryRegID));
+
+			if (isNew) {
+				entity.setCreatedBy(createdBy);
+				entity.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+			} else {
+				entity.setUpdatedBy(createdBy);
+				entity.setUpdatedDate(new Timestamp(System.currentTimeMillis()));
+			}
+
+			entity.setVanID(getInt(requestObj, "vanID", null));
+			entity.setParkingPlaceID(getInt(requestObj, "parkingPlaceID", null));
+			entity.setProviderServiceMapID(getInt(requestObj, "providerServiceMapID", null));
+			entity.setGenderId(getInt(requestObj, "genderID", null));
+
+			entity.setReproductiveStatusId(
+					getInt(
+							requestObj,
+							"reproductiveStatusId",
+							getInt(requestObj, "maritalStatusID", null)
+					)
+			);
+
+			entity.setReproductiveStatus(
+					getString(requestObj, "reproductiveStatus", null)
+			);
+
+			entity.setFirstName(getString(requestObj, "firstName", null));
+			entity.setLastName(getString(requestObj, "lastName", null));
+			entity.setFatherName(getString(requestObj, "fatherName", null));
+			entity.setSpousename(getString(requestObj, "spouseName", null));
+
+			entity.setMaritalstatusId(
+					getInt(requestObj, "maritalStatusID", null)
+			);
+
+			entity.setMaritalstatus(
+					getString(requestObj, "maritalStatusName", null)
+			);
+
+			// DOB
+			if (requestObj.has("dOB")
+					&& !requestObj.get("dOB").isJsonNull()
+					&& requestObj.get("dOB").getAsString().trim().length() > 0) {
+
+				try {
+					entity.setDob(
+							Timestamp.valueOf(
+									requestObj.get("dOB")
+											.getAsString()
+											.replace("T", " ")
+											.replace("Z", "")
+							)
+					);
+
+					logger.info("DOB set successfully");
+
+				} catch (Exception ex) {
+					logger.error("Invalid DOB format : {}",
+							requestObj.get("dOB").getAsString(), ex);
+				}
+			}
+
+			logger.info("Before save");
+
+			RMNCHBeneficiaryDetailsRmnch saved =
+					rMNCHBeneficiaryDetailsRmnchRepo.save(entity);
+
+			logger.info("After save. Saved ID={}",
+					saved.getBeneficiaryDetails_RmnchId());
+
+			logger.info("Saved RMNCH for benRegID={}", beneficiaryRegID);
+
+			return "Saved RMNCH for beneficiaryID: " + beneficiaryID;
+
+		} catch (Exception e) {
+
+			logger.error(
+					"Exception occurred in saveBeneficiaryDetailsAfterRegistration",
+					e
+			);
+
+			return "Error save beneficiary in rmnch : " + e.getMessage();
+		}
+	}
+	private String getString(JsonObject obj, String key, String defaultVal) {
+		return (obj.has(key) && !obj.get(key).isJsonNull())
+				? obj.get(key).getAsString()
+				: defaultVal;
+	}
+
+	private Integer getInt(JsonObject obj, String key, Integer defaultVal) {
+		return (obj.has(key) && !obj.get(key).isJsonNull())
+				? obj.get(key).getAsInt()
+				: defaultVal;
+	}
 	@Override
 	public String getBenData(String requestOBJ, String authorisation) throws Exception {
 		String outputResponse = null;
@@ -406,11 +682,20 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benID = rMNCHMBenRegIdMapRepo.getBenIdFromRegID(m.getBenRegId().longValue());
 
 					if (m.getBenRegId() != null) {
-						benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
-								.getByRegID(m.getBenRegId());
-						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
+						if(!rMNCHBeneficiaryDetailsRmnchRepo
+								.getByRegID(m.getBenRegId()).isEmpty()){
+							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
+									.getByRegID(m.getBenRegId()).get(0);
+						}
+                         if(!rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).get(0);
 
-						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
+						 }
+						 if(! rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).get(0);
+
+						 }
+
 						// 20-09-2021,start
 						NcdTbHrpData res = getHRP_NCD_TB_SuspectedStatus(m.getBenRegId().longValue(), authorisation,
 								benDetailsOBJ);
@@ -431,8 +716,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
-							benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
-									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId());
+							if(!rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
+								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							}
+
 
 					}
 					if (benDetailsRMNCHOBJ == null)

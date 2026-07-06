@@ -22,6 +22,7 @@
 package com.iemr.common.identity.repo.rmnch;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
