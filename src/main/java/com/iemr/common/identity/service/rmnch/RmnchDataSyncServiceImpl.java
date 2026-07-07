@@ -920,6 +920,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benDetailsRMNCHOBJ.setAddressLine2(benAddressOBJ.getPermAddrLine2());
 					if (benAddressOBJ.getPermAddrLine3() != null)
 						benDetailsRMNCHOBJ.setAddressLine3(benAddressOBJ.getPermAddrLine3());
+					if (benAddressOBJ.getPermPinCode() != null)
+						benDetailsRMNCHOBJ.setPinCode(benAddressOBJ.getPermPinCode());
 
 					// related benids
 					if (benDetailsRMNCHOBJ.getRelatedBeneficiaryIdsDB() != null) {

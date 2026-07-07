@@ -390,6 +390,9 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	@Transient
 	private String addressLine3;
+	@Expose
+	@Transient
+	private String pinCode;
 
 	// ----------------------------------------------
 
