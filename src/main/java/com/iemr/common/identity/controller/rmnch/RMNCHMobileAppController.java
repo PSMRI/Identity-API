@@ -60,7 +60,9 @@ public class RMNCHMobileAppController {
 		OutputResponse response = new OutputResponse();
 		try {
 			if (requestOBJ != null) {
+				System.out.println("syncDataToAmrit request body : " + requestOBJ);
 				String s = rmnchDataSyncService.syncDataToAmrit(requestOBJ);
+				System.out.println("syncDataToAmrit response body : " + s);
 				response.setResponse(s);
 			} else
 				response.setError(5000, "Invalid/NULL request obj");
