@@ -214,4 +214,13 @@ public class RMNCHMBeneficiarydetail {
 	@Expose
 	@Transient
 	private Integer ProviderServiceMapID;
+
+	@Expose
+	private String placeOfCurrentLiving;
+
+	@Expose
+	private String otherPlaceOfCurrentLiving;
+
+	@Expose
+	private String institutionName;
 }
