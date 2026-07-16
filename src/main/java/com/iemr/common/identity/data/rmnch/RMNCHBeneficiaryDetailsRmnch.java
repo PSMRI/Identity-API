@@ -531,6 +531,15 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	private String  otherPlaceOfDeath;
 
 	@Expose
+	private String placeOfCurrentLiving;
+
+	@Expose
+	private String otherPlaceOfCurrentLiving;
+
+	@Expose
+	private String institutionName;
+
+	@Expose
 	private Boolean isSpouseAdded;
 
 
