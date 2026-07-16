@@ -243,6 +243,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
 							rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
 							rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+							rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
+							rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
+							rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
 							benDetailsList.add(rmnchmBeneficiarydetail);
 						}
 								}
