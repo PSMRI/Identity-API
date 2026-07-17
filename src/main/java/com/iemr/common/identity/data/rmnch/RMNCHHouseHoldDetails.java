@@ -115,6 +115,18 @@ public class RMNCHHouseHoldDetails {
 	private String familyName;
 
 	@Expose
+	@Column(name = "totalHhMembers")
+	private Integer totalHhMembers;
+
+	@Expose
+	@Column(name = "registeredAtCampSite")
+	private String registeredAtCampSite;
+
+	@Expose
+	@Column(name = "registeredAtCampSiteId")
+	private Integer registeredAtCampSiteId;
+
+	@Expose
 	@Column(name = "fuelUsed")
 	private String fuelUsed;
 
