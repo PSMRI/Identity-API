@@ -21,13 +21,6 @@
 */
 package com.iemr.common.identity.utils.mapper;
 
-import java.io.IOException;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -35,10 +28,6 @@ import org.springframework.stereotype.Service;
 import com.google.gson.ExclusionStrategy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 import com.iemr.common.identity.utils.exception.IEMRException;
 
 /**
@@ -59,30 +48,11 @@ public class InputMapper {
 		if (builder == null) {
 			builder = new GsonBuilder();
 			builder.setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-			builder.registerTypeAdapter(Timestamp.class, new TypeAdapter<Timestamp>() {
-				private final DateTimeFormatter isoWithZ = DateTimeFormatter.ISO_INSTANT;
-				private final DateTimeFormatter isoNoTz = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-
-				@Override
-				public void write(JsonWriter out, Timestamp value) throws IOException {
-					if (value == null) out.nullValue();
-					else out.value(value.getTime());
-				}
-
-				@Override
-				public Timestamp read(JsonReader in) throws IOException {
-					if (in.peek() == JsonToken.NULL) { in.nextNull(); return null; }
-					if (in.peek() == JsonToken.NUMBER) return new Timestamp(in.nextLong());
-					String s = in.nextString();
-					// epoch millis as string
-					try { return new Timestamp(Long.parseLong(s)); } catch (NumberFormatException ignored) {}
-					// ISO 8601 with timezone (e.g. "2026-05-28T03:24:35.000Z")
-					try { return Timestamp.from(Instant.parse(s)); } catch (Exception ignored) {}
-					// ISO without timezone (e.g. "2026-05-28T03:24:35.000")
-					try { return Timestamp.from(LocalDateTime.parse(s, isoNoTz).toInstant(ZoneOffset.UTC)); } catch (Exception ignored) {}
-					return null;
-				}
-			});
+			// Timestamp fields (including dob) use Gson's default parsing here, same as
+			// on vb/stoptb. The gpsTimestamp field on RMNCH entities is parsed by
+			// com.iemr.common.identity.mapper.GpsTimestampAdapter via a field-level
+			// @JsonAdapter annotation instead of a global registration, so it can't
+			// affect any other Timestamp field.
 		}
 	}
 
