@@ -206,6 +206,7 @@ public class RMNCHHouseHoldDetails {
 	private String other_sourceofDrinkingWater;
 
 	@Expose
+	@SerializedName(value = "pincode", alternate = "Pincode")
 	@Column(name = "pincode")
 	private Integer pincode;
 
