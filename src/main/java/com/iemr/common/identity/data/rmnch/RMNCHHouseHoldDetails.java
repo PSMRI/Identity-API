@@ -113,6 +113,11 @@ public class RMNCHHouseHoldDetails {
 	private String familyName;
 
 	@Expose
+	@SerializedName(value = "address", alternate = "Address")
+	@Column(name = "address")
+	private String address;
+
+	@Expose
 	@Column(name = "totalHhMembers")
 	private Integer totalHhMembers;
 
