@@ -608,6 +608,11 @@ public class IdentityController {
 			+ "  \"createdDate\": \"Timestamp\"\r\n" + "  \"faceEmbedding\": [\"Float\"]\r\n" + "}") @RequestBody String identityData) throws IEMRException {
 		logger.info("IdentityController.createIdentity - start");
 	
+		// Bare Gson matches Common-API's RegisterBenificiaryServiceImpl, which also
+		// serializes the outgoing identity payload with a bare new Gson(). dob relies
+		// on this symmetric default format; gpsTimestamp is still parsed correctly via
+		// its field-level @JsonAdapter(GpsTimestampAdapter.class) on Address, which
+		// works regardless of which Gson instance performs the parse.
 		IdentityDTO identity = new Gson().fromJson(identityData, IdentityDTO.class);
 		logger.info("identity hit: " + identity);
 		BeneficiaryCreateResp map;

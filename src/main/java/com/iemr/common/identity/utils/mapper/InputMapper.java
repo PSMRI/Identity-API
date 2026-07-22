@@ -48,6 +48,11 @@ public class InputMapper {
 		if (builder == null) {
 			builder = new GsonBuilder();
 			builder.setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+			// Timestamp fields (including dob) use Gson's default parsing here, same as
+			// on vb/stoptb. The gpsTimestamp field on RMNCH entities is parsed by
+			// com.iemr.common.identity.mapper.GpsTimestampAdapter via a field-level
+			// @JsonAdapter annotation instead of a global registration, so it can't
+			// affect any other Timestamp field.
 		}
 	}
 
