@@ -595,7 +595,12 @@ public class IdentityController {
 		logger.info("IdentityController.createIdentity - start");
 		System.out.println("[TRACE][Identity-API] /id/create raw request body : " + identityData);
 
-		IdentityDTO identity = InputMapper.getInstance().gson().fromJson(identityData, IdentityDTO.class);
+		// Bare Gson matches Common-API's RegisterBenificiaryServiceImpl, which also
+		// serializes the outgoing identity payload with a bare new Gson(). dob relies
+		// on this symmetric default format; gpsTimestamp is still parsed correctly via
+		// its field-level @JsonAdapter(GpsTimestampAdapter.class) on Address, which
+		// works regardless of which Gson instance performs the parse.
+		IdentityDTO identity = new Gson().fromJson(identityData, IdentityDTO.class);
 		logger.info("identity hit: " + identity);
 		System.out.println("[TRACE][Identity-API] /id/create parsed IdentityDTO : " + identity);
 		BeneficiaryCreateResp map;

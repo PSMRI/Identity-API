@@ -31,7 +31,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
+import com.iemr.common.identity.mapper.GpsTimestampAdapter;
 
 import lombok.Data;
 
@@ -394,6 +396,7 @@ public class RMNCHHouseHoldDetails {
 
 	@Expose
 	@Column(name = "gpsTimestamp")
+	@JsonAdapter(GpsTimestampAdapter.class)
 	private Timestamp gpsTimestamp;
 
 	@Expose
