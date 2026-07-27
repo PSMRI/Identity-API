@@ -1492,8 +1492,10 @@ public class IdentityService {
             Timestamp ts = Timestamp.valueOf(dateToStoreInDataBase);
             mDetl.setCreatedDate(ts);
         }
+        System.out.println("[TRACE][Identity-API] before detailRepo.save mDetl.getDob()=" + mDetl.getDob());
         mDetl = detailRepo.save(mDetl);
         logger.info("IdentityService.createIdentity - Details saved - id = " + mDetl.getBeneficiaryDetailsId());
+        System.out.println("[TRACE][Identity-API] after detailRepo.save mDetl.getDob()=" + mDetl.getDob() + " id=" + mDetl.getBeneficiaryDetailsId());
 
         // Update van serial no for data sync
         detailRepo.updateVanSerialNo(mDetl.getBeneficiaryDetailsId());
@@ -1687,6 +1689,7 @@ public class IdentityService {
         }
         beneficiarydetail.setCommunity(dto.getCommunity());
         beneficiarydetail.setCommunityId(dto.getCommunityId());
+        System.out.println("[TRACE][Identity-API] convertIdentityDTOToMBeneficiarydetail dto.getDob()=" + dto.getDob());
         beneficiarydetail.setDob(dto.getDob());
         beneficiarydetail.setEducation(dto.getEducation());
         beneficiarydetail.setEducationId(dto.getEducationId());

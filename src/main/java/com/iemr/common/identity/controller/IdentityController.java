@@ -593,7 +593,8 @@ public class IdentityController {
 			+ "  \"sexualOrientationType\": \"String\",\r\n" + "  \"vanID\": \"Integer\",\r\n"
 			+ "  \"createdDate\": \"Timestamp\"\r\n" + "  \"faceEmbedding\": [\"Float\"]\r\n" + "}") @RequestBody String identityData) throws IEMRException {
 		logger.info("IdentityController.createIdentity - start");
-	
+		System.out.println("[TRACE][Identity-API] /id/create raw request body : " + identityData);
+
 		// Bare Gson matches Common-API's RegisterBenificiaryServiceImpl, which also
 		// serializes the outgoing identity payload with a bare new Gson(). dob relies
 		// on this symmetric default format; gpsTimestamp is still parsed correctly via
@@ -601,8 +602,10 @@ public class IdentityController {
 		// works regardless of which Gson instance performs the parse.
 		IdentityDTO identity = new Gson().fromJson(identityData, IdentityDTO.class);
 		logger.info("identity hit: " + identity);
+		System.out.println("[TRACE][Identity-API] /id/create parsed IdentityDTO : " + identity);
 		BeneficiaryCreateResp map;
 		map = svc.createIdentity(identity);
+		System.out.println("[TRACE][Identity-API] /id/create svc.createIdentity result : " + InputMapper.getInstance().gson().toJson(map));
 		String data = InputMapper.getInstance().gson().toJson(map);
 		String response = getSuccessResponseString(data, 200, "success", "createIdentityByAgent");
 

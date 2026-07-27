@@ -190,6 +190,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								obj.setBenRegId(benRegID);
 								// Extract GPS from i_bendemographics
 								JsonObject demog = benGpsMap.get(obj.getBenficieryid());
+								System.out.println("[TRACE][Identity-API] syncDataToAmrit benficieryid=" + obj.getBenficieryid()
+										+ " i_bendemographics.pinCode=" + (demog != null && demog.has("pinCode") && !demog.get("pinCode").isJsonNull()
+												? demog.get("pinCode") : "ABSENT")
+										+ " entity.getPinCode()=" + obj.getPinCode());
 								if (demog != null) {
 									if (demog.has("latitude") && !demog.get("latitude").isJsonNull())
 										obj.setGpsLatitude(demog.get("latitude").getAsDouble());
@@ -243,6 +247,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
 							rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
 							rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+							rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
+							rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
+							rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
 							benDetailsList.add(rmnchmBeneficiarydetail);
 						}
 								}

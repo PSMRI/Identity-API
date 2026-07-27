@@ -115,6 +115,23 @@ public class RMNCHHouseHoldDetails {
 	private String familyName;
 
 	@Expose
+	@SerializedName(value = "address", alternate = "Address")
+	@Column(name = "address")
+	private String address;
+
+	@Expose
+	@Column(name = "totalHhMembers")
+	private Integer totalHhMembers;
+
+	@Expose
+	@Column(name = "registeredAtCampSite")
+	private String registeredAtCampSite;
+
+	@Expose
+	@Column(name = "registeredAtCampSiteId")
+	private Integer registeredAtCampSiteId;
+
+	@Expose
 	@Column(name = "fuelUsed")
 	private String fuelUsed;
 
@@ -194,6 +211,7 @@ public class RMNCHHouseHoldDetails {
 	private String other_sourceofDrinkingWater;
 
 	@Expose
+	@SerializedName(value = "pincode", alternate = "Pincode")
 	@Column(name = "pincode")
 	private Integer pincode;
 
