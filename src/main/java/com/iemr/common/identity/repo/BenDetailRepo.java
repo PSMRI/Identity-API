@@ -148,6 +148,11 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 	@Query("SELECT b FROM MBeneficiarydetail b WHERE b.familyId =:familyid  ")
 	List<MBeneficiarydetail> searchByFamilyId(@Param("familyid") String familyid);
 
+	@Transactional
+	@Modifying
+	@Query("UPDATE MBeneficiarydetail d SET d.otherFields = :otherFields WHERE d.mBeneficiarymapping.benRegId = :benRegId")
+	int updateOtherFieldsByBenRegId(@Param("benRegId") BigInteger benRegId, @Param("otherFields") String otherFields);
+
 	  /**
      * Find complete beneficiary data by IDs from Elasticsearch
      */
