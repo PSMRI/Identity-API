@@ -117,14 +117,13 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHBenContactRepo rMNCHBenContactRepo;
 	@Autowired
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
-
-	@Value("${fhir-url}")
-	private String fhirUrl;
-
 	@Autowired
 	private BenDetailRepo benDetailRepo;
 	@Autowired
 	private RedisStorage redisStorage;
+
+	@Value("${fhir-url}")
+	private String fhirUrl;
 
 	// When true, sync fails loudly if camp is not configured instead of silently
 	// skipping vanID stamping
