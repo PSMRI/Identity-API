@@ -219,8 +219,26 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											.getByRegID(benRegID).get(0);
 									if (temp != null) {
 										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+										if (isPlausibleDeviceTimestamp(temp.getCreatedDate())) {
+											// Already has a good CreatedDate from the first sync — a later
+											// re-sync must never overwrite it.
+											obj.setCreatedDate(temp.getCreatedDate());
+										} else if (isPlausibleDeviceTimestamp(obj.getCreatedDate())) {
+											// Stored value was garbage but this re-sync brought a plausible
+											// one from the device — self-heal using it (obj already has it).
+										} else {
+											obj.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+										}
 									}
+								} else if (!isPlausibleDeviceTimestamp(obj.getCreatedDate())) {
+									// Device clock is broken (unset -> 1970 epoch, or set ahead -> future
+									// date). We can't recover the true capture time, so fall back to the
+									// sync time as the least-wrong value instead of storing garbage.
+									obj.setCreatedDate(new Timestamp(System.currentTimeMillis()));
 								}
+								// else: trust the device-supplied CreatedDate as-is — offline captures
+								// legitimately sync well after the actual event, so a later server time
+								// would be less accurate than the device's own timestamp.
 
 
 
@@ -653,6 +671,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		return (obj.has(key) && !obj.get(key).isJsonNull())
 				? obj.get(key).getAsInt()
 				: defaultVal;
+	}
+
+	/**
+	 * A device-supplied CreatedDate is trustworthy only if it is non-null,
+	 * not the classic unset-clock epoch default, and not after the current
+	 * server time (an offline capture can only have happened before the sync
+	 * request that reports it, so a future date means the device's clock is
+	 * wrong, not that the record is legitimately from the future).
+	 */
+	private boolean isPlausibleDeviceTimestamp(Timestamp createdDate) {
+		if (createdDate == null) {
+			return false;
+		}
+		long epochDayZero = 24L * 60 * 60 * 1000; // guard band around 1970-01-01 for epoch defaults
+		long now = System.currentTimeMillis();
+		return createdDate.getTime() > epochDayZero && createdDate.getTime() <= now;
 	}
 
 	private boolean hasAnthropometryData(RMNCHBeneficiaryDetailsRmnch obj) {
