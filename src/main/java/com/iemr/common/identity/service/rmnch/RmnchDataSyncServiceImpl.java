@@ -255,7 +255,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
 								}
-								if (obj.getVanID() == null && vanID != null) {
+								// Mobile sends VanID=0 as a placeholder (not null) for a fresh record —
+								// `== null` alone never catches it, leaving the placeholder in place.
+								if ((obj.getVanID() == null || obj.getVanID() == 0) && vanID != null) {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
@@ -297,6 +299,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							List<RMNCHBeneficiaryDetailsRmnch> benDetailsOriginalList = new ArrayList<>(benDetailsExtraList);
 							benDetailsExtraList = (ArrayList<RMNCHBeneficiaryDetailsRmnch>) rMNCHBeneficiaryDetailsRmnchRepo
 									.saveAll(benDetailsExtraList);
+							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
+							// force it back to each row's own PK after save.
+							benDetailsExtraList.forEach((n) -> rMNCHBeneficiaryDetailsRmnchRepo
+									.updateVanSerialNo(n.getBeneficiaryDetails_RmnchId()));
 
 							benDetailsExtraList.forEach((n) -> beneficiaryDetailsIds.add(n.getId()));
 							// update beneficiary data in i_beneficiarydetails table
@@ -413,6 +419,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
+							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
+							// force it back to each row's own PK after save.
+							houseHoldList.forEach((n) -> rMNCHHouseHoldDetailsRepo
+									.updateVanSerialNo(n.getHouseHoldDetailsId()));
 							// success response
 							houseHoldList.forEach((n) -> houseHoldDetailsIds.add(n.getId()));
 						}
