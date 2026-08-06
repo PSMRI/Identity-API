@@ -118,8 +118,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RedisStorage redisStorage;
 
 	// When true, sync fails loudly if camp is not configured instead of silently
-	// skipping vanID stamping
-	@Value("${stoptb.enforce.vanid:false}")
+	// skipping vanID stamping. No inline default — every properties file must set this
+	// explicitly, so a forgotten config fails loudly at startup instead of running fail-open.
+	@Value("${stoptb.enforce.vanid}")
 	private boolean enforceVanID;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
@@ -356,16 +357,19 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							}
 
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
+						// Set VanID/ParkingPlaceID for both NEW and existing households — previously
+						// this only ran inside the "household already exists" branch below, so a
+						// brand-new household never got VanID stamped, breaking van-scoped sync.
+						if (obj.getVanID() == null && vanID != null) {
+							obj.setVanID(vanID);
+							obj.setParkingPlaceID(parkingPlaceID);
+						}
 						if(!rMNCHHouseHoldDetailsRepo
 								.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
 							RMNCHHouseHoldDetails temp = rMNCHHouseHoldDetailsRepo
 									.getByHouseHoldID(obj.getHouseoldId()).get(0);
 							if (temp != null)
 								obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
-							if (obj.getVanID() == null && vanID != null) {
-								obj.setVanID(vanID);
-								obj.setParkingPlaceID(parkingPlaceID);
-							}
 							if (hhTimestampMap.containsKey(obj.getHouseoldId()))
 								obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
 								}
