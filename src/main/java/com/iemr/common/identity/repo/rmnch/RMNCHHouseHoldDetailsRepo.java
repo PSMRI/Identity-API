@@ -21,10 +21,12 @@
 */
 package com.iemr.common.identity.repo.rmnch;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.iemr.common.identity.data.rmnch.RMNCHHouseHoldDetails;
 
@@ -37,4 +39,13 @@ public interface RMNCHHouseHoldDetailsRepo extends CrudRepository<RMNCHHouseHold
 
 	@Query("SELECT t FROM RMNCHHouseHoldDetails t WHERE t.houseoldId = :houseoldId")
 	List<RMNCHHouseHoldDetails> getByHouseHoldID(@Param("houseoldId") long houseoldId);
+
+	// The Java field bound to the VanSerialNo column is literally named `id` with no
+	// @SerializedName - any incoming JSON that happens to carry its own "id" key collides
+	// with it during Gson deserialization and silently overwrites the intended VanSerialNo
+	// value. Force it back to the row's own PK after save.
+	@Transactional
+	@Modifying
+	@Query("UPDATE RMNCHHouseHoldDetails t SET t.id = :id WHERE t.houseHoldDetailsId = :id")
+	void updateVanSerialNo(@Param("id") Long id);
 }
