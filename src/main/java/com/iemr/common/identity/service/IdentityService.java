@@ -169,6 +169,14 @@ public class IdentityService {
     @Value("${elasticsearch.enabled}")
     private boolean esEnabled;
 
+    // Van/local-laptop deployments only — see RmnchDataSyncServiceImpl and FLW-API's
+    // CampConfigService for the same flag. createIdentity() previously had no enforcement
+    // check at all, so a missing vanID here would silently save VanID=NULL instead of failing.
+    // No inline default: every properties file must set this explicitly, so a forgotten
+    // config fails loudly at startup instead of silently running fail-open.
+    @Value("${stoptb.enforce.vanid}")
+    private boolean enforceVanID;
+
     public void getBenAdress() {
         logger.debug("Address count: " + addressRepo.count());
         logger.debug(
@@ -1385,6 +1393,11 @@ public class IdentityService {
     public BeneficiaryCreateResp createIdentity(IdentityDTO identity) {
         logger.info("IdentityService.createIdentity - start");
 
+        if (identity.getVanID() == null && enforceVanID) {
+            throw new IllegalStateException(
+                "Camp not configured: vanID missing. Please select van/service point in MMU before registering beneficiary.");
+        }
+
         // Atomically claim the next available ID using SELECT … FOR UPDATE SKIP LOCKED.
         // This is safe across multiple app servers sharing the same database — each server
         // locks and reserves a distinct row, so duplicate BenRegId inserts cannot occur.
@@ -1764,8 +1777,8 @@ public class IdentityService {
         beneficiaryImage.setCreatedDate(identity.getCreatedDate());
         if (identity.getVanID() != null) {
             beneficiaryImage.setVanID(identity.getVanID());
-        }
-        if (identity.getBenFamilyDTOs() != null) {
+        } else if (identity.getBenFamilyDTOs() != null && !identity.getBenFamilyDTOs().isEmpty()
+                && identity.getBenFamilyDTOs().get(0).getVanID() != null) {
             beneficiaryImage.setVanID(identity.getBenFamilyDTOs().get(0).getVanID());
         }
 

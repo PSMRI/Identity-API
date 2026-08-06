@@ -126,8 +126,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private String fhirUrl;
 
 	// When true, sync fails loudly if camp is not configured instead of silently
-	// skipping vanID stamping
-	@Value("${stoptb.enforce.vanid:false}")
+	// skipping vanID stamping. No inline default — every properties file must set this
+	// explicitly, so a forgotten config fails loudly at startup instead of running fail-open.
+	@Value("${stoptb.enforce.vanid}")
 	private boolean enforceVanID;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
@@ -401,6 +402,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									if (hhTimestampMap.containsKey(obj.getHouseoldId()))
 										obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
 								}
+								// Set VanID/ParkingPlaceID for both NEW and existing households — this must
+								// stay OUTSIDE the "household already exists" block above (it's regressed
+								// back inside there twice already via merges), otherwise a brand-new
+								// household never gets VanID stamped, breaking van-scoped sync.
 								if (obj.getVanID() == null && vanID != null) {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
