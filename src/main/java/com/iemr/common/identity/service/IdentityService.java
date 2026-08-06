@@ -817,6 +817,16 @@ public class IdentityService {
         return beneficiaryList;
     }
 
+
+    public RMNCHBeneficiaryDetailsRmnch getRmnchDataByBenID(BigInteger benID) {
+        RMNCHBeneficiaryDetailsRmnch rmnchBeneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
+
+        if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID).isEmpty()){
+            rmnchBeneficiaryDetailsRmnch = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benID).get(0);
+        }
+        return rmnchBeneficiaryDetailsRmnch;
+    }
+
     public Long countBeneficiaryByVillageIdAndLastModifyDate(List<Integer> villageIDs, Timestamp lastModifiedDate) {
         Long beneficiaryCount = 0L;
         try {
@@ -1505,10 +1515,8 @@ public class IdentityService {
             Timestamp ts = Timestamp.valueOf(dateToStoreInDataBase);
             mDetl.setCreatedDate(ts);
         }
-        System.out.println("[TRACE][Identity-API] before detailRepo.save mDetl.getDob()=" + mDetl.getDob());
         mDetl = detailRepo.save(mDetl);
         logger.info("IdentityService.createIdentity - Details saved - id = " + mDetl.getBeneficiaryDetailsId());
-        System.out.println("[TRACE][Identity-API] after detailRepo.save mDetl.getDob()=" + mDetl.getDob() + " id=" + mDetl.getBeneficiaryDetailsId());
 
         // Update van serial no for data sync
         detailRepo.updateVanSerialNo(mDetl.getBeneficiaryDetailsId());
@@ -1702,7 +1710,6 @@ public class IdentityService {
         }
         beneficiarydetail.setCommunity(dto.getCommunity());
         beneficiarydetail.setCommunityId(dto.getCommunityId());
-        System.out.println("[TRACE][Identity-API] convertIdentityDTOToMBeneficiarydetail dto.getDob()=" + dto.getDob());
         beneficiarydetail.setDob(dto.getDob());
         beneficiarydetail.setEducation(dto.getEducation());
         beneficiarydetail.setEducationId(dto.getEducationId());
@@ -2012,6 +2019,7 @@ public class IdentityService {
      * @return
      */
     private BeneficiariesDTO getBeneficiariesDTO(MBeneficiarymapping benMap) {
+        RMNCHBeneficiaryDetailsRmnch rmnchBeneficiaryDetailsRmnch = new RMNCHBeneficiaryDetailsRmnch();
         BeneficiariesDTO bdto = mapper.mBeneficiarymappingToBeneficiariesDTO(benMap);
         if (null != benMap && null != benMap.getMBeneficiarydetail()
                 && !StringUtils.isEmpty(benMap.getMBeneficiarydetail().getFaceEmbedding())) {
@@ -2027,6 +2035,13 @@ public class IdentityService {
             bdto.setFaceEmbedding(floatList);
         }
         // bdto.setOtherFields(benMap.getMBeneficiarydetail().getOtherFields());
+
+        if(!rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).isEmpty() ){
+            rmnchBeneficiaryDetailsRmnch = rMNCHBeneficiaryDetailsRmnchRepo.getByRegID(benMap.getBenRegId()).get(0);
+            bdto.setReproductiveStatus(rmnchBeneficiaryDetailsRmnch.getReproductiveStatus());
+            bdto.setReproductiveStatusId(rmnchBeneficiaryDetailsRmnch.getReproductiveStatusId());
+        }
+
         bdto.setBeneficiaryFamilyTags(
                 mapper.mapToMBeneficiaryfamilymappingWithBenFamilyDTOList(benMap.getMBeneficiaryfamilymappings()));
         bdto.setBeneficiaryIdentites(
