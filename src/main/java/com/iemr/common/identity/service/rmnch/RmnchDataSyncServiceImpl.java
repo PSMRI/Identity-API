@@ -76,7 +76,6 @@ import com.iemr.common.identity.repo.rmnch.RMNCHHouseHoldDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenMappingRepo;
 import com.iemr.common.identity.domain.MBeneficiarydetail;
 import com.iemr.common.identity.repo.BenDetailRepo;
-import com.iemr.common.identity.utils.redis.RedisStorage;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenRegIdMapRepo;
 import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
@@ -119,11 +118,19 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
 	@Autowired
 	private BenDetailRepo benDetailRepo;
-	@Autowired
-	private RedisStorage redisStorage;
 
 	@Value("${fhir-url}")
 	private String fhirUrl;
+
+	// This deployment's van/camp ID. Previously looked up from Redis ("camp:vanID"),
+	// written at MMU login and deleted (globally, unscoped) on ANY user's logout — a Redis
+	// outage or an unrelated user's logout would silently break sync on this camp. Each
+	// camp/van already runs its own dedicated backend instance, so which van this is never
+	// actually changes at runtime; reading it from properties removes the Redis dependency
+	// entirely. No inline default — every properties file must set this explicitly.
+	// Scope: vanID only, parkingPlaceID is not part of this change.
+	@Value("${stoptb.van.id}")
+	private int configuredVanID;
 
 	// When true, sync fails loudly if camp is not configured instead of silently
 	// skipping vanID stamping. No inline default — every properties file must set this
@@ -142,23 +149,16 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		ArrayList<Long> cBACDetailsIds = new ArrayList<>();
 		ArrayList<Long> houseHoldDetailsIds = new ArrayList<>();
 
-		// Read camp vanID/parkingPlaceID from Redis (set by MMU-API on van login)
-		Integer campVanID = null;
-		Integer campParkingPlaceID = null;
-		try {
-			String vanVal = redisStorage.getRaw("camp:vanID");
-			String ppVal = redisStorage.getRaw("camp:parkingPlaceID");
-			if (vanVal != null && !vanVal.isBlank()) campVanID = Integer.parseInt(vanVal);
-			if (ppVal != null && !ppVal.isBlank()) campParkingPlaceID = Integer.parseInt(ppVal);
-		} catch (Exception ignored) {
-			// no camp configured — vanID stamping skipped
-		}
+		// Configured van ID for this deployment (see configuredVanID field javadoc above).
+		// parkingPlaceID is out of scope for this change — kept null, same as before whenever
+		// Redis had no value for it.
+		Integer campVanID = configuredVanID > 0 ? configuredVanID : null;
 		if (campVanID == null && enforceVanID) {
 			throw new Exception(
-					"Camp not configured: vanID missing. Please select van/service point in MMU before syncing data.");
+					"Camp not configured: stoptb.van.id is 0. Set stoptb.van.id in this deployment's properties file.");
 		}
 		final Integer vanID = campVanID;
-		final Integer parkingPlaceID = campParkingPlaceID;
+		final Integer parkingPlaceID = null;
 
 		try {
 			if (requestOBJ != null && !requestOBJ.isEmpty()) {
