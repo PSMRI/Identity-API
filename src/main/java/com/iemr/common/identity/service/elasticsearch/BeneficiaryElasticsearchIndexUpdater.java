@@ -94,6 +94,16 @@ public class BeneficiaryElasticsearchIndexUpdater {
             return CompletableFuture.completedFuture(null);
         }
 
+        // Document id must be the beneficiary id, matching the full/bulk sync and
+        // the delete path. Keying on benRegId here wrote a second document per
+        // beneficiary instead of updating the existing one, so edits never
+        // surfaced in search.
+        final String documentId = document.getBenId();
+        if (documentId == null) {
+            logger.warn("No beneficiary id for benRegId: {}, skipping ES sync", benRegId);
+            return CompletableFuture.completedFuture(null);
+        }
+
         // Log ABHA for verification
         logger.info("Syncing benRegId={} with ABHA: healthID={}, abhaID={}",
                 benRegId, document.getHealthID(), document.getAbhaID());
@@ -102,10 +112,10 @@ public class BeneficiaryElasticsearchIndexUpdater {
         // Index to ES
         esClient.index(i -> i
                 .index(beneficiaryIndex)
-                .id(String.valueOf(benRegId))
+                .id(documentId)
                 .document(document).refresh(Refresh.True));
 
-        logger.info("Successfully synced benRegId: {} to ES", benRegId);
+        logger.info("Successfully synced benRegId: {} to ES as document {}", benRegId, documentId);
          } catch (Exception e) {
             logger.error("Error syncing beneficiary {} to Elasticsearch: {}", benRegId, e.getMessage(), e);
         }
