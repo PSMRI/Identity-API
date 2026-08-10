@@ -21,13 +21,6 @@
 */
 package com.iemr.common.identity.mapper;
 
-import java.io.IOException;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +33,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.LongSerializationPolicy;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 import com.iemr.common.identity.exception.IEMRException;
 
 public class InputMapper
@@ -53,41 +42,15 @@ public class InputMapper
 	private static GsonBuilder builder;
 	private static InputMapper instance = null;
 
-	private static final DateTimeFormatter ISO_WITH_Z =
-			DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-	private static final DateTimeFormatter CLIENT_DATE_FORMAT =
-			DateTimeFormatter.ofPattern("MMM dd, yyyy, h:mm:ss a", Locale.ENGLISH);
-
-	private static final TypeAdapter<Timestamp> TIMESTAMP_ADAPTER = new TypeAdapter<Timestamp>() {
-		@Override
-		public void write(JsonWriter out, Timestamp value) throws IOException {
-			if (value == null) out.nullValue();
-			else out.value(value.getTime());
-		}
-
-		@Override
-		public Timestamp read(JsonReader in) throws IOException {
-			if (in.peek() == JsonToken.NULL) { in.nextNull(); return null; }
-			if (in.peek() == JsonToken.NUMBER) return new Timestamp(in.nextLong());
-			String s = in.nextString();
-			// epoch millis as string
-			try { return new Timestamp(Long.parseLong(s)); } catch (NumberFormatException ignored) {}
-			// ISO 8601 with Z  e.g. "2021-06-18T00:00:00.000Z"
-			try { return Timestamp.from(Instant.parse(s)); } catch (Exception ignored) {}
-			// Mobile client format  e.g. "Jun 18, 2021, 5:30:00 AM"
-			try { return Timestamp.valueOf(LocalDateTime.parse(s, CLIENT_DATE_FORMAT)); } catch (Exception ignored) {}
-			// Fallback: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" literal Z
-			try { return Timestamp.valueOf(LocalDateTime.parse(s, ISO_WITH_Z)); } catch (Exception ignored) {}
-			return null;
-		}
-	};
-
 	private InputMapper()
 	{
+		// Timestamp fields (including dob) use Gson's default parsing here, same as
+		// on vb/stoptb. The gpsTimestamp field on Address/RMNCH entities is parsed by
+		// GpsTimestampAdapter via a field-level @JsonAdapter annotation instead of a
+		// global registration, so it can't affect any other Timestamp field.
 		builder = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 				// .excludeFieldsWithoutExposeAnnotation()
-				.serializeNulls().setLongSerializationPolicy(LongSerializationPolicy.STRING)
-				.registerTypeAdapter(Timestamp.class, TIMESTAMP_ADAPTER);
+				.serializeNulls().setLongSerializationPolicy(LongSerializationPolicy.STRING);
 	}
 
 	public static InputMapper getInstance()

@@ -31,7 +31,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
+import com.iemr.common.identity.mapper.GpsTimestampAdapter;
 
 import lombok.Data;
 
@@ -113,6 +115,23 @@ public class RMNCHHouseHoldDetails {
 	private String familyName;
 
 	@Expose
+	@SerializedName(value = "address", alternate = "Address")
+	@Column(name = "address")
+	private String address;
+
+	@Expose
+	@Column(name = "totalHhMembers")
+	private Integer totalHhMembers;
+
+	@Expose
+	@Column(name = "registeredAtCampSite")
+	private String registeredAtCampSite;
+
+	@Expose
+	@Column(name = "registeredAtCampSiteId")
+	private Integer registeredAtCampSiteId;
+
+	@Expose
 	@Column(name = "fuelUsed")
 	private String fuelUsed;
 
@@ -192,6 +211,7 @@ public class RMNCHHouseHoldDetails {
 	private String other_sourceofDrinkingWater;
 
 	@Expose
+	@SerializedName(value = "pincode", alternate = "Pincode")
 	@Column(name = "pincode")
 	private Integer pincode;
 
@@ -376,6 +396,7 @@ public class RMNCHHouseHoldDetails {
 
 	@Expose
 	@Column(name = "gpsTimestamp")
+	@JsonAdapter(GpsTimestampAdapter.class)
 	private Timestamp gpsTimestamp;
 
 	@Expose

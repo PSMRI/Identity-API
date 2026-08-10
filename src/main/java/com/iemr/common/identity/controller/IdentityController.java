@@ -30,10 +30,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.iemr.common.identity.data.rmnch.RMNCHBeneficiaryDetailsRmnch;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -315,6 +318,17 @@ public class IdentityController {
 		}
 		return response;
 	}
+
+
+	@PostMapping("/getRmnchDataByBenRedID")
+	public ResponseEntity<RMNCHBeneficiaryDetailsRmnch> getRmnchDataByBenID(@RequestBody BigInteger object) {
+		try {
+			RMNCHBeneficiaryDetailsRmnch data = svc.getRmnchDataByBenID(object);
+			return ResponseEntity.ok(data);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+		}
+	}
 	// search beneficiary by lastModDate and districtID
 		@Operation(summary ="Get count of beneficiary by villageId and last modified date-time")
 		@PostMapping(path = "/countBenByVillageIdAndLastModifiedDate")
@@ -593,8 +607,13 @@ public class IdentityController {
 			+ "  \"sexualOrientationType\": \"String\",\r\n" + "  \"vanID\": \"Integer\",\r\n"
 			+ "  \"createdDate\": \"Timestamp\"\r\n" + "  \"faceEmbedding\": [\"Float\"]\r\n" + "}") @RequestBody String identityData) throws IEMRException {
 		logger.info("IdentityController.createIdentity - start");
-	
-		IdentityDTO identity = InputMapper.getInstance().gson().fromJson(identityData, IdentityDTO.class);
+
+		// Bare Gson matches Common-API's RegisterBenificiaryServiceImpl, which also
+		// serializes the outgoing identity payload with a bare new Gson(). dob relies
+		// on this symmetric default format; gpsTimestamp is still parsed correctly via
+		// its field-level @JsonAdapter(GpsTimestampAdapter.class) on Address, which
+		// works regardless of which Gson instance performs the parse.
+		IdentityDTO identity = new Gson().fromJson(identityData, IdentityDTO.class);
 		logger.info("identity hit: " + identity);
 		BeneficiaryCreateResp map;
 		map = svc.createIdentity(identity);

@@ -34,6 +34,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
 import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.JsonAdapter;
+import com.iemr.common.identity.mapper.GpsTimestampAdapter;
 
 import lombok.Data;
 
@@ -563,28 +565,12 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	private Boolean isDeactivate;
 
 	@Expose
-	@Column(name = "gpsLatitude")
-	private Double gpsLatitude;
+	@Transient
+	private String abhaId;
 
 	@Expose
-	@Column(name = "gpsLongitude")
-	private Double gpsLongitude;
-
-	@Expose
-	@Column(name = "digipin")
-	private String digipin;
-
-	@Expose
-	@Column(name = "gpsTimestamp")
-	private Timestamp gpsTimestamp;
-
-	@Expose
-	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
-	private Boolean isGpsUnavailable = false;
-
-	@Expose
-	@Column(name = "gpsUnavailableReason")
-	private String gpsUnavailableReason;
+	@Transient
+	private String familyId;
 
 	// Anthropometry fields sent by Stop TB mobile app via beneficiaryDetails payload.
 	// i_beneficiarydetails_rmnch has no these columns — stored in i_beneficiarydetails.otherFields instead.
@@ -600,5 +586,30 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	@Transient
 	private Double temperature; // stored as "temperatureValue" in otherFields to match getBeneficiaryData key
+
+	@Expose
+	@Column(name = "gpsLatitude")
+	private Double gpsLatitude;
+
+	@Expose
+	@Column(name = "gpsLongitude")
+	private Double gpsLongitude;
+
+	@Expose
+	@Column(name = "digipin")
+	private String digipin;
+
+	@Expose
+	@Column(name = "gpsTimestamp")
+	@JsonAdapter(GpsTimestampAdapter.class)
+	private Timestamp gpsTimestamp;
+
+	@Expose
+	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+	private Boolean isGpsUnavailable = false;
+
+	@Expose
+	@Column(name = "gpsUnavailableReason")
+	private String gpsUnavailableReason;
 
 }

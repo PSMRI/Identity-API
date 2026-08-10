@@ -25,6 +25,9 @@ import lombok.Data;
 
 import java.sql.Timestamp;
 
+import com.google.gson.annotations.JsonAdapter;
+import com.iemr.common.identity.mapper.GpsTimestampAdapter;
+
 public @Data class Address {
 	private String addrLine1;
 	private String addrLine2;
@@ -56,6 +59,7 @@ public @Data class Address {
 	private Double gpsLatitude;
 	private Double gpsLongitude;
 	private String digipin;
+	@JsonAdapter(GpsTimestampAdapter.class)
 	private Timestamp gpsTimestamp;
 	private Boolean isGpsUnavailable;
 	private String gpsUnavailableReason;
