@@ -260,24 +260,6 @@ public class MBeneficiaryaddress implements Serializable {
 
 	// END OF new column added for data sync
 
-	@Column(name = "gpsLatitude")
-	private Double gpsLatitude;
-
-	@Column(name = "gpsLongitude")
-	private Double gpsLongitude;
-
-	@Column(name = "digipin")
-	private String digipin;
-
-	@Column(name = "gpsTimestamp")
-	private Timestamp gpsTimestamp;
-
-	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
-	private Boolean isGpsUnavailable = false;
-
-	@Column(name = "gpsUnavailableReason")
-	private String gpsUnavailableReason;
-
 	public MBeneficiaryaddress setCurrentAddress(Address address) {
 		this.currAddrLine1 = address.getAddrLine1();
 		this.currAddrLine2 = address.getAddrLine2();
