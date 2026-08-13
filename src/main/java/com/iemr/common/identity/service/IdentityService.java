@@ -1839,12 +1839,6 @@ public class IdentityService {
             beneficiaryAddress.setCurrServicePointId(dto.getCurrentAddress().getServicePointID());
             beneficiaryAddress.setCurrServicePoint(dto.getCurrentAddress().getServicePointName());
             beneficiaryAddress.setCurrHabitation(dto.getCurrentAddress().getHabitation());
-            beneficiaryAddress.setGpsLatitude(dto.getCurrentAddress().getGpsLatitude());
-            beneficiaryAddress.setGpsLongitude(dto.getCurrentAddress().getGpsLongitude());
-            beneficiaryAddress.setDigipin(dto.getCurrentAddress().getDigipin());
-            beneficiaryAddress.setGpsTimestamp(dto.getCurrentAddress().getGpsTimestamp());
-            beneficiaryAddress.setIsGpsUnavailable(dto.getCurrentAddress().getIsGpsUnavailable());
-            beneficiaryAddress.setGpsUnavailableReason(dto.getCurrentAddress().getGpsUnavailableReason());
         }
         if (dto.getEmergencyAddress() != null) {
             beneficiaryAddress.setEmerAddrLine1(dto.getEmergencyAddress().getAddrLine1());
