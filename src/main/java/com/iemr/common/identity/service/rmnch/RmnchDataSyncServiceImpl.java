@@ -24,6 +24,7 @@ package com.iemr.common.identity.service.rmnch;
 import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.iemr.common.identity.utils.OutputResponse;
-import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,10 +41,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -73,13 +74,15 @@ import com.iemr.common.identity.repo.rmnch.RMNCHBornBirthDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHCBACDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHHouseHoldDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenMappingRepo;
+import com.iemr.common.identity.domain.MBeneficiarydetail;
+import com.iemr.common.identity.repo.BenDetailRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenRegIdMapRepo;
 import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
 import com.iemr.common.identity.utils.http.HttpUtils;
 import com.iemr.common.identity.utils.mapper.InputMapper;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @Qualifier("rmnchServiceImpl")
@@ -113,9 +116,31 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHBenContactRepo rMNCHBenContactRepo;
 	@Autowired
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
+	@Autowired
+	private BenDetailRepo benDetailRepo;
+
+	@Value("${fhir-url}")
+	private String fhirUrl;
+
+	// This deployment's van/camp ID. Previously looked up from Redis ("camp:vanID"),
+	// written at MMU login and deleted (globally, unscoped) on ANY user's logout — a Redis
+	// outage or an unrelated user's logout would silently break sync on this camp. Each
+	// camp/van already runs its own dedicated backend instance, so which van this is never
+	// actually changes at runtime; reading it from properties removes the Redis dependency
+	// entirely. No inline default — every properties file must set this explicitly.
+	// Scope: vanID only, parkingPlaceID is not part of this change.
+	@Value("${stoptb.van.id}")
+	private int configuredVanID;
+
+	// When true, sync fails loudly if camp is not configured instead of silently
+	// skipping vanID stamping. No inline default — every properties file must set this
+	// explicitly, so a forgotten config fails loudly at startup instead of running fail-open.
+	@Value("${stoptb.enforce.vanid}")
+	private boolean enforceVanID;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
-	public String syncDataToAmrit(String requestOBJ) throws Exception {
+	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
+
 
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
@@ -123,6 +148,17 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		ArrayList<Long> bornBirthDeatilsIds = new ArrayList<>();
 		ArrayList<Long> cBACDetailsIds = new ArrayList<>();
 		ArrayList<Long> houseHoldDetailsIds = new ArrayList<>();
+
+		// Configured van ID for this deployment (see configuredVanID field javadoc above).
+		// parkingPlaceID is out of scope for this change — kept null, same as before whenever
+		// Redis had no value for it.
+		Integer campVanID = configuredVanID > 0 ? configuredVanID : null;
+		if (campVanID == null && enforceVanID) {
+			throw new Exception(
+					"Camp not configured: stoptb.van.id is 0. Set stoptb.van.id in this deployment's properties file.");
+		}
+		final Integer vanID = campVanID;
+		final Integer parkingPlaceID = null;
 
 		try {
 			if (requestOBJ != null && !requestOBJ.isEmpty()) {
@@ -133,6 +169,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 				// other tables data saving
 				// ben details RMNCH extra fields details
+				logger.info("Request object of syncDataToAmrit: "+jsnOBJ);
+
 
 				BigInteger benRegID = null;
 
@@ -145,18 +183,63 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 //						benRegID = rMNCHMBenRegIdMapRepo.getRegID(benDetailsExtraList.get(0).getBenficieryid());
 //
 //						if (benRegID != null) {
-						
+
+							// Build GPS lookup map from i_bendemographics in raw JSON
+							Map<BigInteger, JsonObject> benGpsMap = new HashMap<>();
+							JsonArray benJsonArr = jsnOBJ.getAsJsonArray("beneficiaryDetails");
+							for (JsonElement el : benJsonArr) {
+								JsonObject benJson = el.getAsJsonObject();
+								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()
+										&& benJson.has("i_bendemographics")
+										&& !benJson.get("i_bendemographics").isJsonNull()) {
+									benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
+											benJson.getAsJsonObject("i_bendemographics"));
+								}
+							}
+
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsExtraList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
+								// Extract GPS from i_bendemographics
+								JsonObject demog = benGpsMap.get(obj.getBenficieryid());
+								if (demog != null) {
+									if (demog.has("latitude") && !demog.get("latitude").isJsonNull())
+										obj.setGpsLatitude(demog.get("latitude").getAsDouble());
+									if (demog.has("longitude") && !demog.get("longitude").isJsonNull())
+										obj.setGpsLongitude(demog.get("longitude").getAsDouble());
+									if (demog.has("digipin") && !demog.get("digipin").isJsonNull())
+										obj.setDigipin(demog.get("digipin").getAsString());
+									if (demog.has("gpsTimestamp") && !demog.get("gpsTimestamp").isJsonNull())
+										obj.setGpsTimestamp(new Timestamp(demog.get("gpsTimestamp").getAsLong()));
+									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
+										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
+								}
 								if(!rMNCHBeneficiaryDetailsRmnchRepo
 										.getByRegID(benRegID).isEmpty()){
 									RMNCHBeneficiaryDetailsRmnch temp = rMNCHBeneficiaryDetailsRmnchRepo
 											.getByRegID(benRegID).get(0);
 									if (temp != null) {
 										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+										if (isPlausibleDeviceTimestamp(temp.getCreatedDate())) {
+											// Already has a good CreatedDate from the first sync — a later
+											// re-sync must never overwrite it.
+											obj.setCreatedDate(temp.getCreatedDate());
+										} else if (isPlausibleDeviceTimestamp(obj.getCreatedDate())) {
+											// Stored value was garbage but this re-sync brought a plausible
+											// one from the device — self-heal using it (obj already has it).
+										} else {
+											obj.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+										}
 									}
+								} else if (!isPlausibleDeviceTimestamp(obj.getCreatedDate())) {
+									// Device clock is broken (unset -> 1970 epoch, or set ahead -> future
+									// date). We can't recover the true capture time, so fall back to the
+									// sync time as the least-wrong value instead of storing garbage.
+									obj.setCreatedDate(new Timestamp(System.currentTimeMillis()));
 								}
+								// else: trust the device-supplied CreatedDate as-is — offline captures
+								// legitimately sync well after the actual event, so a later server time
+								// would be less accurate than the device's own timestamp.
 
 
 
@@ -172,6 +255,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									}
 									obj.setRelatedBeneficiaryIdsDB(sb.toString());
 								}
+								// Mobile sends VanID=0 as a placeholder (not null) for a fresh record —
+								// `== null` alone never catches it, leaving the placeholder in place.
+								if ((obj.getVanID() == null || obj.getVanID() == 0) && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
 									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
 											rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
@@ -186,19 +275,54 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setGenderId(obj.getGenderId());
 										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
 										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
+										rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
+										rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
+										rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
+										if(obj.getFamilyId()!=null && !obj.getFamilyId().isEmpty()){
+											rmnchmBeneficiarydetail.setFamilyId(obj.getFamilyId());
+
+										}
 										benDetailsList.add(rmnchmBeneficiarydetail);
+										if (obj.getAbhaId()!=null && !obj.getAbhaId().isEmpty()) {
+											mapHealthIDToBeneficiary(authorization,obj.getBenRegId().longValue(),obj.getBenficieryid().longValue(),obj.getAbhaId(),obj.getCreatedBy(),obj.getFirstName(),obj.getLastName(),obj.getDob().toString(),obj.getProviderServiceMapID());
+
+										}
+
 									}
 								}
 
 
 							}
 
+							// Keep original list before saveAll — @Transient fields (height/weight/bmi/temperature)
+							// are lost in the JPA-managed instances returned by merge()
+							List<RMNCHBeneficiaryDetailsRmnch> benDetailsOriginalList = new ArrayList<>(benDetailsExtraList);
 							benDetailsExtraList = (ArrayList<RMNCHBeneficiaryDetailsRmnch>) rMNCHBeneficiaryDetailsRmnchRepo
 									.saveAll(benDetailsExtraList);
+							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
+							// force it back to each row's own PK after save.
+							benDetailsExtraList.forEach((n) -> rMNCHBeneficiaryDetailsRmnchRepo
+									.updateVanSerialNo(n.getBeneficiaryDetails_RmnchId()));
 
 							benDetailsExtraList.forEach((n) -> beneficiaryDetailsIds.add(n.getId()));
 							// update beneficiary data in i_beneficiarydetails table
 							rMNCHBenDetailsRepo.saveAll(benDetailsList);
+
+							// Write anthropometry (height/weight/bmi/temperature) to i_beneficiarydetails.otherFields.
+							// i_beneficiarydetails_rmnch has no these columns; FLW-API getBeneficiaryData reads from otherFields.
+							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsOriginalList) {
+								if (obj.getBenRegId() != null && hasAnthropometryData(obj)) {
+									try {
+										MBeneficiarydetail benDetail = benDetailRepo.findByBenRegId(obj.getBenRegId());
+										if (benDetail != null) {
+											String merged = mergeAnthropometry(benDetail.getOtherFields(), obj);
+											benDetailRepo.updateOtherFieldsByBenRegId(obj.getBenRegId(), merged);
+										}
+									} catch (Exception ex) {
+										logger.warn("Failed to update otherFields for benRegId: " + obj.getBenRegId() + " - " + ex.getMessage());
+									}
+								}
+							}
 
 						// born birth details
 						if (jsnOBJ != null && jsnOBJ.has("bornBirthDeatils")) {
@@ -208,9 +332,15 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBornBirthDetails obj : bornBirthList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
-								RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								if(!rMNCHBornBirthDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								}
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 							bornBirthList = (ArrayList<RMNCHBornBirthDetails>) rMNCHBornBirthDetailsRepo
 									.saveAll(bornBirthList);
@@ -231,9 +361,15 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								obj.setConfirmed_tb("Not checked");
 								obj.setConfirmed_ncd_diseases("Not checked");
 								obj.setDiagnosis_status("pending");
-								RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID);
-								if (temp != null)
-									obj.setCBACDetailsid(temp.getCBACDetailsid());
+								if(!rMNCHCBACDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setCBACDetailsid(temp.getCBACDetailsid());
+								}
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 
 							cbacList = (ArrayList<RMNCHCBACdetails>) rMNCHCBACDetailsRepo.saveAll(cbacList);
@@ -246,6 +382,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									.fromJson(jsnOBJ.get("houseHoldDetails"), RMNCHHouseHoldDetails[].class);
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
 
+							// Build gpsTimestamp map (sent as string, needs manual parse)
+							Map<Long, Long> hhTimestampMap = new HashMap<>();
+							JsonArray hhJsonArr = jsnOBJ.getAsJsonArray("houseHoldDetails");
+							for (JsonElement el : hhJsonArr) {
+								JsonObject hhJson = el.getAsJsonObject();
+								try {
+									if (hhJson.has("houseoldId") && !hhJson.get("houseoldId").isJsonNull()
+											&& hhJson.has("gpsTimestamp")
+											&& !hhJson.get("gpsTimestamp").isJsonNull()) {
+										hhTimestampMap.put(
+												Long.parseLong(hhJson.get("houseoldId").getAsString()),
+												hhJson.get("gpsTimestamp").getAsLong());
+									}
+								} catch (NumberFormatException ignored) {}
+							}
+
 							for (RMNCHHouseHoldDetails obj : houseHoldList) {
 								if(!rMNCHHouseHoldDetailsRepo
 										.getByHouseHoldID(obj.getHouseoldId()).isEmpty()){
@@ -253,11 +405,24 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											.getByHouseHoldID(obj.getHouseoldId()).get(0);
 									if (temp != null)
 										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
+									if (hhTimestampMap.containsKey(obj.getHouseoldId()))
+										obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
 								}
-
+								// Set VanID/ParkingPlaceID for both NEW and existing households — this must
+								// stay OUTSIDE the "household already exists" block above (it's regressed
+								// back inside there twice already via merges), otherwise a brand-new
+								// household never gets VanID stamped, breaking van-scoped sync.
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
+							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
+							// force it back to each row's own PK after save.
+							houseHoldList.forEach((n) -> rMNCHHouseHoldDetailsRepo
+									.updateVanSerialNo(n.getHouseHoldDetailsId()));
 							// success response
 							houseHoldList.forEach((n) -> houseHoldDetailsIds.add(n.getId()));
 						}
@@ -283,6 +448,110 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		resultMap.put("houseHoldDetails", houseHoldDetailsIds);
 
 		return new Gson().toJson(resultMap);
+	}
+
+	/**
+	 * Splits a list into sub-lists (batches) of the given size.
+	 * Last batch may contain fewer elements.
+	 */
+	private <T> List<List<T>> partitionList(List<T> list, int batchSize) {
+		List<List<T>> batches = new ArrayList<>();
+		if (list == null || list.isEmpty()) {
+			return batches;
+		}
+		for (int i = 0; i < list.size(); i += batchSize) {
+			batches.add(new ArrayList<>(list.subList(i, Math.min(i + batchSize, list.size()))));
+		}
+		return batches;
+	}
+
+	public String mapHealthIDToBeneficiary(String authorization,
+										   Long benRegID,
+										   Long beneficiaryID,
+										   String abhaId,
+										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
+      try {
+		  RestTemplate restTemplate = new RestTemplate();
+		  String formattedDob = dob;
+
+		  try {
+			  if (dob != null && dob.contains(" ")) {
+				  Timestamp timestamp = Timestamp.valueOf(dob);
+				  formattedDob = new SimpleDateFormat("dd-MM-yyyy")
+						  .format(timestamp);
+			  }
+		  } catch (Exception ex) {
+			  logger.warn("DOB format conversion failed, sending original DOB : {}", dob);
+		  }
+		  logger.info("Authorization Token : {}", authorization);
+
+		  Map<String, Object> requestMap = new HashMap<>();
+
+		  requestMap.put("beneficiaryRegID", benRegID);
+		  requestMap.put("beneficiaryID", beneficiaryID);
+		  requestMap.put("healthIdNumber", abhaId);
+
+		  requestMap.put("createdBy", createdBy);
+		  requestMap.put("providerServiceMapId", providerServiceMapId);
+		  requestMap.put("isNew", false);
+
+		  // ABHA Profile
+		  Map<String, Object> abhaProfile = new HashMap<>();
+		  abhaProfile.put("ABHANumber", abhaId);
+
+		  List<String> phrAddress = new ArrayList<>();
+		  phrAddress.add(abhaId + "@abdm");
+
+		  abhaProfile.put("phrAddress", phrAddress);
+		  abhaProfile.put("firstName", firstName);
+		  abhaProfile.put("middleName", "");
+		  abhaProfile.put("lastName", lastName);
+		  abhaProfile.put("dob", formattedDob);
+
+
+		  requestMap.put("ABHAProfile", abhaProfile);
+
+		  String requestBody = new Gson().toJson(requestMap);
+
+		  String url = fhirUrl
+				  + ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary");
+
+		  logger.info("Calling URL : {}", url);
+		  logger.info("Request Body : {}", requestBody);
+
+		  HttpHeaders headers = new HttpHeaders();
+		  headers.setContentType(MediaType.APPLICATION_JSON);
+
+		  headers.set("Jwttoken", authorization);
+
+		  HttpEntity<String> entity =
+				  new HttpEntity<>(requestBody, headers);
+
+		  ResponseEntity<String> response = restTemplate.exchange(
+				  url,
+				  HttpMethod.POST,
+				  entity,
+				  String.class
+		  );
+
+		  logger.info("ABHA Mapping Response : {}", response.getBody());
+
+		  return response.getBody();
+
+	  } catch (HttpClientErrorException e) {
+
+		  logger.error("HTTP Error Status : {}", e.getStatusCode());
+		  logger.error("HTTP Error Response : {}", e.getResponseBodyAsString(), e);
+
+		  return "HTTP Error : " + e.getStatusCode();
+
+	  } catch (Exception e) {
+
+		  logger.error("Error while saving Health ID Mapping", e);
+
+		  return "Error Save Health Id : " + e.getMessage();
+	  }
+
 	}
 
 
@@ -418,6 +687,44 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 				? obj.get(key).getAsInt()
 				: defaultVal;
 	}
+
+	/**
+	 * A device-supplied CreatedDate is trustworthy only if it is non-null,
+	 * not the classic unset-clock epoch default, and not after the current
+	 * server time (an offline capture can only have happened before the sync
+	 * request that reports it, so a future date means the device's clock is
+	 * wrong, not that the record is legitimately from the future).
+	 */
+	private boolean isPlausibleDeviceTimestamp(Timestamp createdDate) {
+		if (createdDate == null) {
+			return false;
+		}
+		long epochDayZero = 24L * 60 * 60 * 1000; // guard band around 1970-01-01 for epoch defaults
+		long now = System.currentTimeMillis();
+		return createdDate.getTime() > epochDayZero && createdDate.getTime() <= now;
+	}
+
+	private boolean hasAnthropometryData(RMNCHBeneficiaryDetailsRmnch obj) {
+		return obj.getHeight() != null || obj.getWeight() != null
+				|| obj.getBmi() != null || obj.getTemperature() != null;
+	}
+
+	private String mergeAnthropometry(String existingOtherFields, RMNCHBeneficiaryDetailsRmnch obj) {
+		JsonObject json = new JsonObject();
+		if (existingOtherFields != null && !existingOtherFields.isBlank()) {
+			try {
+				json = new JsonParser().parse(existingOtherFields).getAsJsonObject();
+			} catch (Exception ignored) {
+			}
+		}
+		if (obj.getHeight() != null) json.addProperty("height", obj.getHeight());
+		if (obj.getWeight() != null) json.addProperty("weight", obj.getWeight());
+		if (obj.getBmi() != null) json.addProperty("bmi", obj.getBmi());
+		// mobile sends "temperature"; FLW-API getBeneficiaryData reads "temperatureValue"
+		if (obj.getTemperature() != null) json.addProperty("temperatureValue", obj.getTemperature());
+		return new Gson().toJson(json);
+	}
+
 	@Override
 	public String getBenData(String requestOBJ, String authorisation) throws Exception {
 		String outputResponse = null;
@@ -562,10 +869,15 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							benDetailsRMNCHOBJ = rMNCHBeneficiaryDetailsRmnchRepo
 									.getByRegID(m.getBenRegId()).get(0);
 						}
+                         if(!rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).get(0);
 
-						benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId());
+						 }
+						 if(! rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).get(0);
 
-						benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId());
+						 }
+
 						// 20-09-2021,start
 						NcdTbHrpData res = getHRP_NCD_TB_SuspectedStatus(m.getBenRegId().longValue(), authorisation,
 								benDetailsOBJ);
@@ -586,8 +898,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
-							benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
-									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							if(!rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
+								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							}
+
 
 					}
 					if (benDetailsRMNCHOBJ == null)
@@ -655,6 +971,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benDetailsRMNCHOBJ.setAddressLine2(benAddressOBJ.getPermAddrLine2());
 					if (benAddressOBJ.getPermAddrLine3() != null)
 						benDetailsRMNCHOBJ.setAddressLine3(benAddressOBJ.getPermAddrLine3());
+					if (benAddressOBJ.getPermPinCode() != null)
+						benDetailsRMNCHOBJ.setPinCode(benAddressOBJ.getPermPinCode());
 
 					// related benids
 					if (benDetailsRMNCHOBJ.getRelatedBeneficiaryIdsDB() != null) {

@@ -67,6 +67,13 @@ public class RedisStorage {
 		return userRespFromRedis;
 	}
 
+	public String getRaw(String key) {
+		RedisConnection redCon = connection.getConnection();
+		byte[] data = redCon.get(key.getBytes());
+		redCon.close();
+		return data != null ? new String(data) : null;
+	}
+
 	public Long deleteObject(String key) throws RedisSessionException {
 		RedisConnection redCon = connection.getConnection();
 		Long userRespFromRedis = Long.valueOf(0L);
