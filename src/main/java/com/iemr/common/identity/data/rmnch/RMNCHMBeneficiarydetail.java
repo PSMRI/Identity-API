@@ -222,4 +222,13 @@ public class RMNCHMBeneficiarydetail {
 	@Expose
 	@Column(name = "familyid")
 	private String familyId;
+
+	@Expose
+	private String placeOfCurrentLiving;
+
+	@Expose
+	private String otherPlaceOfCurrentLiving;
+
+	@Expose
+	private String institutionName;
 }
