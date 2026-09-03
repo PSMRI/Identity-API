@@ -80,7 +80,7 @@ public class BeneficiaryTransactionHelper {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true, timeout = 10)
     public boolean existsByBenRegId(BigInteger benRegId) {
         try {
-            return mappingRepo.existsByBenRegId(benRegId);
+            return mappingRepo.countActiveByBenRegId(benRegId) > 0;
         } catch (Exception e) {
             logger.error("Error checking existence for benRegId={}: {}", benRegId, e.getMessage());
             throw e;
