@@ -2201,7 +2201,10 @@ public class IdentityService {
     }
 
     public Long checkBenIDAvailabilityLocal() {
-        return regIdRepo.countByProvisioned(false);
+        // Provisioned=false alone also counts rows claimed (Reserved=true) by an
+        // abandoned/crashed registration attempt that never completed. Those are
+        // not actually available to a new registration, so exclude them here.
+        return regIdRepo.countByProvisionedAndReserved(false, false);
 
     }
 
