@@ -422,6 +422,18 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	private String phoneNo;
 	@Expose
 	@Transient
+	private String economicStatus;
+	@Expose
+	@Transient
+	private Integer economicStatusId;
+	@Expose
+	@Transient
+	private String residentialArea;
+	@Expose
+	@Transient
+	private Integer residentialAreaId;
+	@Expose
+	@Transient
 	private String contact_number;
 	@Expose
 	@Transient
