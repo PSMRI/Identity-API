@@ -186,14 +186,23 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							// Build GPS lookup map from i_bendemographics in raw JSON
 							Map<BigInteger, JsonObject> benGpsMap = new HashMap<>();
+							// STOP-444 followup fix: also keep the raw top-level object per beneficiary —
+							// occupation/community/pinCode live inside i_bendemographics (only ever read
+							// for GPS before this fix), and phone number lives in benPhoneMaps[0], neither
+							// of which Gson could bind onto RMNCHBeneficiaryDetailsRmnch: the JSON here uses
+							// lowercase keys (e.g. "villageid") that don't case-match the Java fields, and
+							// i_bendemographics/benPhoneMaps are nested, not flat.
+							Map<BigInteger, JsonObject> benRawMap = new HashMap<>();
 							JsonArray benJsonArr = jsnOBJ.getAsJsonArray("beneficiaryDetails");
 							for (JsonElement el : benJsonArr) {
 								JsonObject benJson = el.getAsJsonObject();
-								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()
-										&& benJson.has("i_bendemographics")
-										&& !benJson.get("i_bendemographics").isJsonNull()) {
-									benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
-											benJson.getAsJsonObject("i_bendemographics"));
+								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()) {
+									benRawMap.put(benJson.get("benficieryid").getAsBigInteger(), benJson);
+									if (benJson.has("i_bendemographics")
+											&& !benJson.get("i_bendemographics").isJsonNull()) {
+										benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
+												benJson.getAsJsonObject("i_bendemographics"));
+									}
 								}
 							}
 
@@ -213,6 +222,41 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										obj.setGpsTimestamp(new Timestamp(demog.get("gpsTimestamp").getAsLong()));
 									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
 										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
+									// STOP-444 followup fix: same source object, previously never read for
+									// anything but GPS. economicStatus deliberately NOT extracted here — its
+									// correct persisted home is unconfirmed (looks like it belongs on the
+									// household record, i_householddetails.type_bpl_apl, not the beneficiary).
+									if (demog.has("occupation") && !demog.get("occupation").isJsonNull())
+										obj.setOccupation(demog.get("occupation").getAsString());
+									if (demog.has("communityName") && !demog.get("communityName").isJsonNull())
+										obj.setCommunity(demog.get("communityName").getAsString());
+									if (demog.has("communityID") && !demog.get("communityID").isJsonNull())
+										obj.setCommunityId(demog.get("communityID").getAsInt());
+									if (demog.has("pinCode") && !demog.get("pinCode").isJsonNull())
+										obj.setPinCode(demog.get("pinCode").getAsString());
+									if (demog.has("blockID") && !demog.get("blockID").isJsonNull())
+										obj.setBlockId(demog.get("blockID").getAsInt());
+								}
+								// STOP-444 followup fix: phone number is sent as benPhoneMaps[0].phoneNo, not
+								// a flat field — same lowercase-key mismatch problem as village/block below.
+								JsonObject benJsonForPhone = benRawMap.get(obj.getBenficieryid());
+								if (benJsonForPhone != null && benJsonForPhone.has("benPhoneMaps")
+										&& !benJsonForPhone.get("benPhoneMaps").isJsonNull()) {
+									JsonArray phoneMaps = benJsonForPhone.getAsJsonArray("benPhoneMaps");
+									if (phoneMaps.size() > 0) {
+										JsonObject firstPhone = phoneMaps.get(0).getAsJsonObject();
+										if (firstPhone.has("phoneNo") && !firstPhone.get("phoneNo").isJsonNull()) {
+											obj.setPhoneNo(firstPhone.get("phoneNo").getAsString());
+										}
+									}
+									// STOP-444 followup fix: entity fields are villageId/villageName (camelCase)
+									// but the app sends lowercase "villageid"/"villagename" — Gson's default
+									// matching is case-sensitive, so these never bound at all. districtid/
+									// districtname already happen to case-match and don't need this treatment.
+									if (benJsonForPhone.has("villageid") && !benJsonForPhone.get("villageid").isJsonNull())
+										obj.setVillageId(benJsonForPhone.get("villageid").getAsInt());
+									if (benJsonForPhone.has("villagename") && !benJsonForPhone.get("villagename").isJsonNull())
+										obj.setVillageName(benJsonForPhone.get("villagename").getAsString());
 								}
 								if(!rMNCHBeneficiaryDetailsRmnchRepo
 										.getByRegID(benRegID).isEmpty()){
@@ -278,6 +322,26 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
 										rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
 										rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
+										// STOP-444 followup fix: these were previously never re-synced on an edit of an
+										// existing beneficiary, so any change to them from the app was silently dropped.
+										if (obj.getCommunity() != null) {
+											rmnchmBeneficiarydetail.setCommunity(obj.getCommunity());
+										}
+										if (obj.getCommunityId() != null) {
+											rmnchmBeneficiarydetail.setCommunityId(obj.getCommunityId());
+										}
+										if (obj.getOccupation() != null) {
+											rmnchmBeneficiarydetail.setOccupation(obj.getOccupation());
+										}
+										if (obj.getOccupationId() != null) {
+											rmnchmBeneficiarydetail.setOccupationId(obj.getOccupationId());
+										}
+										if (obj.getReligion() != null) {
+											rmnchmBeneficiarydetail.setReligion(obj.getReligion());
+										}
+										if (obj.getReligionID() != null) {
+											rmnchmBeneficiarydetail.setReligionID(obj.getReligionID());
+										}
 										if(obj.getFamilyId()!=null && !obj.getFamilyId().isEmpty()){
 											rmnchmBeneficiarydetail.setFamilyId(obj.getFamilyId());
 
@@ -286,6 +350,17 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										if (obj.getAbhaId()!=null && !obj.getAbhaId().isEmpty()) {
 											mapHealthIDToBeneficiary(authorization,obj.getBenRegId().longValue(),obj.getBenficieryid().longValue(),obj.getAbhaId(),obj.getCreatedBy(),obj.getFirstName(),obj.getLastName(),obj.getDob().toString(),obj.getProviderServiceMapID());
 
+										}
+
+										// STOP-444 followup fix: pinCode/block/district/village/phone live on the
+										// address and contact tables, which this sync never touched on edit at all
+										// (only ever written at initial creation). Best-effort — only overwrites a
+										// field when the app actually sent a non-null value for it.
+										try {
+											updateAddressAndContactOnEdit(obj);
+										} catch (Exception ex) {
+											logger.warn("Failed to update address/contact on edit for benRegId: "
+													+ obj.getBenRegId() + " - " + ex.getMessage());
 										}
 
 									}
@@ -702,6 +777,77 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		long epochDayZero = 24L * 60 * 60 * 1000; // guard band around 1970-01-01 for epoch defaults
 		long now = System.currentTimeMillis();
 		return createdDate.getTime() > epochDayZero && createdDate.getTime() <= now;
+	}
+
+	// STOP-444 followup fix: address (pinCode/block/district/village) and phone number
+	// live on i_beneficiaryaddress / i_beneficiarycontacts, which the edit-sync path never
+	// wrote to at all before this — only the initial create path (createIdentity) ever
+	// touched them. Best-effort: resolves the beneficiary's address/contact rows via
+	// i_beneficiarymapping and updates only the fields the app actually sent a value for,
+	// so an edit that only changes name/occupation doesn't blank out address fields the
+	// app didn't include in that particular payload.
+	private void updateAddressAndContactOnEdit(RMNCHBeneficiaryDetailsRmnch obj) {
+		if (obj.getBenRegId() == null || obj.getVanID() == null) {
+			return;
+		}
+		RMNCHMBeneficiarymapping mapping = rMNCHMBenMappingRepo.getByBenRegId(obj.getBenRegId());
+		if (mapping == null) {
+			return;
+		}
+		int vanID = obj.getVanID();
+
+		if (mapping.getBenAddressId() != null) {
+			RMNCHMBeneficiaryaddress address = rMNCHBenAddressRepo.getByIdAndVanID(mapping.getBenAddressId(), vanID);
+			if (address != null) {
+				boolean changed = false;
+				if (obj.getPinCode() != null) {
+					address.setPermPinCode(obj.getPinCode());
+					changed = true;
+				}
+				if (obj.getBlockId() != null) {
+					address.setPermSubDistrictId(obj.getBlockId());
+					changed = true;
+				}
+				// No block NAME source verified in the real edit payload — demog only carries
+				// blockID (a number). facilitySelection is a real, correctly-bound column and is
+				// used as the block name elsewhere in this codebase for the same reason (see
+				// BenRepo.kt on the mobile side), so it's the one confirmed-correct source here.
+				if (obj.getFacilitySelection() != null) {
+					address.setPermSubDistrict(obj.getFacilitySelection());
+					changed = true;
+				}
+				if (obj.getDistrictid() != null) {
+					address.setDistrictidPerm(obj.getDistrictid());
+					changed = true;
+				}
+				if (obj.getDistrictname() != null) {
+					address.setDistrictnamePerm(obj.getDistrictname());
+					changed = true;
+				}
+				if (obj.getVillageId() != null) {
+					address.setVillageidPerm(obj.getVillageId());
+					changed = true;
+				}
+				if (obj.getVillageName() != null) {
+					address.setVillagenamePerm(obj.getVillageName());
+					changed = true;
+				}
+				// zoneID / servicePointID / servicePointName dropped from this fix — no confirmed
+				// source key for these in a real captured edit payload, and guessing a wrong Gson
+				// binding here would look fixed while silently still doing nothing.
+				if (changed) {
+					rMNCHBenAddressRepo.save(address);
+				}
+			}
+		}
+
+		if (mapping.getBenContactsId() != null && obj.getPhoneNo() != null) {
+			RMNCHMBeneficiarycontact contact = rMNCHBenContactRepo.getByIdAndVanID(mapping.getBenContactsId(), vanID);
+			if (contact != null) {
+				contact.setPreferredPhoneNum(obj.getPhoneNo());
+				rMNCHBenContactRepo.save(contact);
+			}
+		}
 	}
 
 	private boolean hasAnthropometryData(RMNCHBeneficiaryDetailsRmnch obj) {
