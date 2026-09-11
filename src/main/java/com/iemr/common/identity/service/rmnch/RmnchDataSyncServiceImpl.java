@@ -223,9 +223,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
 										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
 									// STOP-444 followup fix: same source object, previously never read for
-									// anything but GPS. economicStatus deliberately NOT extracted here — its
-									// correct persisted home is unconfirmed (looks like it belongs on the
-									// household record, i_householddetails.type_bpl_apl, not the beneficiary).
+									// anything but GPS.
 									if (demog.has("occupation") && !demog.get("occupation").isJsonNull())
 										obj.setOccupation(demog.get("occupation").getAsString());
 									if (demog.has("communityName") && !demog.get("communityName").isJsonNull())
@@ -236,6 +234,18 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										obj.setPinCode(demog.get("pinCode").getAsString());
 									if (demog.has("blockID") && !demog.get("blockID").isJsonNull())
 										obj.setBlockId(demog.get("blockID").getAsInt());
+									// STOP-444 followup fix: economicStatus previously skipped here — turned
+									// out i_beneficiarydetails.economicStatus/economicStatusId genuinely exist
+									// (confirmed via schema, not just source code — 100% NULL across every row
+									// including fresh ones), so this is the correct persisted home after all.
+									if (demog.has("economicStatus") && !demog.get("economicStatus").isJsonNull())
+										obj.setEconomicStatus(demog.get("economicStatus").getAsString());
+									if (demog.has("economicStatusId") && !demog.get("economicStatusId").isJsonNull())
+										obj.setEconomicStatusId(demog.get("economicStatusId").getAsInt());
+									if (demog.has("residentialArea") && !demog.get("residentialArea").isJsonNull())
+										obj.setResidentialArea(demog.get("residentialArea").getAsString());
+									if (demog.has("residentialAreaId") && !demog.get("residentialAreaId").isJsonNull())
+										obj.setResidentialAreaId(demog.get("residentialAreaId").getAsInt());
 								}
 								// STOP-444 followup fix: phone number is sent as benPhoneMaps[0].phoneNo, not
 								// a flat field — same lowercase-key mismatch problem as village/block below.
@@ -341,6 +351,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										}
 										if (obj.getReligionID() != null) {
 											rmnchmBeneficiarydetail.setReligionID(obj.getReligionID());
+										}
+										if (obj.getEconomicStatus() != null) {
+											rmnchmBeneficiarydetail.setEconomicStatus(obj.getEconomicStatus());
+										}
+										if (obj.getEconomicStatusId() != null) {
+											rmnchmBeneficiarydetail.setEconomicStatusId(obj.getEconomicStatusId());
+										}
+										// STOP-444 followup fix: residentialArea/residentialAreaId — corrected here
+										// from an earlier (wrong) placement on the address entity; confirmed against
+										// FLW-API's own RMNCHMBeneficiarydetail, which already declares these fields
+										// on this same table.
+										if (obj.getResidentialArea() != null) {
+											rmnchmBeneficiarydetail.setResidentialArea(obj.getResidentialArea());
+										}
+										if (obj.getResidentialAreaId() != null) {
+											rmnchmBeneficiarydetail.setResidentialAreaId(obj.getResidentialAreaId());
 										}
 										if(obj.getFamilyId()!=null && !obj.getFamilyId().isEmpty()){
 											rmnchmBeneficiarydetail.setFamilyId(obj.getFamilyId());
