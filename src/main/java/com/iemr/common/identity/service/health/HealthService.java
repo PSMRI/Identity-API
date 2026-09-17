@@ -48,10 +48,14 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import jakarta.annotation.PostConstruct;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,6 +120,8 @@ public class HealthService {
     private final boolean                          elasticsearchEnabled;
     private final boolean                          elasticsearchIndexingRequired;
     private final String                           elasticsearchTargetIndex;
+    private final String                           elasticsearchUsername;
+    private final String                           elasticsearchPassword;
     private static final ObjectMapper              objectMapper = new ObjectMapper();
 
     private RestClient elasticsearchRestClient;
@@ -139,7 +145,9 @@ public class HealthService {
             @Value("${elasticsearch.port:9200}")                 int     elasticsearchPort,
             @Value("${elasticsearch.enabled:false}")             boolean elasticsearchEnabled,
             @Value("${elasticsearch.target-index:amrit_data}")   String  elasticsearchTargetIndex,
-            @Value("${elasticsearch.indexing-required:false}")   boolean elasticsearchIndexingRequired) {
+            @Value("${elasticsearch.indexing-required:false}")   boolean elasticsearchIndexingRequired,
+            @Value("${elasticsearch.username:}")                 String  elasticsearchUsername,
+            @Value("${elasticsearch.password:}")                 String  elasticsearchPassword) {
 
         this.dataSource = dataSource;
         this.advancedCheckExecutor = Executors.newSingleThreadExecutor(r -> {
@@ -153,6 +161,8 @@ public class HealthService {
         this.elasticsearchEnabled       = elasticsearchEnabled;
         this.elasticsearchIndexingRequired = elasticsearchIndexingRequired;
         this.elasticsearchTargetIndex   = (elasticsearchTargetIndex != null) ? elasticsearchTargetIndex : "amrit_data";
+        this.elasticsearchUsername      = elasticsearchUsername;
+        this.elasticsearchPassword      = elasticsearchPassword;
     }
 
     @PostConstruct
@@ -176,15 +186,30 @@ public class HealthService {
 
     private void initializeElasticsearchClient() {
         try {
-            this.elasticsearchRestClient = RestClient.builder(
+            RestClientBuilder builder = RestClient.builder(
                     new HttpHost(elasticsearchHost, elasticsearchPort, "http"))
                 .setRequestConfigCallback(cb -> cb
                     .setConnectTimeout(ELASTICSEARCH_CONNECT_TIMEOUT_MS)
-                    .setSocketTimeout(ELASTICSEARCH_SOCKET_TIMEOUT_MS))
-                .build();
+                    .setSocketTimeout(ELASTICSEARCH_SOCKET_TIMEOUT_MS));
+
+            // Attach Basic Auth when credentials are configured, so the health
+            // probes authenticate against a security-enabled cluster (matches
+            // ElasticsearchConfig). When username is blank (security disabled),
+            // the client stays unauthenticated.
+            if (elasticsearchUsername != null && !elasticsearchUsername.isEmpty()) {
+                BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(elasticsearchUsername, elasticsearchPassword));
+                builder.setHttpClientConfigCallback(httpClientBuilder ->
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+            }
+
+            this.elasticsearchRestClient = builder.build();
             this.elasticsearchClientReady = true;
-            logger.info("Elasticsearch client initialized (connect/socket timeout: {}ms)",
-                    ELASTICSEARCH_CONNECT_TIMEOUT_MS);
+            logger.info("Elasticsearch client initialized (connect/socket timeout: {}ms, auth: {})",
+                    ELASTICSEARCH_CONNECT_TIMEOUT_MS,
+                    (elasticsearchUsername != null && !elasticsearchUsername.isEmpty()) ? "enabled" : "disabled");
         } catch (Exception e) {
             logger.warn("Failed to initialize Elasticsearch client: {}", e.getMessage());
             this.elasticsearchClientReady = false;
