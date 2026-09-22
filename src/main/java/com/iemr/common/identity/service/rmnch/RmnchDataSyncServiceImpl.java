@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.text.SimpleDateFormat;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,10 +43,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.*;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -76,11 +79,15 @@ import com.iemr.common.identity.repo.rmnch.RMNCHHouseHoldDetailsRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenMappingRepo;
 import com.iemr.common.identity.domain.MBeneficiarydetail;
 import com.iemr.common.identity.repo.BenDetailRepo;
+import com.iemr.common.identity.domain.MBeneficiarydetail;
+import com.iemr.common.identity.repo.BenDetailRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHMBenRegIdMapRepo;
 import com.iemr.common.identity.utils.config.ConfigProperties;
 import com.iemr.common.identity.utils.exception.IEMRException;
 import com.iemr.common.identity.utils.http.HttpUtils;
 import com.iemr.common.identity.utils.mapper.InputMapper;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -137,8 +144,31 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	// explicitly, so a forgotten config fails loudly at startup instead of running fail-open.
 	@Value("${stoptb.enforce.vanid}")
 	private boolean enforceVanID;
+	@Autowired
+	private BenDetailRepo benDetailRepo;
+
+	@Value("${fhir-url}")
+	private String fhirUrl;
+
+	// This deployment's van/camp ID. Previously looked up from Redis ("camp:vanID"),
+	// written at MMU login and deleted (globally, unscoped) on ANY user's logout — a Redis
+	// outage or an unrelated user's logout would silently break sync on this camp. Each
+	// camp/van already runs its own dedicated backend instance, so which van this is never
+	// actually changes at runtime; reading it from properties removes the Redis dependency
+	// entirely. No inline default — every properties file must set this explicitly.
+	// Scope: vanID only, parkingPlaceID is not part of this change.
+	@Value("${stoptb.van.id}")
+	private int configuredVanID;
+
+	// When true, sync fails loudly if camp is not configured instead of silently
+	// skipping vanID stamping. No inline default — every properties file must set this
+	// explicitly, so a forgotten config fails loudly at startup instead of running fail-open.
+	@Value("${stoptb.enforce.vanid}")
+	private boolean enforceVanID;
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
+	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
+
 	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
 
 
@@ -148,6 +178,17 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		ArrayList<Long> bornBirthDeatilsIds = new ArrayList<>();
 		ArrayList<Long> cBACDetailsIds = new ArrayList<>();
 		ArrayList<Long> houseHoldDetailsIds = new ArrayList<>();
+
+		// Configured van ID for this deployment (see configuredVanID field javadoc above).
+		// parkingPlaceID is out of scope for this change — kept null, same as before whenever
+		// Redis had no value for it.
+		Integer campVanID = configuredVanID > 0 ? configuredVanID : null;
+		if (campVanID == null && enforceVanID) {
+			throw new Exception(
+					"Camp not configured: stoptb.van.id is 0. Set stoptb.van.id in this deployment's properties file.");
+		}
+		final Integer vanID = campVanID;
+		final Integer parkingPlaceID = null;
 
 		// Configured van ID for this deployment (see configuredVanID field javadoc above).
 		// parkingPlaceID is out of scope for this change — kept null, same as before whenever
@@ -171,6 +212,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 				// ben details RMNCH extra fields details
 				logger.info("Request object of syncDataToAmrit: "+jsnOBJ);
 
+				logger.info("Request object of syncDataToAmrit: "+jsnOBJ);
+
 
 				BigInteger benRegID = null;
 
@@ -186,14 +229,23 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 							// Build GPS lookup map from i_bendemographics in raw JSON
 							Map<BigInteger, JsonObject> benGpsMap = new HashMap<>();
+							// STOP-444 followup fix: also keep the raw top-level object per beneficiary —
+							// occupation/community/pinCode live inside i_bendemographics (only ever read
+							// for GPS before this fix), and phone number lives in benPhoneMaps[0], neither
+							// of which Gson could bind onto RMNCHBeneficiaryDetailsRmnch: the JSON here uses
+							// lowercase keys (e.g. "villageid") that don't case-match the Java fields, and
+							// i_bendemographics/benPhoneMaps are nested, not flat.
+							Map<BigInteger, JsonObject> benRawMap = new HashMap<>();
 							JsonArray benJsonArr = jsnOBJ.getAsJsonArray("beneficiaryDetails");
 							for (JsonElement el : benJsonArr) {
 								JsonObject benJson = el.getAsJsonObject();
-								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()
-										&& benJson.has("i_bendemographics")
-										&& !benJson.get("i_bendemographics").isJsonNull()) {
-									benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
-											benJson.getAsJsonObject("i_bendemographics"));
+								if (benJson.has("benficieryid") && !benJson.get("benficieryid").isJsonNull()) {
+									benRawMap.put(benJson.get("benficieryid").getAsBigInteger(), benJson);
+									if (benJson.has("i_bendemographics")
+											&& !benJson.get("i_bendemographics").isJsonNull()) {
+										benGpsMap.put(benJson.get("benficieryid").getAsBigInteger(),
+												benJson.getAsJsonObject("i_bendemographics"));
+									}
 								}
 							}
 
@@ -213,6 +265,51 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										obj.setGpsTimestamp(new Timestamp(demog.get("gpsTimestamp").getAsLong()));
 									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
 										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
+									// STOP-444 followup fix: same source object, previously never read for
+									// anything but GPS.
+									if (demog.has("occupation") && !demog.get("occupation").isJsonNull())
+										obj.setOccupation(demog.get("occupation").getAsString());
+									if (demog.has("communityName") && !demog.get("communityName").isJsonNull())
+										obj.setCommunity(demog.get("communityName").getAsString());
+									if (demog.has("communityID") && !demog.get("communityID").isJsonNull())
+										obj.setCommunityId(demog.get("communityID").getAsInt());
+									if (demog.has("pinCode") && !demog.get("pinCode").isJsonNull())
+										obj.setPinCode(demog.get("pinCode").getAsString());
+									if (demog.has("blockID") && !demog.get("blockID").isJsonNull())
+										obj.setBlockId(demog.get("blockID").getAsInt());
+									// STOP-444 followup fix: economicStatus previously skipped here — turned
+									// out i_beneficiarydetails.economicStatus/economicStatusId genuinely exist
+									// (confirmed via schema, not just source code — 100% NULL across every row
+									// including fresh ones), so this is the correct persisted home after all.
+									if (demog.has("economicStatus") && !demog.get("economicStatus").isJsonNull())
+										obj.setEconomicStatus(demog.get("economicStatus").getAsString());
+									if (demog.has("economicStatusId") && !demog.get("economicStatusId").isJsonNull())
+										obj.setEconomicStatusId(demog.get("economicStatusId").getAsInt());
+									if (demog.has("residentialArea") && !demog.get("residentialArea").isJsonNull())
+										obj.setResidentialArea(demog.get("residentialArea").getAsString());
+									if (demog.has("residentialAreaId") && !demog.get("residentialAreaId").isJsonNull())
+										obj.setResidentialAreaId(demog.get("residentialAreaId").getAsInt());
+								}
+								// STOP-444 followup fix: phone number is sent as benPhoneMaps[0].phoneNo, not
+								// a flat field — same lowercase-key mismatch problem as village/block below.
+								JsonObject benJsonForPhone = benRawMap.get(obj.getBenficieryid());
+								if (benJsonForPhone != null && benJsonForPhone.has("benPhoneMaps")
+										&& !benJsonForPhone.get("benPhoneMaps").isJsonNull()) {
+									JsonArray phoneMaps = benJsonForPhone.getAsJsonArray("benPhoneMaps");
+									if (phoneMaps.size() > 0) {
+										JsonObject firstPhone = phoneMaps.get(0).getAsJsonObject();
+										if (firstPhone.has("phoneNo") && !firstPhone.get("phoneNo").isJsonNull()) {
+											obj.setPhoneNo(firstPhone.get("phoneNo").getAsString());
+										}
+									}
+									// STOP-444 followup fix: entity fields are villageId/villageName (camelCase)
+									// but the app sends lowercase "villageid"/"villagename" — Gson's default
+									// matching is case-sensitive, so these never bound at all. districtid/
+									// districtname already happen to case-match and don't need this treatment.
+									if (benJsonForPhone.has("villageid") && !benJsonForPhone.get("villageid").isJsonNull())
+										obj.setVillageId(benJsonForPhone.get("villageid").getAsInt());
+									if (benJsonForPhone.has("villagename") && !benJsonForPhone.get("villagename").isJsonNull())
+										obj.setVillageName(benJsonForPhone.get("villagename").getAsString());
 								}
 								if(!rMNCHBeneficiaryDetailsRmnchRepo
 										.getByRegID(benRegID).isEmpty()){
@@ -220,6 +317,26 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											.getByRegID(benRegID).get(0);
 									if (temp != null) {
 										obj.setBeneficiaryDetails_RmnchId(temp.getBeneficiaryDetails_RmnchId());
+										if (isPlausibleDeviceTimestamp(temp.getCreatedDate())) {
+											// Already has a good CreatedDate from the first sync — a later
+											// re-sync must never overwrite it.
+											obj.setCreatedDate(temp.getCreatedDate());
+										} else if (isPlausibleDeviceTimestamp(obj.getCreatedDate())) {
+											// Stored value was garbage but this re-sync brought a plausible
+											// one from the device — self-heal using it (obj already has it).
+										} else {
+											obj.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+										}
+									}
+								} else if (!isPlausibleDeviceTimestamp(obj.getCreatedDate())) {
+									// Device clock is broken (unset -> 1970 epoch, or set ahead -> future
+									// date). We can't recover the true capture time, so fall back to the
+									// sync time as the least-wrong value instead of storing garbage.
+									obj.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+								}
+								// else: trust the device-supplied CreatedDate as-is — offline captures
+								// legitimately sync well after the actual event, so a later server time
+								// would be less accurate than the device's own timestamp.
 										if (isPlausibleDeviceTimestamp(temp.getCreatedDate())) {
 											// Already has a good CreatedDate from the first sync — a later
 											// re-sync must never overwrite it.
@@ -261,6 +378,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+								// Mobile sends VanID=0 as a placeholder (not null) for a fresh record —
+								// `== null` alone never catches it, leaving the placeholder in place.
+								if ((obj.getVanID() == null || obj.getVanID() == 0) && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
 									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
 											rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
@@ -278,6 +401,42 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
 										rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
 										rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
+										// STOP-444 followup fix: these were previously never re-synced on an edit of an
+										// existing beneficiary, so any change to them from the app was silently dropped.
+										if (obj.getCommunity() != null) {
+											rmnchmBeneficiarydetail.setCommunity(obj.getCommunity());
+										}
+										if (obj.getCommunityId() != null) {
+											rmnchmBeneficiarydetail.setCommunityId(obj.getCommunityId());
+										}
+										if (obj.getOccupation() != null) {
+											rmnchmBeneficiarydetail.setOccupation(obj.getOccupation());
+										}
+										if (obj.getOccupationId() != null) {
+											rmnchmBeneficiarydetail.setOccupationId(obj.getOccupationId());
+										}
+										if (obj.getReligion() != null) {
+											rmnchmBeneficiarydetail.setReligion(obj.getReligion());
+										}
+										if (obj.getReligionID() != null) {
+											rmnchmBeneficiarydetail.setReligionID(obj.getReligionID());
+										}
+										if (obj.getEconomicStatus() != null) {
+											rmnchmBeneficiarydetail.setEconomicStatus(obj.getEconomicStatus());
+										}
+										if (obj.getEconomicStatusId() != null) {
+											rmnchmBeneficiarydetail.setEconomicStatusId(obj.getEconomicStatusId());
+										}
+										// STOP-444 followup fix: residentialArea/residentialAreaId — corrected here
+										// from an earlier (wrong) placement on the address entity; confirmed against
+										// FLW-API's own RMNCHMBeneficiarydetail, which already declares these fields
+										// on this same table.
+										if (obj.getResidentialArea() != null) {
+											rmnchmBeneficiarydetail.setResidentialArea(obj.getResidentialArea());
+										}
+										if (obj.getResidentialAreaId() != null) {
+											rmnchmBeneficiarydetail.setResidentialAreaId(obj.getResidentialAreaId());
+										}
 										if(obj.getFamilyId()!=null && !obj.getFamilyId().isEmpty()){
 											rmnchmBeneficiarydetail.setFamilyId(obj.getFamilyId());
 
@@ -286,6 +445,17 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										if (obj.getAbhaId()!=null && !obj.getAbhaId().isEmpty()) {
 											mapHealthIDToBeneficiary(authorization,obj.getBenRegId().longValue(),obj.getBenficieryid().longValue(),obj.getAbhaId(),obj.getCreatedBy(),obj.getFirstName(),obj.getLastName(),obj.getDob().toString(),obj.getProviderServiceMapID());
 
+										}
+
+										// STOP-444 followup fix: pinCode/block/district/village/phone live on the
+										// address and contact tables, which this sync never touched on edit at all
+										// (only ever written at initial creation). Best-effort — only overwrites a
+										// field when the app actually sent a non-null value for it.
+										try {
+											updateAddressAndContactOnEdit(obj);
+										} catch (Exception ex) {
+											logger.warn("Failed to update address/contact on edit for benRegId: "
+													+ obj.getBenRegId() + " - " + ex.getMessage());
 										}
 
 									}
@@ -299,6 +469,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							List<RMNCHBeneficiaryDetailsRmnch> benDetailsOriginalList = new ArrayList<>(benDetailsExtraList);
 							benDetailsExtraList = (ArrayList<RMNCHBeneficiaryDetailsRmnch>) rMNCHBeneficiaryDetailsRmnchRepo
 									.saveAll(benDetailsExtraList);
+							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
+							// force it back to each row's own PK after save.
+							benDetailsExtraList.forEach((n) -> rMNCHBeneficiaryDetailsRmnchRepo
+									.updateVanSerialNo(n.getBeneficiaryDetails_RmnchId()));
 							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
 							// force it back to each row's own PK after save.
 							benDetailsExtraList.forEach((n) -> rMNCHBeneficiaryDetailsRmnchRepo
@@ -324,6 +498,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								}
 							}
 
+							// Write anthropometry (height/weight/bmi/temperature) to i_beneficiarydetails.otherFields.
+							// i_beneficiarydetails_rmnch has no these columns; FLW-API getBeneficiaryData reads from otherFields.
+							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsOriginalList) {
+								if (obj.getBenRegId() != null && hasAnthropometryData(obj)) {
+									try {
+										MBeneficiarydetail benDetail = benDetailRepo.findByBenRegId(obj.getBenRegId());
+										if (benDetail != null) {
+											String merged = mergeAnthropometry(benDetail.getOtherFields(), obj);
+											benDetailRepo.updateOtherFieldsByBenRegId(obj.getBenRegId(), merged);
+										}
+									} catch (Exception ex) {
+										logger.warn("Failed to update otherFields for benRegId: " + obj.getBenRegId() + " - " + ex.getMessage());
+									}
+								}
+							}
+
 						// born birth details
 						if (jsnOBJ != null && jsnOBJ.has("bornBirthDeatils")) {
 							RMNCHBornBirthDetails[] objArr1 = InputMapper.gson()
@@ -332,6 +522,15 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							for (RMNCHBornBirthDetails obj : bornBirthList) {
 								benRegID = rMNCHMBenRegIdMapRepo.getRegID(obj.getBenficieryid());
 								obj.setBenRegId(benRegID);
+								if(!rMNCHBornBirthDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setBornBirthDeatilsId(temp.getBornBirthDeatilsId());
+								}
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 								if(!rMNCHBornBirthDetailsRepo.getByRegID(benRegID).isEmpty()){
 									RMNCHBornBirthDetails temp = rMNCHBornBirthDetailsRepo.getByRegID(benRegID).get(0);
 									if (temp != null)
@@ -370,6 +569,15 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+								if(!rMNCHCBACDetailsRepo.getByRegID(benRegID).isEmpty()){
+									RMNCHCBACdetails temp = rMNCHCBACDetailsRepo.getByRegID(benRegID).get(0);
+									if (temp != null)
+										obj.setCBACDetailsid(temp.getCBACDetailsid());
+								}
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 
 							cbacList = (ArrayList<RMNCHCBACdetails>) rMNCHCBACDetailsRepo.saveAll(cbacList);
@@ -381,6 +589,22 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							RMNCHHouseHoldDetails[] objArr3 = InputMapper.gson()
 									.fromJson(jsnOBJ.get("houseHoldDetails"), RMNCHHouseHoldDetails[].class);
 							List<RMNCHHouseHoldDetails> houseHoldList = Arrays.asList(objArr3);
+
+							// Build gpsTimestamp map (sent as string, needs manual parse)
+							Map<Long, Long> hhTimestampMap = new HashMap<>();
+							JsonArray hhJsonArr = jsnOBJ.getAsJsonArray("houseHoldDetails");
+							for (JsonElement el : hhJsonArr) {
+								JsonObject hhJson = el.getAsJsonObject();
+								try {
+									if (hhJson.has("houseoldId") && !hhJson.get("houseoldId").isJsonNull()
+											&& hhJson.has("gpsTimestamp")
+											&& !hhJson.get("gpsTimestamp").isJsonNull()) {
+										hhTimestampMap.put(
+												Long.parseLong(hhJson.get("houseoldId").getAsString()),
+												hhJson.get("gpsTimestamp").getAsLong());
+									}
+								} catch (NumberFormatException ignored) {}
+							}
 
 							// Build gpsTimestamp map (sent as string, needs manual parse)
 							Map<Long, Long> hhTimestampMap = new HashMap<>();
@@ -416,9 +640,24 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+									if (hhTimestampMap.containsKey(obj.getHouseoldId()))
+										obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
+								}
+								// Set VanID/ParkingPlaceID for both NEW and existing households — this must
+								// stay OUTSIDE the "household already exists" block above (it's regressed
+								// back inside there twice already via merges), otherwise a brand-new
+								// household never gets VanID stamped, breaking van-scoped sync.
+								if (obj.getVanID() == null && vanID != null) {
+									obj.setVanID(vanID);
+									obj.setParkingPlaceID(parkingPlaceID);
+								}
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
+							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
+							// force it back to each row's own PK after save.
+							houseHoldList.forEach((n) -> rMNCHHouseHoldDetailsRepo
+									.updateVanSerialNo(n.getHouseHoldDetailsId()));
 							// The `id`/VanSerialNo field is Gson-collision-prone (see repo javadoc) —
 							// force it back to each row's own PK after save.
 							houseHoldList.forEach((n) -> rMNCHHouseHoldDetailsRepo
@@ -448,6 +687,110 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		resultMap.put("houseHoldDetails", houseHoldDetailsIds);
 
 		return new Gson().toJson(resultMap);
+	}
+
+	/**
+	 * Splits a list into sub-lists (batches) of the given size.
+	 * Last batch may contain fewer elements.
+	 */
+	private <T> List<List<T>> partitionList(List<T> list, int batchSize) {
+		List<List<T>> batches = new ArrayList<>();
+		if (list == null || list.isEmpty()) {
+			return batches;
+		}
+		for (int i = 0; i < list.size(); i += batchSize) {
+			batches.add(new ArrayList<>(list.subList(i, Math.min(i + batchSize, list.size()))));
+		}
+		return batches;
+	}
+
+	public String mapHealthIDToBeneficiary(String authorization,
+										   Long benRegID,
+										   Long beneficiaryID,
+										   String abhaId,
+										   String createdBy,String firstName,String lastName,String dob,Integer providerServiceMapId) {
+      try {
+		  RestTemplate restTemplate = new RestTemplate();
+		  String formattedDob = dob;
+
+		  try {
+			  if (dob != null && dob.contains(" ")) {
+				  Timestamp timestamp = Timestamp.valueOf(dob);
+				  formattedDob = new SimpleDateFormat("dd-MM-yyyy")
+						  .format(timestamp);
+			  }
+		  } catch (Exception ex) {
+			  logger.warn("DOB format conversion failed, sending original DOB : {}", dob);
+		  }
+		  logger.info("Authorization Token : {}", authorization);
+
+		  Map<String, Object> requestMap = new HashMap<>();
+
+		  requestMap.put("beneficiaryRegID", benRegID);
+		  requestMap.put("beneficiaryID", beneficiaryID);
+		  requestMap.put("healthIdNumber", abhaId);
+
+		  requestMap.put("createdBy", createdBy);
+		  requestMap.put("providerServiceMapId", providerServiceMapId);
+		  requestMap.put("isNew", false);
+
+		  // ABHA Profile
+		  Map<String, Object> abhaProfile = new HashMap<>();
+		  abhaProfile.put("ABHANumber", abhaId);
+
+		  List<String> phrAddress = new ArrayList<>();
+		  phrAddress.add(abhaId + "@abdm");
+
+		  abhaProfile.put("phrAddress", phrAddress);
+		  abhaProfile.put("firstName", firstName);
+		  abhaProfile.put("middleName", "");
+		  abhaProfile.put("lastName", lastName);
+		  abhaProfile.put("dob", formattedDob);
+
+
+		  requestMap.put("ABHAProfile", abhaProfile);
+
+		  String requestBody = new Gson().toJson(requestMap);
+
+		  String url = fhirUrl
+				  + ConfigProperties.getPropertyByName("mapHealthIDToBeneficiary");
+
+		  logger.info("Calling URL : {}", url);
+		  logger.info("Request Body : {}", requestBody);
+
+		  HttpHeaders headers = new HttpHeaders();
+		  headers.setContentType(MediaType.APPLICATION_JSON);
+
+		  headers.set("Jwttoken", authorization);
+
+		  HttpEntity<String> entity =
+				  new HttpEntity<>(requestBody, headers);
+
+		  ResponseEntity<String> response = restTemplate.exchange(
+				  url,
+				  HttpMethod.POST,
+				  entity,
+				  String.class
+		  );
+
+		  logger.info("ABHA Mapping Response : {}", response.getBody());
+
+		  return response.getBody();
+
+	  } catch (HttpClientErrorException e) {
+
+		  logger.error("HTTP Error Status : {}", e.getStatusCode());
+		  logger.error("HTTP Error Response : {}", e.getResponseBodyAsString(), e);
+
+		  return "HTTP Error : " + e.getStatusCode();
+
+	  } catch (Exception e) {
+
+		  logger.error("Error while saving Health ID Mapping", e);
+
+		  return "Error Save Health Id : " + e.getMessage();
+	  }
+
 	}
 
 	/**
@@ -704,6 +1047,77 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 		return createdDate.getTime() > epochDayZero && createdDate.getTime() <= now;
 	}
 
+	// STOP-444 followup fix: address (pinCode/block/district/village) and phone number
+	// live on i_beneficiaryaddress / i_beneficiarycontacts, which the edit-sync path never
+	// wrote to at all before this — only the initial create path (createIdentity) ever
+	// touched them. Best-effort: resolves the beneficiary's address/contact rows via
+	// i_beneficiarymapping and updates only the fields the app actually sent a value for,
+	// so an edit that only changes name/occupation doesn't blank out address fields the
+	// app didn't include in that particular payload.
+	private void updateAddressAndContactOnEdit(RMNCHBeneficiaryDetailsRmnch obj) {
+		if (obj.getBenRegId() == null || obj.getVanID() == null) {
+			return;
+		}
+		RMNCHMBeneficiarymapping mapping = rMNCHMBenMappingRepo.getByBenRegId(obj.getBenRegId());
+		if (mapping == null) {
+			return;
+		}
+		int vanID = obj.getVanID();
+
+		if (mapping.getBenAddressId() != null) {
+			RMNCHMBeneficiaryaddress address = rMNCHBenAddressRepo.getByIdAndVanID(mapping.getBenAddressId(), vanID);
+			if (address != null) {
+				boolean changed = false;
+				if (obj.getPinCode() != null) {
+					address.setPermPinCode(obj.getPinCode());
+					changed = true;
+				}
+				if (obj.getBlockId() != null) {
+					address.setPermSubDistrictId(obj.getBlockId());
+					changed = true;
+				}
+				// No block NAME source verified in the real edit payload — demog only carries
+				// blockID (a number). facilitySelection is a real, correctly-bound column and is
+				// used as the block name elsewhere in this codebase for the same reason (see
+				// BenRepo.kt on the mobile side), so it's the one confirmed-correct source here.
+				if (obj.getFacilitySelection() != null) {
+					address.setPermSubDistrict(obj.getFacilitySelection());
+					changed = true;
+				}
+				if (obj.getDistrictid() != null) {
+					address.setDistrictidPerm(obj.getDistrictid());
+					changed = true;
+				}
+				if (obj.getDistrictname() != null) {
+					address.setDistrictnamePerm(obj.getDistrictname());
+					changed = true;
+				}
+				if (obj.getVillageId() != null) {
+					address.setVillageidPerm(obj.getVillageId());
+					changed = true;
+				}
+				if (obj.getVillageName() != null) {
+					address.setVillagenamePerm(obj.getVillageName());
+					changed = true;
+				}
+				// zoneID / servicePointID / servicePointName dropped from this fix — no confirmed
+				// source key for these in a real captured edit payload, and guessing a wrong Gson
+				// binding here would look fixed while silently still doing nothing.
+				if (changed) {
+					rMNCHBenAddressRepo.save(address);
+				}
+			}
+		}
+
+		if (mapping.getBenContactsId() != null && obj.getPhoneNo() != null) {
+			RMNCHMBeneficiarycontact contact = rMNCHBenContactRepo.getByIdAndVanID(mapping.getBenContactsId(), vanID);
+			if (contact != null) {
+				contact.setPreferredPhoneNum(obj.getPhoneNo());
+				rMNCHBenContactRepo.save(contact);
+			}
+		}
+	}
+
 	private boolean hasAnthropometryData(RMNCHBeneficiaryDetailsRmnch obj) {
 		return obj.getHeight() != null || obj.getWeight() != null
 				|| obj.getBmi() != null || obj.getTemperature() != null;
@@ -871,10 +1285,17 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						}
                          if(!rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
 							 benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).get(0);
+                         if(!rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benBotnBirthRMNCHROBJ = rMNCHBornBirthDetailsRepo.getByRegID(m.getBenRegId()).get(0);
 
 						 }
 						 if(! rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
 							 benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).get(0);
+						 }
+						 if(! rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).isEmpty()){
+							 benCABCRMNCHROBJ = rMNCHCBACDetailsRepo.getByRegID(m.getBenRegId()).get(0);
+
+						 }
 
 						 }
 
@@ -898,6 +1319,12 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 
 						// 20-09-2021,end
 						if (benDetailsRMNCHOBJ != null && benDetailsRMNCHOBJ.getHouseoldId() != null)
+							if(!rMNCHHouseHoldDetailsRepo
+									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
+								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
+										.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).get(0);
+							}
+
 							if(!rMNCHHouseHoldDetailsRepo
 									.getByHouseHoldID(benDetailsRMNCHOBJ.getHouseoldId()).isEmpty()){
 								benHouseHoldRMNCHROBJ = rMNCHHouseHoldDetailsRepo
@@ -971,6 +1398,8 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 						benDetailsRMNCHOBJ.setAddressLine2(benAddressOBJ.getPermAddrLine2());
 					if (benAddressOBJ.getPermAddrLine3() != null)
 						benDetailsRMNCHOBJ.setAddressLine3(benAddressOBJ.getPermAddrLine3());
+					if (benAddressOBJ.getPermPinCode() != null)
+						benDetailsRMNCHOBJ.setPinCode(benAddressOBJ.getPermPinCode());
 					if (benAddressOBJ.getPermPinCode() != null)
 						benDetailsRMNCHOBJ.setPinCode(benAddressOBJ.getPermPinCode());
 

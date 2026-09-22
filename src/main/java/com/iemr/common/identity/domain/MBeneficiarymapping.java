@@ -30,6 +30,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.NamedQuery;
@@ -85,7 +86,7 @@ public class MBeneficiarymapping implements Serializable {
 	private Timestamp reservedOn;
 
 	// uni-directional one-to-one association to MBeneficiaryaddress
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenAddressId", nullable = false)
 	private MBeneficiaryaddress mBeneficiaryaddress;
 
@@ -93,7 +94,7 @@ public class MBeneficiarymapping implements Serializable {
 	private BigInteger benAddressId;
 
 	// uni-directional one-to-one association to MBeneficiaryconsent
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenConsentId"/* , nullable=false */)
 	private MBeneficiaryconsent mBeneficiaryconsent;
 
@@ -101,7 +102,7 @@ public class MBeneficiarymapping implements Serializable {
 	private BigInteger benConsentId;
 
 	// uni-directional one-to-one association to MBeneficiarycontact
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenContactsId", nullable = false)
 	private MBeneficiarycontact mBeneficiarycontact;
 
@@ -109,7 +110,7 @@ public class MBeneficiarymapping implements Serializable {
 	private BigInteger benContactsId;
 
 	// uni-directional one-to-one association to MBeneficiarydetail
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenDetailsId", referencedColumnName = "BeneficiaryDetailsId", nullable = false)
 	private MBeneficiarydetail mBeneficiarydetail;
 
@@ -117,7 +118,7 @@ public class MBeneficiarymapping implements Serializable {
 	private BigInteger benDetailsId;
 
 	// uni-directional one-to-one association to MBeneficiaryregidmapping
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenRegId"/* , nullable=false */)
 	private MBeneficiaryregidmapping mBeneficiaryregidmapping;
 
@@ -126,7 +127,7 @@ public class MBeneficiarymapping implements Serializable {
 	private BigInteger benRegId;
 
 	// uni-directional one-to-one association to MBensecurestack
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenSecureStackId", nullable = false)
 	private MBensecurestack mBeneficiarysecurestack;
 
@@ -166,7 +167,7 @@ public class MBeneficiarymapping implements Serializable {
 	 * New columns added for MMU integration 11-04-2018
 	 */
 	// uni-directional one-to-one association
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenImageId")
 	private MBeneficiaryImage mBeneficiaryImage;
 
@@ -174,7 +175,7 @@ public class MBeneficiarymapping implements Serializable {
 	private BigInteger benImageId;
 
 	// uni-directional one-to-one association
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "BenAccountID")
 	private MBeneficiaryAccount mBeneficiaryAccount;
 

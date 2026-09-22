@@ -237,7 +237,11 @@ public interface BenMappingRepo extends CrudRepository<MBeneficiarymapping, BigI
     @Query("SELECT m FROM MBeneficiarymapping m WHERE m.benRegId = :benRegId AND m.deleted = false")
     MBeneficiarymapping findByBenRegId(@Param("benRegId") BigInteger benRegId);
     
-    /**
+    
+    @Query(value = "SELECT COUNT(*) FROM i_beneficiarymapping WHERE BenRegId = :benRegId AND Deleted = false", nativeQuery = true)
+    long countActiveByBenRegId(@Param("benRegId") BigInteger benRegId);
+
+/**
      * Check if beneficiary exists
      */
     @Query(value = "SELECT COUNT(*) > 0 FROM i_beneficiarymapping WHERE BenRegId = :benRegId AND Deleted = false", nativeQuery = true)

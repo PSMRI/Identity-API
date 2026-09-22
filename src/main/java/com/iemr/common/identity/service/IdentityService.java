@@ -1509,6 +1509,10 @@ public class IdentityService {
         // MBeneficiarydetail mDetl = mapper.identityDTOToMBeneficiarydetail(identity);
         MBeneficiarydetail mDetl = convertIdentityDTOToMBeneficiarydetail(identity);
 
+        if (mDetl.getBeneficiaryRegID() == null) {
+            mDetl.setBeneficiaryRegID(regMap.getBenRegId());
+        }
+
         if (mDetl.getCreatedDate() == null) {
             SimpleDateFormat sdf = new SimpleDateFormat(CREATED_DATE_FORMAT);
             String dateToStoreInDataBase = sdf.format(new Date());

@@ -408,6 +408,30 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Expose
 	@Transient
 	private Integer communityId;
+	// Added for STOP-444 followup: edit sync silently dropped these — mobile sends them
+	// (see STOP-TB-App BenSending.kt) but this entity had no field to bind them to, so
+	// Gson/Jackson discarded them before they ever reached RmnchDataSyncServiceImpl.
+	@Expose
+	@Transient
+	private String occupation;
+	@Expose
+	@Transient
+	private Integer occupationId;
+	@Expose
+	@Transient
+	private String phoneNo;
+	@Expose
+	@Transient
+	private String economicStatus;
+	@Expose
+	@Transient
+	private Integer economicStatusId;
+	@Expose
+	@Transient
+	private String residentialArea;
+	@Expose
+	@Transient
+	private Integer residentialAreaId;
 	@Expose
 	@Transient
 	private String contact_number;

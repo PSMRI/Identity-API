@@ -347,7 +347,7 @@ public class ElasticsearchSyncController {
         try {
             java.math.BigInteger benRegIdBig = new java.math.BigInteger(benRegId);
             
-            boolean exists = mappingRepo.existsByBenRegId(benRegIdBig);
+            boolean exists = mappingRepo.countActiveByBenRegId(benRegIdBig) > 0;
             
             response.put("benRegId", benRegId);
             response.put("existsInDatabase", exists);

@@ -111,6 +111,24 @@ public class RMNCHMBeneficiarydetail {
 	@Column(length = 45)
 	private String occupation;
 
+	// STOP-444 followup fix: column exists (economicStatus/economicStatusId on
+	// i_beneficiarydetails) and is 100% NULL across every row, including freshly
+	// created ones — confirmed no code path, create or edit, has ever written to it.
+	// The app sends this value (inside i_bendemographics) every time.
+	private Integer economicStatusId;
+
+	@Column(length = 45)
+	private String economicStatus;
+
+	// STOP-444 followup fix: same situation as economicStatus above — real column,
+	// never written. Originally (wrongly) placed on the address entity in an earlier
+	// pass; corrected here to match where FLW-API's own RMNCHMBeneficiarydetail already
+	// declares it, confirming this is the real table.
+	private Integer residentialAreaId;
+
+	@Column(name = "residentialArea")
+	private String residentialArea;
+
 	private Integer phcId;
 
 	@Column(length = 30)
