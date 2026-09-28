@@ -22,7 +22,7 @@
 package com.iemr.common.identity.service.rmnch;
 
 public interface RmnchDataSyncService {
-	public String syncDataToAmrit(String requestOBJ) throws Exception;
+	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception;
 	public String  saveBeneficiaryDetailsAfterRegistration(
 			Long beneficiaryID,
 			Long beneficiaryRegID,

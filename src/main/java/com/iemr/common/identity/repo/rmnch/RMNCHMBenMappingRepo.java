@@ -40,6 +40,12 @@ public interface RMNCHMBenMappingRepo extends CrudRepository<RMNCHMBeneficiaryma
 	public RMNCHMBeneficiarymapping getByAddressIDAndVanID(@Param("addressID") BigInteger addressID,
 			@Param("vanID") int vanID);
 
+	// Added for STOP-444 followup: resolve a beneficiary's address/contact IDs by BenRegId
+	// so an edit sync can update the existing address/contact rows instead of only
+	// i_beneficiarydetails.
+	@Query(" SELECT t FROM RMNCHMBeneficiarymapping t WHERE t.benRegId = :benRegId")
+	public RMNCHMBeneficiarymapping getByBenRegId(@Param("benRegId") BigInteger benRegId);
+
 	@Query(nativeQuery = true, value = " SELECT userid FROM db_iemr.m_user WHERE UserName = :userName ")
 	public Integer getUserIDByUserName(@Param("userName") String userName);
 

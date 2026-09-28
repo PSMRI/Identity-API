@@ -24,10 +24,12 @@ package com.iemr.common.identity.repo.rmnch;
 import java.math.BigInteger;
 import java.util.List;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.iemr.common.identity.data.rmnch.RMNCHBeneficiaryDetailsRmnch;
 
@@ -39,4 +41,13 @@ public interface RMNCHBeneficiaryDetailsRmnchRepo extends CrudRepository<RMNCHBe
 
 	@Query(" SELECT t FROM RMNCHBeneficiaryDetailsRmnch t WHERE t.BenRegId =:benRegID ")
 	public List<RMNCHBeneficiaryDetailsRmnch> getByRegID(@Param("benRegID") BigInteger benRegId);
+
+	// The Java field bound to the VanSerialNo column is literally named `id` with no
+	// @SerializedName - any incoming JSON that happens to carry its own "id" key (e.g. a
+	// client-side list-item id) collides with it during Gson deserialization and silently
+	// overwrites the intended VanSerialNo value. Force it back to the row's own PK after save.
+	@Transactional
+	@Modifying
+	@Query("UPDATE RMNCHBeneficiaryDetailsRmnch t SET t.id = :id WHERE t.beneficiaryDetails_RmnchId = :id")
+	void updateVanSerialNo(@Param("id") BigInteger id);
 }
