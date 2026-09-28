@@ -1,8 +1,8 @@
 /*
-* AMRIT – Accessible Medical Records via Integrated Technology 
-* Integrated EHR (Electronic Health Records) Solution 
+* AMRIT – Accessible Medical Records via Integrated Technology
+* Integrated EHR (Electronic Health Records) Solution
 *
-* Copyright (C) "Piramal Swasthya Management and Research Institute" 
+* Copyright (C) "Piramal Swasthya Management and Research Institute"
 *
 * This file is part of AMRIT.
 *
@@ -21,18 +21,55 @@
 */
 package com.iemr.common.identity;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.annotation.ComponentScan;
 
-@ExtendWith(MockitoExtension.class)
-@SpringBootTest
+/**
+ * Unit tests for the application entry point.
+ *
+ * <p>
+ * These deliberately do not start a Spring context: the WAR needs a reachable
+ * MySQL, Redis and Elasticsearch, none of which exist on a build agent. What is
+ * worth asserting without them is the servlet-initializer wiring the Wildfly
+ * deployment depends on, and the component scan the rest of the app assumes.
+ */
 class IdentityApplicationTests {
-	@InjectMocks
-	IdentityApplication identityApplication;
-	
+
+	@Test
+	@DisplayName("configure() registers the application class as the WAR deployment source")
+	void configureRegistersApplicationSource() {
+		SpringApplicationBuilder builder = mock(SpringApplicationBuilder.class);
+		when(builder.sources(any(Class[].class))).thenReturn(builder);
+
+		SpringApplicationBuilder result = new IdentityApplication().configure(builder);
+
+		assertSame(builder, result);
+		verify(builder).sources(IdentityApplication.class);
+	}
+
+	@Test
+	@DisplayName("instantiateBeans() exposes the IEMR helper bean")
+	void instantiateBeansReturnsHelperBean() {
+		assertNotNull(new IdentityApplication().instantiateBeans());
+	}
+
+	@Test
+	@DisplayName("the entry point is a Spring Boot application scanning the identity packages")
+	void applicationIsAnnotatedForComponentScanning() {
+		assertNotNull(IdentityApplication.class.getAnnotation(SpringBootApplication.class));
+		ComponentScan componentScan = IdentityApplication.class.getAnnotation(ComponentScan.class);
+		assertNotNull(componentScan);
+		org.junit.jupiter.api.Assertions.assertArrayEquals(new String[] { "com.iemr.common.identity" },
+				componentScan.basePackages());
+	}
 }
