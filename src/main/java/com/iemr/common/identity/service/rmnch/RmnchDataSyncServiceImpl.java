@@ -330,6 +330,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setMaritalstatus(obj.getMaritalstatus());
 										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
 										rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
+										rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
 										rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
 										rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
 										// STOP-444 followup fix: these were previously never re-synced on an edit of an
