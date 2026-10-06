@@ -51,7 +51,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iemr.common.identity.controller.rmnch.RMNCHMobileAppController;
+import com.iemr.common.identity.data.rmnch.BenAnthropometryDetail;
 import com.iemr.common.identity.data.rmnch.BenHealthIDDetails;
+import com.iemr.common.identity.data.rmnch.BenPhysicalVitalDetail;
 import com.iemr.common.identity.data.rmnch.GetBenRequestHandler;
 import com.iemr.common.identity.data.rmnch.NcdTbHrpData;
 import com.iemr.common.identity.data.rmnch.RMNCHBeneficiaryDetailsRmnch;
@@ -64,6 +66,8 @@ import com.iemr.common.identity.data.rmnch.RMNCHMBeneficiaryaddress;
 import com.iemr.common.identity.data.rmnch.RMNCHMBeneficiarycontact;
 import com.iemr.common.identity.data.rmnch.RMNCHMBeneficiarydetail;
 import com.iemr.common.identity.data.rmnch.RMNCHMBeneficiarymapping;
+import com.iemr.common.identity.repo.rmnch.BenAnthropometryRepo;
+import com.iemr.common.identity.repo.rmnch.BenPhysicalVitalRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHBenAccountRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHBenAddressRepo;
 import com.iemr.common.identity.repo.rmnch.RMNCHBenContactRepo;
@@ -118,6 +122,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	private RMNCHMBenRegIdMapRepo rMNCHMBenRegIdMapRepo;
 	@Autowired
 	private BenDetailRepo benDetailRepo;
+	@Autowired
+	private BenAnthropometryRepo benAnthropometryRepo;
+	@Autowired
+	private BenPhysicalVitalRepo benPhysicalVitalRepo;
 
 	@Value("${fhir-url}")
 	private String fhirUrl;
@@ -409,19 +417,13 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 							// update beneficiary data in i_beneficiarydetails table
 							rMNCHBenDetailsRepo.saveAll(benDetailsList);
 
-							// Write anthropometry (height/weight/bmi/temperature) to i_beneficiarydetails.otherFields.
-							// i_beneficiarydetails_rmnch has no these columns; FLW-API getBeneficiaryData reads from otherFields.
+							// Write anthropometry (height/weight/bmi/temperature) to db_iemr.t_phy_anthropometry /
+							// t_phy_vitals — i_beneficiarydetails_rmnch has no these columns. FLW-API getBeneficiaryData
+							// and the nurse exam save read them from there.
 							for (RMNCHBeneficiaryDetailsRmnch obj : benDetailsOriginalList) {
 								if (obj.getBenRegId() != null && hasAnthropometryData(obj)) {
-									try {
-										MBeneficiarydetail benDetail = benDetailRepo.findByBenRegId(obj.getBenRegId());
-										if (benDetail != null) {
-											String merged = mergeAnthropometry(benDetail.getOtherFields(), obj);
-											benDetailRepo.updateOtherFieldsByBenRegId(obj.getBenRegId(), merged);
-										}
-									} catch (Exception ex) {
-										logger.warn("Failed to update otherFields for benRegId: " + obj.getBenRegId() + " - " + ex.getMessage());
-									}
+									writeAnthropometry(obj);
+									writeVitals(obj);
 								}
 							}
 
@@ -881,20 +883,95 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 				|| obj.getBmi() != null || obj.getTemperature() != null;
 	}
 
-	private String mergeAnthropometry(String existingOtherFields, RMNCHBeneficiaryDetailsRmnch obj) {
-		JsonObject json = new JsonObject();
-		if (existingOtherFields != null && !existingOtherFields.isBlank()) {
-			try {
-				json = new JsonParser().parse(existingOtherFields).getAsJsonObject();
-			} catch (Exception ignored) {
-			}
+	// Inserts a new t_phy_anthropometry row only when height/weight/bmi changed vs the latest row,
+	// carrying forward any value the app didn't send — from the latest row, or from otherFields for
+	// beneficiaries whose values were stored there before this table was written. Not tied to a visit —
+	// BenVisitID/VisitCode are nullable, and FLW-API reads latest by BeneficiaryRegID.
+	// Not wrapped in try/catch: these tables are now the only store for these values, and a failed save
+	// marks the sync transaction rollback-only anyway, so let the sync fail and the app retry.
+	private void writeAnthropometry(RMNCHBeneficiaryDetailsRmnch obj) {
+		if (obj.getHeight() == null && obj.getWeight() == null && obj.getBmi() == null)
+			return;
+		Long benRegID = obj.getBenRegId().longValue();
+		if (obj.getCreatedBy() == null) {
+			logger.warn("Skipping t_phy_anthropometry write, createdBy missing for benRegId: " + benRegID);
+			return;
 		}
-		if (obj.getHeight() != null) json.addProperty("height", obj.getHeight());
-		if (obj.getWeight() != null) json.addProperty("weight", obj.getWeight());
-		if (obj.getBmi() != null) json.addProperty("bmi", obj.getBmi());
-		// mobile sends "temperature"; FLW-API getBeneficiaryData reads "temperatureValue"
-		if (obj.getTemperature() != null) json.addProperty("temperatureValue", obj.getTemperature());
-		return new Gson().toJson(json);
+		BenAnthropometryDetail latest = benAnthropometryRepo
+				.findFirstByBeneficiaryRegIDOrderByCreatedDateDescIdDesc(benRegID);
+		JsonObject legacy = latest == null ? getLegacyAnthropometry(obj.getBenRegId()) : new JsonObject();
+		Double height = obj.getHeight() != null ? obj.getHeight()
+				: (latest != null ? latest.getHeightCm() : getDouble(legacy, "height"));
+		Double weight = obj.getWeight() != null ? obj.getWeight()
+				: (latest != null ? latest.getWeightKg() : getDouble(legacy, "weight"));
+		Double bmi = obj.getBmi() != null ? obj.getBmi() : (latest != null ? latest.getBmi() : getDouble(legacy, "bmi"));
+		if (latest != null && sameValue(latest.getHeightCm(), height) && sameValue(latest.getWeightKg(), weight)
+				&& sameValue(latest.getBmi(), bmi))
+			return;
+
+		BenAnthropometryDetail a = new BenAnthropometryDetail();
+		a.setBeneficiaryRegID(benRegID);
+		a.setProviderServiceMapID(obj.getProviderServiceMapID());
+		a.setCreatedBy(obj.getCreatedBy());
+		a.setVanID(obj.getVanID());
+		a.setParkingPlaceID(obj.getParkingPlaceID());
+		a.setHeightCm(height);
+		a.setWeightKg(weight);
+		a.setBmi(bmi);
+		a = benAnthropometryRepo.save(a);
+		benAnthropometryRepo.updateVanSerialNo(a.getId());
+	}
+
+	// Inserts a new t_phy_vitals row only when temperature changed vs the latest recorded temperature.
+	// Pulse/BP/glucose aren't part of registration, so they stay null here.
+	private void writeVitals(RMNCHBeneficiaryDetailsRmnch obj) {
+		if (obj.getTemperature() == null)
+			return;
+		Long benRegID = obj.getBenRegId().longValue();
+		if (obj.getCreatedBy() == null) {
+			logger.warn("Skipping t_phy_vitals write, createdBy missing for benRegId: " + benRegID);
+			return;
+		}
+		BenPhysicalVitalDetail latest = benPhysicalVitalRepo
+				.findFirstByBeneficiaryRegIDAndTemperatureIsNotNullOrderByCreatedDateDescIdDesc(benRegID);
+		if (latest != null && sameValue(latest.getTemperature(), obj.getTemperature()))
+			return;
+
+		BenPhysicalVitalDetail v = new BenPhysicalVitalDetail();
+		v.setBeneficiaryRegID(benRegID);
+		v.setProviderServiceMapID(obj.getProviderServiceMapID());
+		v.setCreatedBy(obj.getCreatedBy());
+		v.setVanID(obj.getVanID());
+		v.setParkingPlaceID(obj.getParkingPlaceID());
+		v.setTemperature(obj.getTemperature());
+		v = benPhysicalVitalRepo.save(v);
+		benPhysicalVitalRepo.updateVanSerialNo(v.getId());
+	}
+
+	// Columns are DECIMAL(5,2), so compare at that precision.
+	private boolean sameValue(Double stored, Double incoming) {
+		if (stored == null || incoming == null)
+			return stored == incoming;
+		return Math.round(stored * 100) == Math.round(incoming * 100);
+	}
+
+	private JsonObject getLegacyAnthropometry(BigInteger benRegID) {
+		try {
+			MBeneficiarydetail benDetail = benDetailRepo.findByBenRegId(benRegID);
+			if (benDetail != null && benDetail.getOtherFields() != null && !benDetail.getOtherFields().isBlank())
+				return new JsonParser().parse(benDetail.getOtherFields()).getAsJsonObject();
+		} catch (Exception ex) {
+			logger.warn("Cannot read otherFields for benRegId: " + benRegID + " - " + ex.getMessage());
+		}
+		return new JsonObject();
+	}
+
+	private Double getDouble(JsonObject json, String key) {
+		try {
+			return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : null;
+		} catch (Exception ex) {
+			return null;
+		}
 	}
 
 	@Override
