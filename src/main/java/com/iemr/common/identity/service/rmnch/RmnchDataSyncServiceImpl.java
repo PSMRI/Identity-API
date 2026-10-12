@@ -221,9 +221,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								JsonObject demog = benGpsMap.get(obj.getBenficieryid());
 								if (demog != null) {
 									if (demog.has("latitude") && !demog.get("latitude").isJsonNull())
-										obj.setGpsLatitude(demog.get("latitude").getAsDouble());
+										obj.setLatitude(demog.get("latitude").getAsBigDecimal());
 									if (demog.has("longitude") && !demog.get("longitude").isJsonNull())
-										obj.setGpsLongitude(demog.get("longitude").getAsDouble());
+										obj.setLongitude(demog.get("longitude").getAsBigDecimal());
 									if (demog.has("digipin") && !demog.get("digipin").isJsonNull())
 										obj.setDigipin(demog.get("digipin").getAsString());
 									if (demog.has("gpsTimestamp") && !demog.get("gpsTimestamp").isJsonNull())

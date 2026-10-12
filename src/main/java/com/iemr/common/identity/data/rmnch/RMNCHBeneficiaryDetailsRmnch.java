@@ -612,14 +612,6 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	private Double temperature; // stored as "temperatureValue" in otherFields to match getBeneficiaryData key
 
 	@Expose
-	@Column(name = "gpsLatitude")
-	private Double gpsLatitude;
-
-	@Expose
-	@Column(name = "gpsLongitude")
-	private Double gpsLongitude;
-
-	@Expose
 	@Column(name = "digipin")
 	private String digipin;
 
