@@ -60,6 +60,14 @@ public interface BenRegIdMappingRepo extends CrudRepository<MBeneficiaryregidmap
 
 	Long countByProvisioned(Boolean isProvisioned);
 
+	/**
+	 * Count of BenRegIds that are genuinely claimable right now — i.e. not
+	 * provisioned AND not reserved. countByProvisioned(false) alone overstates
+	 * availability because it also counts rows claimed (Reserved=true) by an
+	 * in-flight registration that was later abandoned/crashed before completing.
+	 */
+	Long countByProvisionedAndReserved(Boolean isProvisioned, Boolean isReserved);
+
 	@Transactional
 	@Modifying
 	@Query("update MBeneficiaryregidmapping set providerServiceMapID = null , vehicalNo = null "
