@@ -212,14 +212,10 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 								// Extract GPS from i_bendemographics
 								JsonObject demog = benGpsMap.get(obj.getBenficieryid());
 								if (demog != null) {
-									if (demog.has("latitude") && !demog.get("latitude").isJsonNull())
-										obj.setGpsLatitude(demog.get("latitude").getAsDouble());
-									if (demog.has("longitude") && !demog.get("longitude").isJsonNull())
-										obj.setGpsLongitude(demog.get("longitude").getAsDouble());
+
 									if (demog.has("digipin") && !demog.get("digipin").isJsonNull())
 										obj.setDigipin(demog.get("digipin").getAsString());
-									if (demog.has("gpsTimestamp") && !demog.get("gpsTimestamp").isJsonNull())
-										obj.setGpsTimestamp(new Timestamp(demog.get("gpsTimestamp").getAsLong()));
+
 									if (demog.has("isGpsUnavailable") && !demog.get("isGpsUnavailable").isJsonNull())
 										obj.setIsGpsUnavailable(demog.get("isGpsUnavailable").getAsBoolean());
 									// STOP-444 followup fix: same source object, previously never read for
@@ -331,7 +327,6 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 										rmnchmBeneficiarydetail.setMaritalstatusId(obj.getMaritalstatusId());
 										rmnchmBeneficiarydetail.setPlaceOfCurrentLiving(obj.getPlaceOfCurrentLiving());
 										rmnchmBeneficiarydetail.setOtherPlaceOfCurrentLiving(obj.getOtherPlaceOfCurrentLiving());
-										rmnchmBeneficiarydetail.setInstitutionName(obj.getInstitutionName());
 										// STOP-444 followup fix: these were previously never re-synced on an edit of an
 										// existing beneficiary, so any change to them from the app was silently dropped.
 										if (obj.getCommunity() != null) {
@@ -506,8 +501,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 											.getByHouseHoldID(obj.getHouseoldId()).get(0);
 									if (temp != null)
 										obj.setHouseHoldDetailsId(temp.getHouseHoldDetailsId());
-									if (hhTimestampMap.containsKey(obj.getHouseoldId()))
-										obj.setGpsTimestamp(new Timestamp(hhTimestampMap.get(obj.getHouseoldId())));
+
 								}
 								// Set VanID/ParkingPlaceID for both NEW and existing households — this must
 								// stay OUTSIDE the "household already exists" block above (it's regressed

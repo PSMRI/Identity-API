@@ -379,6 +379,21 @@ public class RMNCHHouseHoldDetails {
 	@Expose
 	@Column(name = "mohallaName")
 	private String mohallaName;
+	
+
+	@Expose
+	@Column(name = "digipin")
+	private String digipin;
+
+
+
+	@Expose
+	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+	private Boolean isGpsUnavailable = false;
+
+	@Expose
+	@Column(name = "gpsUnavailableReason")
+	private String gpsUnavailableReason;
 
 	@Expose
 	@SerializedName("latitude")

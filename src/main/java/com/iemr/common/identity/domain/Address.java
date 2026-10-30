@@ -56,11 +56,9 @@ public @Data class Address {
 
 	private Integer vanID;
 	private Integer parkingPlaceID;
-	private Double gpsLatitude;
-	private Double gpsLongitude;
+
 	private String digipin;
-	@JsonAdapter(GpsTimestampAdapter.class)
-	private Timestamp gpsTimestamp;
+
 	private Boolean isGpsUnavailable;
 	private String gpsUnavailableReason;
 }
