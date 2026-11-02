@@ -60,6 +60,12 @@ public interface BenRegIdMappingRepo extends CrudRepository<MBeneficiaryregidmap
 
 	Long countByProvisioned(Boolean isProvisioned);
 
+	/**
+	 * Count of BenRegIds that can be given to a new registration: not provisioned
+	 * and not claimed by a registration in progress.
+	 */
+	Long countByProvisionedAndReserved(Boolean isProvisioned, Boolean isReserved);
+
 	@Transactional
 	@Modifying
 	@Query("update MBeneficiaryregidmapping set providerServiceMapID = null , vehicalNo = null "

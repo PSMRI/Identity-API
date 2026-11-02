@@ -990,6 +990,8 @@ public class IdentityController {
 			logger.info("Number of unique benid imported to local server: " + i);
 			if (i > 0)
 				response.setResponse(i + " Unique benid imported to local server");
+			else if (!benIdImportDTOList.isEmpty())
+				response.setResponse("All benid already present in local server");
 			else {
 				response.setResponse("Empty or invalid data");
 				logger.error("Empty or invalid data. Data Size is : " + benIdImportDTOList.size());
