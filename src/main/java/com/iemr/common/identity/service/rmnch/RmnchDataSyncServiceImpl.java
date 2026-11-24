@@ -145,6 +145,14 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 	// explicitly, so a forgotten config fails loudly at startup instead of running fail-open.
 	@Value("${stoptb.enforce.vanid}")
 	private boolean enforceVanID;
+
+	// STOP-750: Processed is this server's upload status (the van's MMU sync uploads rows that are
+	// not 'P' and then marks them 'P'). The tablet sends its own sync status in the same field, e.g.
+	// "P" when it re-sends a household it pushed before. Saving that value marks a row the van has
+	// not uploaded yet as uploaded, so it never reaches central. Every row received here is new or
+	// changed, so it is always saved as pending upload.
+	static final String PENDING_UPLOAD = "N";
+
 	@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 	@Override
 	public String syncDataToAmrit(String requestOBJ, String authorization) throws Exception {
@@ -323,6 +331,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+								obj.setProcessed(PENDING_UPLOAD);
 								if(!rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).isEmpty()){
 									RMNCHMBeneficiarydetail rmnchmBeneficiarydetail =
 											rMNCHBenDetailsRepo.getByBenRegID(obj.getBenRegId()).get(0);
@@ -444,6 +453,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+								obj.setProcessed(PENDING_UPLOAD);
 							}
 							bornBirthList = (ArrayList<RMNCHBornBirthDetails>) rMNCHBornBirthDetailsRepo
 									.saveAll(bornBirthList);
@@ -473,6 +483,7 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+								obj.setProcessed(PENDING_UPLOAD);
 							}
 
 							cbacList = (ArrayList<RMNCHCBACdetails>) rMNCHCBACDetailsRepo.saveAll(cbacList);
@@ -519,6 +530,9 @@ public class RmnchDataSyncServiceImpl implements RmnchDataSyncService {
 									obj.setVanID(vanID);
 									obj.setParkingPlaceID(parkingPlaceID);
 								}
+								// STOP-750: the tablet re-sends a household with every member push, with its own
+								// "P" once it has pushed it before; that must not mark it uploaded on this van.
+								obj.setProcessed(PENDING_UPLOAD);
 							}
 							houseHoldList = (ArrayList<RMNCHHouseHoldDetails>) rMNCHHouseHoldDetailsRepo
 									.saveAll(houseHoldList);
