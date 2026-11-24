@@ -611,12 +611,14 @@ public class RMNCHBeneficiaryDetailsRmnch {
 	@Transient
 	private Double temperature; // stored as "temperatureValue" in otherFields to match getBeneficiaryData key
 
-
 	@Expose
 	@Column(name = "digipin")
 	private String digipin;
 
-	
+	@Expose
+	@Column(name = "gpsTimestamp")
+	@JsonAdapter(GpsTimestampAdapter.class)
+	private Timestamp gpsTimestamp;
 
 	@Expose
 	@Column(name = "isGpsUnavailable", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")

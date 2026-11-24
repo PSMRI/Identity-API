@@ -2170,7 +2170,9 @@ public class IdentityService {
             jdbcTemplate = getJdbcTemplate();
             List<Object[]> dataList = new ArrayList<>();
             Object[] objArr;
-            String query = " INSERT INTO m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
+            // INSERT IGNORE: importing the same IDs again (retry after a failed or partial
+            // import) skips rows already present instead of failing the whole batch
+            String query = " INSERT IGNORE INTO m_beneficiaryregidmapping(BenRegId, BeneficiaryID, "
                     + " Provisioned, CreatedDate, CreatedBy, Reserved, vanID) VALUES (?,?,?,?,?,?,?) ";
             logger.info("query : " + query);
             for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
@@ -2191,9 +2193,27 @@ public class IdentityService {
                 logger.info("regid :" + obj.getBenRegId() + " - benid :" + obj.getBeneficiaryID());
             }
 
+            // batched inserts do not report per-row results, so count the rows in this
+            // BenRegId range before and after to know how many were really added
+            java.math.BigInteger minId = null;
+            java.math.BigInteger maxId = null;
+            for (MBeneficiaryregidmapping obj : mBeneficiaryregidmappingList) {
+                java.math.BigInteger id = obj.getBenRegId();
+                if (id != null) {
+                    minId = (minId == null || id.compareTo(minId) < 0) ? id : minId;
+                    maxId = (maxId == null || id.compareTo(maxId) > 0) ? id : maxId;
+                }
+            }
+            String rangeCount = "SELECT COUNT(*) FROM m_beneficiaryregidmapping WHERE BenRegId BETWEEN ? AND ?";
+            Long before = minId == null ? 0L : jdbcTemplate.queryForObject(rangeCount, Long.class, minId, maxId);
+
             int[] i = jdbcTemplate.batchUpdate(query, dataList);
 
-            return i.length;
+            Long after = minId == null ? 0L : jdbcTemplate.queryForObject(rangeCount, Long.class, minId, maxId);
+            int inserted = (int) (after - before);
+            logger.info("IdentityService.importBenIdToLocalServer - received " + i.length + ", newly inserted "
+                    + inserted + ", already present or skipped " + (i.length - inserted));
+            return inserted;
         } else {
             return 0;
         }
@@ -2201,7 +2221,9 @@ public class IdentityService {
     }
 
     public Long checkBenIDAvailabilityLocal() {
-        return regIdRepo.countByProvisioned(false);
+        // Provisioned=false alone also counts rows claimed (Reserved=true) by a registration
+        // that never completed; those cannot be given to a new registration
+        return regIdRepo.countByProvisionedAndReserved(false, false);
 
     }
 
