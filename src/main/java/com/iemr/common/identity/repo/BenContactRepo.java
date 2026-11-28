@@ -52,7 +52,10 @@ public interface BenContactRepo extends CrudRepository<MBeneficiarycontact, BigI
 	// @Query("select c from MBeneficiarycontact c where c.preferredPhoneNum = :phoneNum ")
 	// List<MBeneficiarycontact> findByAnyPhoneNum(@Param("phoneNum") String phoneNum);
 
-	@Query("select c from MBeneficiarycontact c where c.preferredPhoneNum IN :variants")
+	@Query("select c from MBeneficiarycontact c where c.preferredPhoneNum IN :variants "
+			+ "or c.preferredSMSPhoneNum IN :variants or c.emergencyContactNum IN :variants "
+			+ "or c.phoneNum1 IN :variants or c.phoneNum2 IN :variants or c.phoneNum3 IN :variants "
+			+ "or c.phoneNum4 IN :variants or c.phoneNum5 IN :variants")
     List<MBeneficiarycontact> findByAnyPhoneNum(@Param("variants") List<String> variants);
 
 

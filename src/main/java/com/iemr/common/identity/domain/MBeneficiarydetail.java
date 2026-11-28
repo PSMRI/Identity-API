@@ -35,7 +35,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
@@ -184,9 +183,6 @@ public class MBeneficiarydetail implements Serializable {
 	private String title;
 
 	private Integer zoneId;
-
-	@OneToOne(mappedBy = "mBeneficiarydetail")
-	private MBeneficiarymapping mBeneficiarymapping;
 
 	@Column(name = "GenderID")
 	private Integer genderId;

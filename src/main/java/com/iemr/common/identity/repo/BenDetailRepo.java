@@ -46,7 +46,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 	List<MBeneficiarydetail> findByFirstNameAndLastNameOrderByBeneficiaryDetailsIdAsc(String fName, String mName);
 
 
-	@Query("select d from MBeneficiarydetail d " + "where d.mBeneficiarymapping.benRegId = :benRegId")
+	@Query("select d from MBeneficiarydetail d " + "where d.beneficiaryDetailsId in (select m.benDetailsId from MBeneficiarymapping m where m.benRegId = :benRegId)")
 	MBeneficiarydetail findByBenRegId(BigInteger benRegId);
 
 
@@ -78,12 +78,12 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 
 	@Query("select new MBeneficiarydetail(d.beneficiaryDetailsId, d.firstName, d.lastName, d.middleName, "
 			+ "d.fatherName, d.spouseName) "
-			+ "from MBeneficiarydetail d where d.mBeneficiarymapping.benRegId = :benRegId")
+			+ "from MBeneficiarydetail d where d.beneficiaryDetailsId in (select m.benDetailsId from MBeneficiarymapping m where m.benRegId = :benRegId)")
 	MBeneficiarydetail findPartialBeneficiaryDetailByBenRegId(@Param("benRegId") BigInteger benRegId);
 
 	@Query("select new MBeneficiarydetail(d.beneficiaryDetailsId, d.firstName, d.lastName, d.middleName, "
 			+ "d.fatherName, d.spouseName) "
-			+ "from MBeneficiarydetail d where d.mBeneficiarymapping.benRegId in :benRegIds")
+			+ "from MBeneficiarydetail d where d.beneficiaryDetailsId in (select m.benDetailsId from MBeneficiarymapping m where m.benRegId in :benRegIds)")
 	List<MBeneficiarydetail> findPartialBeneficiaryDetailByBenRegId(@Param("benRegIds") List<BigInteger> benRegId);
 
 	@Transactional
@@ -150,7 +150,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 
 	@Transactional
 	@Modifying
-	@Query("UPDATE MBeneficiarydetail d SET d.otherFields = :otherFields WHERE d.mBeneficiarymapping.benRegId = :benRegId")
+	@Query("UPDATE MBeneficiarydetail d SET d.otherFields = :otherFields WHERE d.beneficiaryDetailsId IN (SELECT m.benDetailsId FROM MBeneficiarymapping m WHERE m.benRegId = :benRegId)")
 	int updateOtherFieldsByBenRegId(@Param("benRegId") BigInteger benRegId, @Param("otherFields") String otherFields);
 
 	  /**

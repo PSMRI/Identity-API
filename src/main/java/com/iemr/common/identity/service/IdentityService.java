@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -564,33 +565,50 @@ public class IdentityService {
         // new logic, 27-09-2018
         List<BeneficiariesDTO> list = new ArrayList<>();
 
+        List<MBeneficiarycontact> benContact;
         try {
-            // List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(phoneNum);
-
-            String clean = phoneNum.trim();
-            if (clean.startsWith("+91")) clean = clean.substring(3);
-            else if (clean.startsWith("91") && clean.length() == 12) clean = clean.substring(2);
+            // keep digits only, so "+91 98765-43210" and "098765 43210" are treated the same
+            String clean = phoneNum == null ? "" : phoneNum.replaceAll("\\D", "");
+            if (clean.startsWith("91") && clean.length() == 12) clean = clean.substring(2);
             else if (clean.startsWith("0") && clean.length() == 11) clean = clean.substring(1);
+            if (clean.isEmpty()) {
+                logger.warn("phone number search called with no digits in input");
+                return list;
+            }
 
             List<String> variants = Arrays.asList(clean, "0" + clean, "91" + clean, "+91" + clean);
-            List<MBeneficiarycontact> benContact = contactRepo.findByAnyPhoneNum(variants);
-
-            logger.info(benContact.size() + " contacts found for phone number " + phoneNum);
-
-            List<Object[]> benMapObjArr = new ArrayList<>();
-
-            for (MBeneficiarycontact benContactOBJ : benContact) {
-                benMapObjArr.addAll(mappingRepo.getBenMappingByBenContactIdListNew(benContactOBJ.getVanSerialNo(),
-                        benContactOBJ.getVanID()));
-            }
-
-            for (Object[] benMapOBJ : benMapObjArr) {
-                list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTONew(benMapOBJ)));
-            }
-
+            benContact = contactRepo.findByAnyPhoneNum(variants);
         } catch (Exception e) {
-            logger.error(
-                    "error in beneficiary search for phone no : " + phoneNum + " error : " + e.getLocalizedMessage());
+            logger.error("error in beneficiary search for phone no : " + phoneNum + " error : "
+                    + e.getLocalizedMessage(), e);
+            return list;
+        }
+
+        logger.info(benContact.size() + " contacts found for phone number " + phoneNum);
+
+        // collect mapping rows, de-duplicated by benMapId
+        Map<Object, Object[]> benMapObjByMapId = new LinkedHashMap<>();
+        for (MBeneficiarycontact benContactOBJ : benContact) {
+            try {
+                for (Object[] row : mappingRepo.getBenMappingByBenContactIdListNew(benContactOBJ.getVanSerialNo(),
+                        benContactOBJ.getVanID())) {
+                    benMapObjByMapId.putIfAbsent(row[0], row);
+                }
+            } catch (Exception e) {
+                logger.error("error fetching beneficiary mapping for contact vanSerialNo "
+                        + benContactOBJ.getVanSerialNo() + ", vanID " + benContactOBJ.getVanID() + " : "
+                        + e.getLocalizedMessage(), e);
+            }
+        }
+
+        // one bad beneficiary must not empty the whole result
+        for (Object[] benMapOBJ : benMapObjByMapId.values()) {
+            try {
+                list.add(this.getBeneficiariesDTO(this.getBeneficiariesDTONew(benMapOBJ)));
+            } catch (Exception e) {
+                logger.error("skipping beneficiary benMapId " + benMapOBJ[0] + " in phone no search for "
+                        + phoneNum + " : " + e.getLocalizedMessage(), e);
+            }
         }
 
         logger.info("IdentityService.getBeneficiariesByPhoneNum - end");
