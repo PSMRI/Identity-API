@@ -46,7 +46,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 	List<MBeneficiarydetail> findByFirstNameAndLastNameOrderByBeneficiaryDetailsIdAsc(String fName, String mName);
 
 
-	@Query("select d from MBeneficiarydetail d " + "where d.beneficiaryDetailsId in (select m.benDetailsId from MBeneficiarymapping m where m.benRegId = :benRegId)")
+	@Query("select d from MBeneficiarydetail d " + "where exists (select 1 from MBeneficiarymapping m where m.benRegId = :benRegId and m.benDetailsId = d.vanSerialNo and m.vanID = d.vanID)")
 	MBeneficiarydetail findByBenRegId(BigInteger benRegId);
 
 
@@ -78,12 +78,12 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 
 	@Query("select new MBeneficiarydetail(d.beneficiaryDetailsId, d.firstName, d.lastName, d.middleName, "
 			+ "d.fatherName, d.spouseName) "
-			+ "from MBeneficiarydetail d where d.beneficiaryDetailsId in (select m.benDetailsId from MBeneficiarymapping m where m.benRegId = :benRegId)")
+			+ "from MBeneficiarydetail d where exists (select 1 from MBeneficiarymapping m where m.benRegId = :benRegId and m.benDetailsId = d.vanSerialNo and m.vanID = d.vanID)")
 	MBeneficiarydetail findPartialBeneficiaryDetailByBenRegId(@Param("benRegId") BigInteger benRegId);
 
 	@Query("select new MBeneficiarydetail(d.beneficiaryDetailsId, d.firstName, d.lastName, d.middleName, "
 			+ "d.fatherName, d.spouseName) "
-			+ "from MBeneficiarydetail d where d.beneficiaryDetailsId in (select m.benDetailsId from MBeneficiarymapping m where m.benRegId in :benRegIds)")
+			+ "from MBeneficiarydetail d where exists (select 1 from MBeneficiarymapping m where m.benRegId in :benRegIds and m.benDetailsId = d.vanSerialNo and m.vanID = d.vanID)")
 	List<MBeneficiarydetail> findPartialBeneficiaryDetailByBenRegId(@Param("benRegIds") List<BigInteger> benRegId);
 
 	@Transactional
@@ -150,7 +150,7 @@ public interface BenDetailRepo extends CrudRepository<MBeneficiarydetail, BigInt
 
 	@Transactional
 	@Modifying
-	@Query("UPDATE MBeneficiarydetail d SET d.otherFields = :otherFields WHERE d.beneficiaryDetailsId IN (SELECT m.benDetailsId FROM MBeneficiarymapping m WHERE m.benRegId = :benRegId)")
+	@Query("UPDATE MBeneficiarydetail d SET d.otherFields = :otherFields WHERE EXISTS (SELECT 1 FROM MBeneficiarymapping m WHERE m.benRegId = :benRegId AND m.benDetailsId = d.vanSerialNo AND m.vanID = d.vanID)")
 	int updateOtherFieldsByBenRegId(@Param("benRegId") BigInteger benRegId, @Param("otherFields") String otherFields);
 
 	  /**
